@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>التنبؤ بالموافقة التأمينية — تجمع مكة الصحي</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap');
+:root{--bg:#0c0f18;--surface:#131826;--card:#1a2033;--border:#242d44;--accent:#4f8ef7;--green:#22d3a0;--red:#f87171;--yellow:#fbbf24;--text:#dde4f0;--muted:#6b7591;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'IBM Plex Sans Arabic',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:20px 16px 60px;}
+.header{text-align:center;margin-bottom:24px;}
+.badge{display:inline-flex;align-items:center;gap:6px;background:rgba(79,142,247,.1);border:1px solid rgba(79,142,247,.2);color:var(--accent);font-size:11px;font-weight:600;padding:4px 14px;border-radius:20px;margin-bottom:12px;}
+.header h1{font-size:20px;font-weight:700;color:#fff;margin-bottom:4px;}
+.header p{font-size:12px;color:var(--muted);}
+.accuracy-note{display:inline-flex;align-items:center;gap:6px;background:rgba(34,211,160,.08);border:1px solid rgba(34,211,160,.2);color:var(--green);font-size:11px;padding:4px 12px;border-radius:20px;margin-top:8px;}
+.form-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;max-width:620px;margin:0 auto 16px;}
+.sec-label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:14px;padding-bottom:7px;border-bottom:1px solid var(--border);}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;}
+.grid1{display:grid;grid-template-columns:1fr;gap:12px;margin-bottom:18px;}
+.field{display:flex;flex-direction:column;gap:5px;position:relative;}
+.field label{font-size:12px;color:var(--muted);font-weight:500;}
+/* Searchable dropdown */
+.search-wrap{position:relative;}
+.search-input{background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:inherit;font-size:13px;padding:9px 32px 9px 11px;border-radius:8px;outline:none;transition:border-color .2s;width:100%;cursor:pointer;}
+.search-input:focus{border-color:var(--accent);}
+.search-arrow{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:11px;pointer-events:none;}
+.dropdown-panel{display:none;position:absolute;top:calc(100% + 4px);right:0;left:0;background:var(--card);border:1px solid var(--accent);border-radius:10px;z-index:1000;box-shadow:0 8px 24px rgba(0,0,0,.5);max-height:260px;overflow:hidden;flex-direction:column;}
+.dropdown-panel.open{display:flex;}
+.dropdown-search{padding:8px;border-bottom:1px solid var(--border);}
+.dropdown-search input{width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:inherit;font-size:12px;padding:7px 10px;border-radius:6px;outline:none;}
+.dropdown-search input:focus{border-color:var(--accent);}
+.dropdown-list{overflow-y:auto;max-height:200px;}
+.dropdown-list::-webkit-scrollbar{width:4px;}
+.dropdown-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+.dropdown-item{padding:9px 12px;font-size:12px;cursor:pointer;color:var(--text);transition:background .15s;border-bottom:1px solid rgba(255,255,255,.03);}
+.dropdown-item:hover,.dropdown-item.selected{background:rgba(79,142,247,.12);color:var(--accent);}
+.dropdown-item.hidden{display:none;}
+/* Regular input */
+.field input[type=number]{background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:inherit;font-size:13px;padding:9px 11px;border-radius:8px;outline:none;transition:border-color .2s;width:100%;}
+.field input[type=number]:focus{border-color:var(--accent);}
+.predict-btn{width:100%;padding:13px;background:var(--accent);border:none;color:#fff;font-family:inherit;font-size:14px;font-weight:700;border-radius:10px;cursor:pointer;transition:all .2s;margin-top:4px;}
+.predict-btn:hover{background:#3a7ae0;}
+.result-card{max-width:620px;margin:0 auto 16px;border-radius:16px;padding:24px;text-align:center;display:none;border:2px solid;}
+.result-card.approved{background:rgba(34,211,160,.07);border-color:var(--green);}
+.result-card.rejected{background:rgba(248,113,113,.07);border-color:var(--red);}
+.result-card.partial{background:rgba(251,191,36,.07);border-color:var(--yellow);}
+.result-icon{font-size:44px;margin-bottom:10px;}
+.result-label{font-size:12px;color:var(--muted);margin-bottom:4px;}
+.result-value{font-size:26px;font-weight:700;margin-bottom:14px;}
+.result-value.approved{color:var(--green);}
+.result-value.rejected{color:var(--red);}
+.result-value.partial{color:var(--yellow);}
+.conf-label{font-size:11px;color:var(--muted);display:flex;justify-content:space-between;margin-bottom:4px;}
+.bar-wrap{background:var(--border);border-radius:8px;height:8px;overflow:hidden;margin-bottom:14px;}
+.bar{height:100%;border-radius:8px;transition:width .8s ease;}
+.probs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px;}
+.prob-item{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center;}
+.prob-name{font-size:10px;color:var(--muted);margin-bottom:4px;}
+.prob-val{font-size:15px;font-weight:700;}
+.reset-btn{background:none;border:1px solid var(--border);color:var(--muted);font-family:inherit;font-size:12px;padding:7px 18px;border-radius:8px;cursor:pointer;}
+.reset-btn:hover{border-color:var(--accent);color:var(--accent);}
+.factors{max-width:620px;margin:0 auto 16px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;display:none;}
+.f-title{font-size:11px;color:var(--muted);margin-bottom:12px;font-weight:600;}
+.f-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.f-name{font-size:11px;color:var(--text);min-width:130px;}
+.f-bw{flex:1;height:5px;background:var(--border);border-radius:3px;overflow:hidden;}
+.f-b{height:100%;border-radius:3px;}
+.f-pct{font-size:10px;color:var(--muted);min-width:35px;text-align:left;}
+.tip{background:rgba(79,142,247,.06);border:1px solid rgba(79,142,247,.15);border-radius:8px;padding:10px 12px;font-size:11px;color:var(--muted);margin-top:10px;line-height:1.7;}
+.tip strong{color:var(--accent);}
+.footer{text-align:center;margin-top:32px;padding-top:20px;border-top:1px solid var(--border);}
+.footer-dev{display:inline-flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--border);border-radius:20px;padding:8px 20px;}
+.footer-text{font-size:12px;color:var(--muted);}
+.footer-text strong{color:var(--accent);font-size:13px;}
+.footer-sub{font-size:11px;color:var(--muted);margin-top:6px;}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="badge">🏥 تجمع مكة الصحي · RCM · نموذج Random Forest</div>
+  <h1>التنبؤ بنتيجة الموافقة التأمينية</h1>
+  <p>أدخل بيانات المطالبة المتاحة قبل قرار التأمين</p>
+  <div class="accuracy-note">✅ دقة النموذج 70.5%</div>
+</div>
+
+<div class="form-card">
+
+  <!-- المبلغ -->
+  <div class="sec-label">💰 قيمة الفاتورة</div>
+  <div class="grid1">
+    <div class="field">
+      <label>إجمالي الفاتورة (ريال)</label>
+      <input type="number" id="total" placeholder="مثال: 500" min="0" step="0.01">
+    </div>
+  </div>
+
+  <!-- بيانات الزيارة -->
+  <div class="sec-label">🏥 بيانات الزيارة</div>
+  <div class="grid2">
+
+    <div class="field">
+      <label>نوع الزيارة</label>
+      <div class="search-wrap" id="sw_visit">
+        <input class="search-input" id="disp_visit" readonly placeholder="اختر..." onclick="toggleDD('visit')">
+        <span class="search-arrow">▼</span>
+        <div class="dropdown-panel" id="dd_visit">
+          <div class="dropdown-search"><input type="text" placeholder="بحث..." oninput="filterDD('visit',this.value)"></div>
+          <div class="dropdown-list" id="dl_visit"></div>
+        </div>
+      </div>
+      <input type="hidden" id="visit">
+    </div>
+
+    <div class="field">
+      <label>المستشفى</label>
+      <div class="search-wrap" id="sw_hospital">
+        <input class="search-input" id="disp_hospital" readonly placeholder="اختر..." onclick="toggleDD('hospital')">
+        <span class="search-arrow">▼</span>
+        <div class="dropdown-panel" id="dd_hospital">
+          <div class="dropdown-search"><input type="text" placeholder="بحث..." oninput="filterDD('hospital',this.value)"></div>
+          <div class="dropdown-list" id="dl_hospital"></div>
+        </div>
+      </div>
+      <input type="hidden" id="hospital">
+    </div>
+
+    <div class="field">
+      <label>درجة الطوارئ</label>
+      <div class="search-wrap" id="sw_triage">
+        <input class="search-input" id="disp_triage" readonly placeholder="اختر..." onclick="toggleDD('triage')">
+        <span class="search-arrow">▼</span>
+        <div class="dropdown-panel" id="dd_triage">
+          <div class="dropdown-search"><input type="text" placeholder="بحث..." oninput="filterDD('triage',this.value)"></div>
+          <div class="dropdown-list" id="dl_triage"></div>
+        </div>
+      </div>
+      <input type="hidden" id="triage">
+    </div>
+
+    <div class="field">
+      <label>حالة الفاتورة</label>
+      <div class="search-wrap" id="sw_bill">
+        <input class="search-input" id="disp_bill" readonly placeholder="اختر..." onclick="toggleDD('bill')">
+        <span class="search-arrow">▼</span>
+        <div class="dropdown-panel" id="dd_bill">
+          <div class="dropdown-search"><input type="text" placeholder="بحث..." oninput="filterDD('bill',this.value)"></div>
+          <div class="dropdown-list" id="dl_bill"></div>
+        </div>
+      </div>
+      <input type="hidden" id="bill">
+    </div>
+
+    <div class="field">
+      <label>القسم / العيادة</label>
+      <div class="search-wrap" id="sw_clinic">
+        <input class="search-input" id="disp_clinic" readonly placeholder="اختر..." onclick="toggleDD('clinic')">
+        <span class="search-arrow">▼</span>
+        <div class="dropdown-panel" id="dd_clinic">
+          <div class="dropdown-search"><input type="text" placeholder="بحث..." oninput="filterDD('clinic',this.value)"></div>
+          <div class="dropdown-list" id="dl_clinic"></div>
+        </div>
+      </div>
+      <input type="hidden" id="clinic">
+    </div>
+
+    <div class="field">
+      <label>فحص NPHIES</label>
+      <div class="search-wrap" id="sw_nphies">
+        <input class="search-input" id="disp_nphies" readonly placeholder="اختر..." onclick="toggleDD('nphies')">
+        <span class="search-arrow">▼</span>
+        <div class="dropdown-panel" id="dd_nphies">
+          <div class="dropdown-search"><input type="text" placeholder="بحث..." oninput="filterDD('nphies',this.value)"></div>
+          <div class="dropdown-list" id="dl_nphies"></div>
+        </div>
+      </div>
+      <input type="hidden" id="nphies">
+    </div>
+
+  </div>
+
+  <!-- التشخيص والعقد -->
+  <div class="sec-label">🩺 التشخيص وعقد التأمين</div>
+  <div class="grid2">
+
+    <div class="field">
+      <label>فصل ICD-10</label>
+      <div class="search-wrap" id="sw_icd">
+        <input class="search-input" id="disp_icd" readonly placeholder="اختر..." onclick="toggleDD('icd')">
+        <span class="search-arrow">▼</span>
+        <div class="dropdown-panel" id="dd_icd">
+          <div class="dropdown-search"><input type="text" placeholder="بحث..." oninput="filterDD('icd',this.value)"></div>
+          <div class="dropdown-list" id="dl_icd"></div>
+        </div>
+      </div>
+      <input type="hidden" id="icd">
+    </div>
+
+    <div class="field">
+      <label>عقد التأمين (الضامن)</label>
+      <div class="search-wrap" id="sw_contract">
+        <input class="search-input" id="disp_contract" readonly placeholder="اختر..." onclick="toggleDD('contract')">
+        <span class="search-arrow">▼</span>
+        <div class="dropdown-panel" id="dd_contract">
+          <div class="dropdown-search"><input type="text" placeholder="بحث..." oninput="filterDD('contract',this.value)"></div>
+          <div class="dropdown-list" id="dl_contract"></div>
+        </div>
+      </div>
+      <input type="hidden" id="contract">
+    </div>
+
+  </div>
+
+  <!-- بيانات المريض -->
+  <div class="sec-label">👤 بيانات المريض</div>
+  <div class="grid2">
+
+    <div class="field">
+      <label>الجنس</label>
+      <div class="search-wrap" id="sw_gender">
+        <input class="search-input" id="disp_gender" readonly placeholder="اختر..." onclick="toggleDD('gender')">
+        <span class="search-arrow">▼</span>
+        <div class="dropdown-panel" id="dd_gender">
+          <div class="dropdown-search"><input type="text" placeholder="بحث..." oninput="filterDD('gender',this.value)"></div>
+          <div class="dropdown-list" id="dl_gender"></div>
+        </div>
+      </div>
+      <input type="hidden" id="gender">
+    </div>
+
+    <div class="field">
+      <label>الجنسية</label>
+      <div class="search-wrap" id="sw_nationality">
+        <input class="search-input" id="disp_nationality" readonly placeholder="اختر..." onclick="toggleDD('nationality')">
+        <span class="search-arrow">▼</span>
+        <div class="dropdown-panel" id="dd_nationality">
+          <div class="dropdown-search"><input type="text" placeholder="بحث..." oninput="filterDD('nationality',this.value)"></div>
+          <div class="dropdown-list" id="dl_nationality"></div>
+        </div>
+      </div>
+      <input type="hidden" id="nationality">
+    </div>
+
+    <div class="field">
+      <label>تصنيف المريض</label>
+      <div class="search-wrap" id="sw_patient">
+        <input class="search-input" id="disp_patient" readonly placeholder="اختر..." onclick="toggleDD('patient')">
+        <span class="search-arrow">▼</span>
+        <div class="dropdown-panel" id="dd_patient">
+          <div class="dropdown-search"><input type="text" placeholder="بحث..." oninput="filterDD('patient',this.value)"></div>
+          <div class="dropdown-list" id="dl_patient"></div>
+        </div>
+      </div>
+      <input type="hidden" id="patient">
+    </div>
+
+  </div>
+
+  <button class="predict-btn" onclick="predict()">🔮 تنبأ بنتيجة المطالبة</button>
+</div>
+
+<!-- Result -->
+<div class="result-card" id="resultCard">
+  <div class="result-icon" id="rIcon"></div>
+  <div class="result-label">التنبؤ بنتيجة المطالبة</div>
+  <div class="result-value" id="rValue"></div>
+  <div class="conf-label"><span>نسبة الثقة</span><span id="rPct"></span></div>
+  <div class="bar-wrap"><div class="bar" id="rBar"></div></div>
+  <div class="probs">
+    <div class="prob-item"><div class="prob-name">✅ مقبولة</div><div class="prob-val" id="pA" style="color:#22d3a0"></div></div>
+    <div class="prob-item"><div class="prob-name">🟡 جزئية</div><div class="prob-val" id="pP" style="color:#fbbf24"></div></div>
+    <div class="prob-item"><div class="prob-name">❌ مرفوضة</div><div class="prob-val" id="pR" style="color:#f87171"></div></div>
+  </div>
+  <div class="tip" id="rTip"></div>
+  <br>
+  <button class="reset-btn" onclick="resetForm()">🔄 تنبؤ جديد</button>
+</div>
+
+<!-- Factors -->
+<div class="factors" id="factorsCard">
+  <div class="f-title">🔍 أثر كل عامل على القرار</div>
+  <div class="f-row"><div class="f-name">إجمالي الفاتورة</div><div class="f-bw"><div class="f-b" style="width:100%;background:#4f8ef7"></div></div><div class="f-pct">29.3%</div></div>
+  <div class="f-row"><div class="f-name">ICD-10 التشخيص</div><div class="f-bw"><div class="f-b" style="width:54%;background:#22d3a0"></div></div><div class="f-pct">15.8%</div></div>
+  <div class="f-row"><div class="f-name">درجة الطوارئ</div><div class="f-bw"><div class="f-b" style="width:32%;background:#f97316"></div></div><div class="f-pct">9.3%</div></div>
+  <div class="f-row"><div class="f-name">حالة الفاتورة</div><div class="f-bw"><div class="f-b" style="width:27%;background:#a78bfa"></div></div><div class="f-pct">7.8%</div></div>
+  <div class="f-row"><div class="f-name">المستشفى</div><div class="f-bw"><div class="f-b" style="width:23%;background:#fbbf24"></div></div><div class="f-pct">6.8%</div></div>
+  <div class="f-row"><div class="f-name">عقد التأمين</div><div class="f-bw"><div class="f-b" style="width:21%;background:#f87171"></div></div><div class="f-pct">6.3%</div></div>
+  <div class="f-row"><div class="f-name">الجنسية</div><div class="f-bw"><div class="f-b" style="width:21%;background:#6b7591"></div></div><div class="f-pct">6.2%</div></div>
+  <div class="f-row"><div class="f-name">تصنيف المريض</div><div class="f-bw"><div class="f-b" style="width:16%;background:#4f8ef7"></div></div><div class="f-pct">4.6%</div></div>
+  <div class="f-row"><div class="f-name">القسم / العيادة</div><div class="f-bw"><div class="f-b" style="width:14%;background:#22d3a0"></div></div><div class="f-pct">4.2%</div></div>
+</div>
+
+<div class="footer">
+  <div class="footer-dev">
+    <span>👨‍💻</span>
+    <div>
+      <div class="footer-text"><strong>Built and developed by: Hani Alsulami</strong></div>
+    </div>
+  </div>
+  <div class="footer-sub">Makkah Health Cluster · RCM & Data Analytics</div>
+</div>
+
+<script>
+// ── Data ──
+const OPTIONS = {
+  visit: [
+    {v:'ER', l:'طوارئ (ER)'},
+    {v:'OPD', l:'عيادة خارجية (OPD)'},
+    {v:'IP', l:'تنويم (IP)'}
+  ],
+  hospital: [
+    {v:'AJYAD', l:'AJYAD EMERGENCY HOSPITAL'},
+    {v:'AlNoor', l:'Al Noor Specialist Hospital'},
+    {v:'Heraa', l:'Heraa General Hospital'},
+    {v:'HARAM', l:'HARAM EMERGENCY HOSPITAL'},
+    {v:'MCH', l:'Maternity & Children Hospital - Makkah'},
+    {v:'Khalais', l:'Khalais General Hospital'},
+    {v:'FieldMina', l:'Field Hospital in Mina'},
+    {v:'SouthQunfudhah', l:'South Al-Qunfudhah Hospital'},
+    {v:'ArmedForces', l:'ARMED FORCES HOSPITAL IN MINA'},
+    {v:'Alkamil', l:'Alkamil General Hospital'},
+    {v:'Almuzailif', l:'Almuzailif General Hospital'},
+    {v:'Muzdalifah', l:'First Field Hospital in Muzdalifah'},
+    {v:'ALGAMARAT10', l:'ALGAMARAT - CENTER 10'},
+    {v:'ALGAMARAT5', l:'ALGAMARAT - CENTER 5'},
+    {v:'Ambulatory', l:'Ambulatory Center in Mina'},
+    {v:'Namerah', l:'Namerah Hospital'},
+    {v:'ALGAMARAT11', l:'ALGAMARAT - CENTER 11'},
+    {v:'Thripan', l:'Thripan General Hospital'},
+    {v:'Arafat', l:'First Field Hospital in Arafat'},
+    {v:'Other', l:'أخرى'}
+  ],
+  triage: [
+    {v:'5', l:'CTAS 1 — حرج جداً'},
+    {v:'4', l:'CTAS 2 — حرج'},
+    {v:'3', l:'CTAS 3 — عاجل'},
+    {v:'2', l:'CTAS 4 — أقل عجلة'},
+    {v:'1', l:'CTAS 5 — غير عاجل'},
+    {v:'0', l:'غير محدد'}
+  ],
+  bill: [
+    {v:'issued', l:'Issued — صادرة'},
+    {v:'opened', l:'Opened — مفتوحة'},
+    {v:'Transfered', l:'Transferred — محولة'},
+    {v:'pending', l:'Pending — معلقة'},
+    {v:'closed', l:'Closed — مغلقة'},
+    {v:'canceled', l:'Canceled — ملغاة'}
+  ],
+  clinic: [
+    {v:'Emergency', l:'Emergency — طوارئ'},
+    {v:'Emergency', l:'Emergency Department'},
+    {v:'GynecologyER', l:'Gyne Er — طوارئ نساء'},
+    {v:'Er', l:'Er'},
+    {v:'Pediatric', l:'Pediatric Er — طوارئ أطفال'},
+    {v:'Emergency', l:'Emergeny Dept'},
+    {v:'Improved', l:'Improved'},
+    {v:'HaramER', l:'Haram Emergency Center 3'},
+    {v:'OPD', l:'OPD'},
+    {v:'OrthoER', l:'Orthopedic Emergency'},
+    {v:'DiabetesClinic', l:'Adult D.M Consultant (Diabetes Center)'},
+    {v:'GynecologyOPD', l:'Obstetrics And Gynecology Clinic'},
+    {v:'MedicalER', l:'Medical Emergency'},
+    {v:'ICU', l:'ICU'},
+    {v:'GynecologyScreen', l:'Obgyne Screening'},
+    {v:'Dermatology', l:'Dermatology Consultant'},
+    {v:'CCU', l:'CCU'},
+    {v:'HaramER1', l:'Haram Emergency Center 1'},
+    {v:'MedicalWard', l:'Male Medical — Ward'},
+    {v:'OPD', l:'Out Patients'},
+    {v:'GynecologyOPD', l:'Obstetrics And Gynecology Specialist'},
+    {v:'Neurology', l:'Neurological Consultant'},
+    {v:'Dermatology', l:'Dermatologist'},
+    {v:'Cardiology', l:'Adult Cardiology Ward'},
+    {v:'Rheumatology', l:'Consultative Rheumatism'},
+    {v:'UrologyER', l:'Urology Emergency'},
+    {v:'SurgeryER', l:'General Surgery Emergency'},
+    {v:'GeneralClinic', l:'General Clinic'},
+    {v:'Surgery', l:'Surgery Consultant'},
+    {v:'Ophthalmology', l:'Ophthalmic Consultant'},
+    {v:'SurgicalWard', l:'Male Surgical'},
+    {v:'InternalMedicine', l:'Internal Medicine Clinic'},
+    {v:'Endocrinology', l:'Adult Endocrinology Consultant'},
+    {v:'PediatricCardiology', l:'Pediatric Cardiology Clinic'},
+    {v:'PediatricScreen', l:'Pediatric Screening'},
+    {v:'ENT', l:'E.N.T Specialist'},
+    {v:'Gastro', l:'Specialist Gastroenterologist Clinic'},
+    {v:'MICU', l:'Medical ICU'},
+    {v:'DayCare', l:'One Day Care Services'},
+    {v:'VirtualClinic', l:'Virtual Triage Internal Medicine Clinic'},
+    {v:'HomeHealth', l:'Home Health Care'},
+    {v:'Other', l:'أخرى'}
+  ],
+  nphies: [
+    {v:'eligible', l:'complete eligible — مؤهل كامل'},
+    {v:'eligible', l:'eligible — مؤهل'},
+    {v:'error', l:'error — خطأ'},
+    {v:'unknown', l:'غير محدد (NaN)'},
+    {v:'other', l:'complete — مكتمل'},
+    {v:'out_network', l:'out-network — خارج الشبكة'},
+    {v:'error', l:'error NC'},
+    {v:'out_network', l:'complete out-network'},
+    {v:'not_covered', l:'not-covered — غير مغطى'},
+    {v:'other', l:'NC'},
+    {v:'not_covered', l:'complete not-active'},
+    {v:'not_covered', l:'not-active'},
+    {v:'not_covered', l:'complete not-covered'},
+    {v:'other', l:'not-direct billing'}
+  ],
+  icd: [
+    {v:'Unknown', l:'غير محدد'},
+    {v:'J', l:'J — أمراض الجهاز التنفسي (الأكثر شيوعاً)'},
+    {v:'R', l:'R — أعراض وعلامات غير مصنفة'},
+    {v:'M', l:'M — أمراض الجهاز العضلي الهيكلي'},
+    {v:'S', l:'S — إصابات ورضوض'},
+    {v:'T', l:'T — تسمم وعوامل خارجية'},
+    {v:'K', l:'K — أمراض الجهاز الهضمي'},
+    {v:'Z', l:'Z — عوامل تؤثر على الصحة'},
+    {v:'I', l:'I — أمراض القلب والأوعية الدموية'},
+    {v:'N', l:'N — أمراض الجهاز البولي التناسلي'},
+    {v:'A', l:'A — أمراض معدية وطفيلية'},
+    {v:'L', l:'L — أمراض الجلد'},
+    {v:'E', l:'E — أمراض الغدد الصماء والتغذية'},
+    {v:'D', l:'D — أمراض الدم'},
+    {v:'H', l:'H — أمراض العين والأذن'},
+    {v:'G', l:'G — أمراض الجهاز العصبي'},
+    {v:'B', l:'B — أمراض فيروسية وطفيلية'},
+    {v:'F', l:'F — اضطرابات نفسية وسلوكية'},
+    {v:'O', l:'O — الحمل والولادة والنفاس'},
+    {v:'C', l:'C — أورام خبيثة'},
+    {v:'U', l:'U — رموز طارئة (COVID وغيرها)'},
+    {v:'Q', l:'Q — تشوهات خلقية'},
+    {v:'P', l:'P — حالات الفترة المحيطة بالولادة'}
+  ],
+  contract: [
+    {v:'hajj1447', l:'hajj1447 — حج 1447'},
+    {v:'ministry_hajj', l:'2026-ministry of hajj and umrah'},
+    {v:'haj', l:'haj'},
+    {v:'sec', l:'فرع الشركه السعوديه للكهرباء بالمنطقه الغربيه'},
+    {v:'royal_guard', l:'royal guard — الحرس الملكي'},
+    {v:'al_majal', l:'branch al majal al arabia contracting'},
+    {v:'national_water', l:'national water company'},
+    {v:'seder', l:'seder group for trading and contracting'},
+    {v:'saudi_water', l:'saudi water authority'},
+    {v:'saudi_services', l:'saudi services co ltd'},
+    {v:'tahakom', l:'tahakom'},
+    {v:'nesma', l:'nesma'},
+    {v:'al_majal', l:'al majal al arabia group 1'},
+    {v:'nat_security', l:'national security services co'},
+    {v:'kfsh', l:'king faisal specialist hospital'},
+    {v:'zatca', l:'general authority of zakat & tax (zatca)'},
+    {v:'saudi_airlines', l:'saudi airlines group'},
+    {v:'saudi_post', l:'saudi post corporation'},
+    {v:'stc', l:'stc channels / saudi telecom co'},
+    {v:'bin_ladin', l:'saudi bin ladin group ltd'},
+    {v:'islamic_league', l:'islamic world league'},
+    {v:'red_crescent', l:'saudi red crescent authority'},
+    {v:'al_rajhi', l:'al rajhi bank'},
+    {v:'alrajhi_takaful', l:'AlRajhi Takaful'},
+    {v:'zahran', l:'zahran company'},
+    {v:'bindawood', l:'bindawood super stores'},
+    {v:'Other', l:'أخرى / غير محدد'}
+  ],
+  gender: [
+    {v:'Male', l:'ذكر (Male)'},
+    {v:'Female', l:'أنثى (Female)'},
+    {v:'Unknown', l:'غير محدد (Un-Specified)'}
+  ],
+  nationality: [
+    {v:'Saudi', l:'سعودي'},
+    {v:'Pakistani', l:'باكستاني'},
+    {v:'Egyptian', l:'مصري'},
+    {v:'Indian', l:'هندي'},
+    {v:'Algerian', l:'جزائري'},
+    {v:'Indonesian', l:'إندونيسي'},
+    {v:'Bangladeshi', l:'بنغلاديشي'},
+    {v:'Morrocan', l:'مغربي'},
+    {v:'Afghani', l:'أفغاني'},
+    {v:'Yamani', l:'يمني'},
+    {v:'Iraqi', l:'عراقي'},
+    {v:'Nigerian', l:'نيجيري'},
+    {v:'Turkish', l:'تركي'},
+    {v:'Syrian', l:'سوري'},
+    {v:'Jordanian', l:'أردني'},
+    {v:'Libyan', l:'ليبي'},
+    {v:'Sudanese', l:'سوداني'},
+    {v:'Kenyan', l:'كيني'},
+    {v:'Lebaness', l:'لبناني'},
+    {v:'Niger', l:'نيجري'},
+    {v:'Yemeni', l:'يمني'},
+    {v:'Tunisian', l:'تونسي'},
+    {v:'Iranian', l:'إيراني'},
+    {v:'Palastine', l:'فلسطيني'},
+    {v:'Somalian', l:'صومالي'},
+    {v:'Uzbekistan', l:'أوزبكي'},
+    {v:'British', l:'بريطاني'},
+    {v:'Malaysian', l:'ماليزي'},
+    {v:'Russian', l:'روسي'},
+    {v:'SriLankian', l:'سريلانكي'},
+    {v:'Filipino', l:'فلبيني'},
+    {v:'American', l:'أمريكي'},
+    {v:'Ethiopian', l:'إثيوبي'},
+    {v:'French', l:'فرنسي'},
+    {v:'Other', l:'أخرى'}
+  ],
+  patient: [
+    {v:'hajj', l:'HAJ — حاج'},
+    {v:'hajj', l:'HAJJ FROM OUTSIDE — حاج من الخارج'},
+    {v:'normal', l:'Normal — عادي'},
+    {v:'saudi', l:'Saudi — سعودي'},
+    {v:'saudi', l:'Citizen / citizen — مواطن'},
+    {v:'hajj', l:'حجاج الخارج'},
+    {v:'hajj', l:'Hajj / Haj'},
+    {v:'resident', l:'مقيم / RESIDENT'},
+    {v:'umrah', l:"MA'TAMER / Moatamer / UMRAH / Umrah — معتمر"},
+    {v:'normal', l:'Non Eligible resident'},
+    {v:'normal', l:'Eligible For Treatment'},
+    {v:'normal', l:'Haj Service'},
+    {v:'normal', l:'EMPLOYEE / Employee — موظف'},
+    {v:'normal', l:'Life Saving'},
+    {v:'normal', l:'Army man'},
+    {v:'normal', l:'Insurance'},
+    {v:'normal', l:'Police Case'},
+    {v:'normal', l:'Gulf Arab — خليجي'},
+    {v:'normal', l:'HAJJ FROM INSIDE'},
+    {v:'normal', l:'visitor — زائر'},
+    {v:'unknown', l:'غير محدد'}
+  ]
+};
+
+// ── Probability tables ──
+const icdRates = {Unknown:{a:65.1,p:12.8,r:22.2},A:{a:57.5,p:10.4,r:32.1},B:{a:31.2,p:6.2,r:62.5},C:{a:66.7,p:0,r:33.3},D:{a:21.0,p:17.6,r:61.5},E:{a:41.7,p:9.2,r:49.0},F:{a:40.0,p:6.7,r:53.3},G:{a:35.1,p:15.8,r:49.1},H:{a:30.0,p:6.4,r:63.6},I:{a:56.5,p:12.9,r:30.6},J:{a:20.6,p:6.2,r:73.2},K:{a:30.0,p:9.4,r:60.6},L:{a:14.6,p:6.1,r:79.2},M:{a:26.5,p:6.0,r:67.5},N:{a:23.8,p:15.2,r:60.9},O:{a:33.3,p:0,r:66.7},R:{a:41.4,p:10.9,r:47.7},S:{a:42.1,p:5.8,r:52.1},T:{a:56.0,p:6.1,r:38.0},Z:{a:31.9,p:3.7,r:64.4},U:{a:83.3,p:16.7,r:0},Q:{a:100,p:0,r:0},P:{a:0,p:0,r:100}};
+const contractRates = {hajj1447:{a:37.6,p:8.0,r:54.4},haj:{a:89.8,p:7.5,r:2.7},ministry_hajj:{a:52.1,p:9.9,r:38.0},royal_guard:{a:80.2,p:6.3,r:13.5},national_water:{a:80.3,p:14.1,r:5.6},saudi_water:{a:93.5,p:3.2,r:3.2},al_majal:{a:72.0,p:6.0,r:22.0},sec:{a:36.2,p:41.2,r:22.6},seder:{a:14.3,p:10.0,r:75.7},saudi_services:{a:25.8,p:16.1,r:58.1},tahakom:{a:52.9,p:7.8,r:39.2},nesma:{a:55.0,p:10.0,r:35.0},kfsh:{a:65.0,p:10.0,r:25.0},zatca:{a:60.0,p:12.0,r:28.0},saudi_airlines:{a:58.0,p:10.0,r:32.0},saudi_post:{a:55.0,p:8.0,r:37.0},stc:{a:60.0,p:9.0,r:31.0},bin_ladin:{a:52.0,p:9.0,r:39.0},islamic_league:{a:58.0,p:10.0,r:32.0},red_crescent:{a:65.0,p:8.0,r:27.0},al_rajhi:{a:62.0,p:9.0,r:29.0},alrajhi_takaful:{a:60.0,p:9.0,r:31.0},zahran:{a:50.0,p:9.0,r:41.0},bindawood:{a:55.0,p:9.0,r:36.0},nat_security:{a:34.0,p:12.0,r:54.0},Other:{a:59.0,p:13.2,r:27.8}};
+const hospitalRates = {AJYAD:{a:35.2,p:10.4,r:54.4},AlNoor:{a:60.3,p:8.6,r:31.2},Heraa:{a:61.4,p:14.6,r:24.0},HARAM:{a:20.1,p:4.3,r:75.6},MCH:{a:59.5,p:14.8,r:25.7},Khalais:{a:65.5,p:14.9,r:19.5},Almuzailif:{a:81.7,p:8.3,r:10.1},Alkamil:{a:69.5,p:11.0,r:19.5},SouthQunfudhah:{a:51.2,p:9.5,r:39.3},FieldMina:{a:19.2,p:3.0,r:77.8},ArmedForces:{a:43.8,p:2.0,r:54.3},Other:{a:52.0,p:8.0,r:40.0}};
+const patientRates = {hajj:{a:39.9,p:8.3,r:54.9},saudi:{a:57.9,p:13.2,r:27.6},normal:{a:62.5,p:14.4,r:21.6},umrah:{a:41.4,p:10.3,r:48.3},resident:{a:53.1,p:5.8,r:40.8},unknown:{a:52.4,p:15.3,r:29.8}};
+const eligRates = {eligible:{a:47.4,p:10.6,r:42.5},error:{a:37.5,p:7.4,r:56.9},out_network:{a:30.2,p:4.7,r:69.8},not_covered:{a:25.0,p:5.0,r:70.0},unknown:{a:53.1,p:11.8,r:34.6},other:{a:38.9,p:5.3,r:55.7}};
+const visitRates = {ER:{a:39.7,p:10.3,r:50.0},OPD:{a:51.9,p:12.4,r:35.7},IP:{a:88.2,p:1.0,r:10.8}};
+const billRates = {issued:{a:44.0,p:10.7,r:45.3},opened:{a:56.0,p:8.5,r:35.5},Transfered:{a:65.0,p:10.0,r:25.0},pending:{a:55.0,p:8.0,r:37.0},closed:{a:60.0,p:8.3,r:31.7},canceled:{a:30.0,p:5.0,r:65.0}};
+const natRates = {Saudi:{a:57.8,p:13.2,r:27.5},Pakistani:{a:39.0,p:9.3,r:51.7},Egyptian:{a:42.0,p:8.8,r:49.2},Indian:{a:41.0,p:8.5,r:50.5},Indonesian:{a:45.0,p:9.5,r:45.5},Other:{a:43.0,p:9.0,r:48.0}};
+
+// ── Dropdown system ──
+function buildDropdowns(){
+  Object.keys(OPTIONS).forEach(id=>{
+    const list=document.getElementById('dl_'+id);
+    OPTIONS[id].forEach((opt,i)=>{
+      const div=document.createElement('div');
+      div.className='dropdown-item';
+      div.textContent=opt.l;
+      div.dataset.val=opt.v;
+      div.dataset.idx=i;
+      div.onclick=()=>selectItem(id,opt.v,opt.l);
+      list.appendChild(div);
+    });
+  });
+}
+
+function toggleDD(id){
+  const panel=document.getElementById('dd_'+id);
+  const isOpen=panel.classList.contains('open');
+  closeAllDD();
+  if(!isOpen){
+    panel.classList.add('open');
+    panel.querySelector('input').focus();
+  }
+}
+
+function closeAllDD(){
+  document.querySelectorAll('.dropdown-panel').forEach(p=>p.classList.remove('open'));
+}
+
+function selectItem(id,val,label){
+  document.getElementById(id).value=val;
+  document.getElementById('disp_'+id).value=label;
+  closeAllDD();
+  // highlight selected
+  document.querySelectorAll('#dl_'+id+' .dropdown-item').forEach(d=>{
+    d.classList.toggle('selected', d.dataset.val===val && d.textContent===label);
+  });
+}
+
+function filterDD(id,q){
+  const items=document.querySelectorAll('#dl_'+id+' .dropdown-item');
+  const lq=q.toLowerCase();
+  items.forEach(item=>{
+    item.classList.toggle('hidden', !item.textContent.toLowerCase().includes(lq));
+  });
+}
+
+// Close on outside click
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.search-wrap')) closeAllDD();
+});
+
+// ── Predict ──
+function predict(){
+  const total=parseFloat(document.getElementById('total').value)||0;
+  const visitType=document.getElementById('visit').value||'ER';
+  const hosp=document.getElementById('hospital').value||'Other';
+  const triage=parseInt(document.getElementById('triage').value)||3;
+  const bill=document.getElementById('bill').value||'issued';
+  const nphies=document.getElementById('nphies').value||'unknown';
+  const icd=document.getElementById('icd').value||'Unknown';
+  const contract=document.getElementById('contract').value||'Other';
+  const nat=document.getElementById('nationality').value||'Other';
+  const pat=document.getElementById('patient').value||'unknown';
+
+  const W={total:0.293,icd:0.158,triage:0.093,bill:0.078,hosp:0.068,contract:0.063,nat:0.062,pat:0.046,visit:0.039,elig:0.044};
+  let tE={a:46,p:10,r:44};
+  if(total<=50)tE={a:52,p:9,r:39};
+  else if(total<=200)tE={a:50,p:10,r:40};
+  else if(total<=500)tE={a:48,p:11,r:41};
+  else if(total<=1000)tE={a:44,p:12,r:44};
+  else if(total<=5000)tE={a:38,p:12,r:50};
+  else tE={a:34,p:11,r:55};
+  let trE={a:46,p:10,r:44};
+  if(triage>=4)trE={a:52,p:9,r:39};
+  else if(triage>=3)trE={a:46,p:10,r:44};
+  else if(triage>=1)trE={a:42,p:11,r:47};
+  else trE={a:38,p:10,r:52};
+  const ic=icdRates[icd]||icdRates['Unknown'];
+  const co=contractRates[contract]||contractRates['Other'];
+  const h=hospitalRates[hosp]||hospitalRates['Other'];
+  const p=patientRates[pat]||patientRates['unknown'];
+  const e=eligRates[nphies]||eligRates['other'];
+  const v=visitRates[visitType]||visitRates['ER'];
+  const b=billRates[bill]||billRates['issued'];
+  const n=natRates[nat]||natRates['Other'];
+  let pA=tE.a*W.total+ic.a*W.icd+trE.a*W.triage+b.a*W.bill+h.a*W.hosp+co.a*W.contract+n.a*W.nat+p.a*W.pat+v.a*W.visit+e.a*W.elig;
+  let pP=tE.p*W.total+ic.p*W.icd+trE.p*W.triage+b.p*W.bill+h.p*W.hosp+co.p*W.contract+n.p*W.nat+p.p*W.pat+v.p*W.visit+e.p*W.elig;
+  let pR=tE.r*W.total+ic.r*W.icd+trE.r*W.triage+b.r*W.bill+h.r*W.hosp+co.r*W.contract+n.r*W.nat+p.r*W.pat+v.r*W.visit+e.r*W.elig;
+  const sum=pA+pP+pR;
+  pA=Math.round((pA/sum)*100);pR=Math.round((pR/sum)*100);pP=100-pA-pR;
+  if(pP<0){pR+=pP;pP=0;}
+  let result,icon,cls,conf,barColor,tip;
+  if(pA>=pR&&pA>=pP){result='مقبولة';icon='✅';cls='approved';conf=pA;barColor='#22d3a0';tip='<strong>✅ مؤشرات إيجابية:</strong> البيانات تشير إلى احتمال موافقة. تأكد من اكتمال الوثائق وصحة البيانات.';}
+  else if(pR>=pA&&pR>=pP){result='مرفوضة';icon='❌';cls='rejected';conf=pR;barColor='#f87171';tip='<strong>❌ مؤشرات سلبية:</strong> راجع أهلية المريض وبنود العقد قبل إرسال المطالبة.';}
+  else{result='موافقة جزئية';icon='🟡';cls='partial';conf=pP;barColor='#fbbf24';tip='<strong>🟡 موافقة جزئية محتملة:</strong> راجع حدود التغطية في العقد.';}
+  const card=document.getElementById('resultCard');
+  card.className=`result-card ${cls}`;card.style.display='block';
+  document.getElementById('rIcon').textContent=icon;
+  document.getElementById('rValue').textContent=result;
+  document.getElementById('rValue').className=`result-value ${cls}`;
+  document.getElementById('rPct').textContent=conf+'%';
+  document.getElementById('rBar').style.width=conf+'%';
+  document.getElementById('rBar').style.background=barColor;
+  document.getElementById('pA').textContent=pA+'%';
+  document.getElementById('pP').textContent=pP+'%';
+  document.getElementById('pR').textContent=pR+'%';
+  document.getElementById('rTip').innerHTML=tip;
+  document.getElementById('factorsCard').style.display='block';
+  card.scrollIntoView({behavior:'smooth',block:'center'});
+}
+
+function resetForm(){
+  document.getElementById('resultCard').style.display='none';
+  document.getElementById('factorsCard').style.display='none';
+  document.getElementById('total').value='';
+  ['visit','hospital','triage','bill','clinic','nphies','icd','contract','gender','nationality','patient'].forEach(id=>{
+    document.getElementById(id).value='';
+    document.getElementById('disp_'+id).value='';
+  });
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+buildDropdowns();
+</script>
+</body>
+</html>
