@@ -63,6 +63,93 @@ a{color:var(--accent)}
 .conf.md{background:rgba(150,89,15,.12);color:var(--amber)}
 .conf.lo{background:rgba(196,54,47,.10);color:var(--red)}
 
+/* ── الطبقة التوليدية: الإعدادات ── */
+.llmbar{display:flex;justify-content:space-between;align-items:center;gap:10px;
+  background:var(--card);border:1px solid var(--border);border-radius:11px;
+  padding:9px 13px;margin-bottom:12px;flex-wrap:wrap}
+.llmstate{font-size:11.5px;font-weight:700}
+.llmstate.off{color:var(--muted)}
+.llmstate.on{color:var(--green)}
+.llmstate.warn{color:var(--amber)}
+.gear{background:var(--surface);border:1px solid var(--border);border-radius:8px;
+  color:var(--muted2);font-family:inherit;font-size:12px;padding:5px 12px;cursor:pointer}
+.gear:hover{border-color:var(--accent);color:var(--accent)}
+.llmbox{background:var(--card);border:1px solid var(--border);border-radius:12px;
+  padding:15px;margin-bottom:12px}
+.llmbox .row{display:grid;grid-template-columns:150px 1fr;gap:10px;align-items:center;
+  margin-bottom:10px;font-size:12.5px}
+@media(max-width:560px){.llmbox .row{grid-template-columns:1fr}}
+.llmbox label{color:var(--muted2);font-weight:600}
+.llmbox input[type=text],.llmbox input[type=password],.llmbox select{
+  width:100%;font-family:inherit;font-size:12.5px;padding:7px 10px;color:var(--text);
+  background:var(--surface);border:1px solid var(--border-strong);border-radius:8px}
+.llmbox input[type=checkbox]{width:17px;height:17px;accent-color:var(--accent)}
+.llmbox .hint{font-size:11.5px;line-height:1.85;color:var(--muted);margin-top:4px}
+.llmbox .danger{background:rgba(196,54,47,.06);border:1px solid rgba(196,54,47,.22);
+  border-radius:9px;padding:10px 12px;font-size:11.5px;line-height:1.85;margin:10px 0}
+.llmbox .danger b{color:var(--red)}
+.llmbox button.forget{background:var(--surface);border:1px solid var(--border-strong);
+  color:var(--red);font-family:inherit;font-size:12px;padding:6px 14px;border-radius:8px;cursor:pointer}
+
+/* ── إجابة مولَّدة ── */
+.llmhead{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:12px 16px;background:linear-gradient(180deg,rgba(11,122,94,.07),rgba(11,122,94,.02));
+  border-bottom:1px solid var(--border)}
+.llmhead .tag{font-size:12px;font-weight:700;color:var(--green)}
+.llmhead .intent{font-size:10.5px;font-weight:700;color:var(--muted2);background:var(--card);
+  border:1px solid var(--border);border-radius:11px;padding:3px 10px;font-family:ui-monospace,monospace}
+.llmbody{padding:15px 16px;font-size:13.5px;line-height:2.05;white-space:pre-wrap}
+.llmbody p{margin-bottom:10px;white-space:normal}
+.llmbody ul{margin:0 20px 10px 0;white-space:normal}
+.llmbody li{margin-bottom:6px}
+.llmbody b{color:var(--text)}
+.warnline{color:var(--red);font-weight:600}
+.searching{color:var(--muted);font-size:12.5px}
+.typing{display:flex;gap:5px}
+.typing i{width:7px;height:7px;border-radius:50%;background:var(--accent);opacity:.35;
+  animation:bl 1.1s infinite}
+.typing i:nth-child(2){animation-delay:.16s}
+.typing i:nth-child(3){animation-delay:.32s}
+@keyframes bl{0%,80%,100%{opacity:.25}40%{opacity:.95}}
+.qcase{display:inline-block;font-size:10px;font-weight:700;background:rgba(255,255,255,.25);
+  border-radius:6px;padding:1px 7px;margin-inline-start:7px}
+
+/* ── بطاقة الحالة من منصّة سديد ── */
+.casecard{background:var(--card);border:1px solid var(--border);border-inline-start:3px solid var(--accent);
+  border-radius:12px;padding:14px 15px;margin-bottom:12px}
+.chead{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.chead .tag{font-size:12px;font-weight:700;color:var(--accent)}
+.creasons{list-style:none;display:grid;gap:7px;margin-bottom:11px}
+.creasons li{background:var(--surface);border:1px solid var(--border);border-radius:9px;
+  padding:9px 12px;font-size:12.5px;line-height:1.85}
+.creasons .rp{font-size:11px;font-weight:700;color:var(--red);background:rgba(196,54,47,.09);
+  border-radius:6px;padding:1px 7px;margin-inline-start:6px}
+.creasons .ract{font-size:11.5px;color:var(--muted2)}
+.cbtns{display:flex;gap:8px;flex-wrap:wrap}
+.cbtns button{background:var(--accent);border:none;color:#fff;font-family:inherit;font-size:12px;
+  font-weight:700;padding:7px 14px;border-radius:8px;cursor:pointer}
+.cbtns button#caseToggle{background:var(--surface);border:1px solid var(--border-strong);color:var(--muted2)}
+.cbtns button#caseToggle.on{background:rgba(11,122,94,.10);border-color:rgba(11,122,94,.3);color:var(--green)}
+.cbtns button.ghost{background:none;border:1px solid var(--border);color:var(--muted)}
+
+/* ── خطة تحسين الطلب (بلا نموذج لغوي) ── */
+.planitem{padding:14px 16px;border-bottom:1px solid var(--border)}
+.planitem:last-of-type{border-bottom:none}
+.ptitle{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;margin-bottom:8px;flex-wrap:wrap}
+.ptitle .pn{background:var(--accent);color:#fff;width:21px;height:21px;border-radius:7px;
+  display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0}
+.ptitle .pp{font-size:11px;color:var(--red);background:rgba(196,54,47,.09);border-radius:6px;padding:1px 8px}
+.pcheck{font-size:12.5px;line-height:1.95;color:var(--text);background:var(--surface);
+  border:1px solid var(--border);border-radius:9px;padding:9px 12px;margin-bottom:7px}
+.paction{font-size:12.5px;line-height:1.95;color:var(--muted2);margin-bottom:9px}
+.psrc{font-size:11.5px;color:var(--muted);margin-top:7px}
+.psrc .rank{display:inline-flex;align-items:center;justify-content:center;width:19px;height:19px;
+  border-radius:6px;background:var(--accent-dim);color:var(--accent);font-weight:700;font-size:10.5px}
+.psrc .quote{font-size:12px;line-height:1.95;color:var(--text);background:var(--surface);
+  border:1px solid var(--border);border-inline-start:3px solid var(--accent);
+  border-radius:9px;padding:10px 12px;margin-top:5px}
+.psrc a{font-weight:600;text-decoration:none}
+
 /* ── لوحة التحليل: تُميَّز بصرياً عن النصّ الرسمي كي لا يُخلط بينهما ── */
 .analysis{padding:15px 16px;background:linear-gradient(180deg,rgba(27,111,168,.055),rgba(27,111,168,.02));
   border-bottom:1px solid var(--border)}
@@ -216,12 +303,75 @@ a{color:var(--accent)}
 <div id="app" style="display:none">
 
   <div class="note info">
-    <b>كيف يعمل؟</b> يقرأ المساعد النصوص المنطبقة على سؤالك، ثم يقدّم إجابته في طبقتين:
-    <b>قراءة مبسّطة واستنتاج</b> — يعيد صياغة الحكم بلغة تشغيلية، ويستخرج المدد والنسب،
-    ويستنتج ما يترتّب على مجموع النصوص — يليها <b>النصّ الرسمي منقولاً حرفياً</b> مع اسم
-    المستند ورقم الصفحة وصورتها. كل جملة في طبقة التحليل مرقومة برقم مرجعها [1] فاضغطه
-    لترى النصّ الذي بُنيت عليه، فلا استنتاج بلا أصل.
+    <b>كيف يعمل؟</b> يقرأ «سَنَد» النصوص المنطبقة على سؤالك ثم يجيب في طبقتين:
+    <b>قراءة مبسّطة واستنتاج</b> — صياغة الحكم بلغة تشغيلية، واستخراج المدد والنسب،
+    واستنتاج ما يترتّب على مجموع النصوص — يليها <b>النصّ الرسمي منقولاً حرفياً</b> مع اسم
+    المستند ورقم الصفحة وصورتها. كل جملة مرقومة برقم مرجعها [1] فاضغطه لترى أصلها.
+    <br><br>
+    <b>طبقتان اختياريتان:</b> فعّل <b>التوليد اللغوي</b> (⚙ أدناه) ليحاورك «سَنَد» ويجيب عن
+    المتابعات — ويبقى مقيَّداً بما يسترجعه من الفهرس نفسه. وإن جئت من
+    <a href="predict.html">منصّة التنبؤ</a> بعد تشغيل تنبّؤ، ستجد <b>حالتك</b> هنا فيبني عليها
+    خطة تحسين الطلب قبل إرساله.
   </div>
+
+  <div class="llmbar">
+    <span class="llmstate off" id="llmState">مُطفأة — الإجابات من الفهرس المحلّي</span>
+    <button class="gear" id="llmGear">⚙ الطبقة التوليدية</button>
+  </div>
+
+  <div class="llmbox" id="llmBox" style="display:none">
+    <div class="row">
+      <label for="llmEnabled">تفعيل التوليد اللغوي</label>
+      <input type="checkbox" id="llmEnabled">
+    </div>
+    <div class="hint">
+      حين تكون مُطفأة يعمل «سَنَد» بالكامل من الفهرس المحلّي: استرجاع، وصياغة مبسّطة،
+      واستنتاج بقواعد — بلا أي اتصال خارجي. وحين تُفعَّل يُضاف نموذج لغويّ <b>يبقى مقيَّداً
+      بالنصوص التي يسترجعها من الفهرس نفسه</b>، فيحاورك ويجيب عن المتابعات.
+    </div>
+
+    <div class="row" style="margin-top:12px">
+      <label for="llmMode">طريقة الاتصال</label>
+      <select id="llmMode">
+        <option value="direct">مباشر — بمفتاحك الشخصي</option>
+        <option value="proxy">بوّابة المنشأة — بلا مفتاح في المتصفّح</option>
+      </select>
+    </div>
+    <div class="row" id="rowKey">
+      <label for="llmKey">مفتاح Anthropic</label>
+      <input type="password" id="llmKey" placeholder="sk-ant-…" autocomplete="off">
+    </div>
+    <div class="row" id="rowEndpoint" style="display:none">
+      <label for="llmEndpoint">عنوان البوّابة</label>
+      <input type="text" id="llmEndpoint" placeholder="https://gateway.example.sa/v1/messages">
+    </div>
+    <div class="row">
+      <label for="llmModel">النموذج</label>
+      <select id="llmModel"></select>
+    </div>
+    <div class="row">
+      <label for="llmEffort">عمق التفكير</label>
+      <select id="llmEffort">
+        <option value="low">منخفض — أسرع</option>
+        <option value="medium">متوسط</option>
+        <option value="high">عالٍ — الافتراضي</option>
+        <option value="xhigh">أعلى</option>
+        <option value="max">أقصى — للحالات المعقّدة</option>
+      </select>
+    </div>
+
+    <div class="danger">
+      <b>قبل التفعيل، اعرف ما يُرسَل:</b> سؤالك، ومقاطع اللائحة التي يسترجعها المساعد،
+      وملخّص الحالة إن أرفقتها — تُرسَل إلى مزوّد النموذج لمعالجتها.
+      <b>لا ترفق حالة تحمل بيانات تُعرِّف مريضاً بعينه.</b>
+      المفتاح يُحفَظ في متصفّحك وحده (<code>localStorage</code>) ولا يُرسَل إلى موقع سديد،
+      لكنّ أي شخص يستعمل هذا الجهاز والمتصفّح يمكنه استخراجه —
+      <b>للتعميم على فريق، استعمل «بوّابة المنشأة» فلا يوجد مفتاح في المتصفّح أصلاً.</b>
+    </div>
+    <button class="forget" id="llmForget">🗑 احذف المفتاح والإعدادات من هذا المتصفّح</button>
+  </div>
+
+  <div id="caseBox" style="display:none"></div>
 
   <div id="chat"></div>
 
@@ -240,7 +390,7 @@ a{color:var(--accent)}
   </div>
 
   <div class="note warn" style="margin-top:14px">
-    <b>تنبيه:</b> «سَنَد» أداة بحث مرجعي، وليس رأياً قانونياً ولا بديلاً عن النصّ الرسمي
+    <b>تنبيه:</b> «سَنَد» أداة بحث مرجعي ومساعدة تشغيلية، وليس رأياً قانونياً ولا بديلاً عن النصّ الرسمي
     المنشور من مجلس الضمان الصحي. عند أي تعارض، النصّ الرسمي هو المُعتمد. وبعض المستندات
     مقروءة ضوئياً (OCR) وقد يحمل نصّها المستخرَج أخطاء — <b>اعتمد دائماً على صورة الصفحة المرفقة</b>.
   </div>
@@ -258,6 +408,8 @@ a{color:var(--accent)}
 <script src="chatbot/data/corpus.js"></script>
 <script src="assets/rcm-chat.js"></script>
 <script src="assets/rcm-reason.js"></script>
+<script src="assets/rcm-case.js"></script>
+<script src="assets/rcm-llm.js"></script>
 <script src="assets/rcm-chat-ui.js"></script>
 </body>
 </html>

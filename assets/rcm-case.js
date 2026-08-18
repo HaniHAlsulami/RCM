@@ -1,0 +1,151 @@
+/*!
+ * rcm-case.js — جسر بين منصّة «سديد» ومساعد «سَنَد»
+ * تجمع مكة المكرمة الصحي · إدارة أداء تنمية الإيرادات
+ *
+ * يقرأ الحالة التي سجّلتها صفحة التنبؤ محلياً، ويحوّل كل سبب متوقَّع
+ * لعدم اكتمال الموافقة إلى استعلام نظاميّ يُسترجَع به نصّ اللائحة المنطبق.
+ *
+ * الفائدة: النموذج يقول «الأرجح أن يُردّ الطلب لنقص المستندات»، وهذا الملف
+ * يُتبعه بما يوجبه النظام تحديداً في هذه الحالة، مسنوداً إلى نصّه.
+ *
+ * لا شيء هنا يغادر الجهاز: القراءة من localStorage والبحث في فهرس محليّ.
+ */
+(function (root) {
+  "use strict";
+
+  var KEY = "sadeed.case.v1";
+
+  /**
+   * لكل سبب متوقَّع: الاستعلام الذي يُستخرج به النصّ النظامي المنطبق،
+   * وسؤالُ تحقّقٍ يُطرح على المستخدم قبل إعادة الإرسال.
+   */
+  var REASON_MAP = {
+    DUPLICATE: {
+      query: "ازدواجية المطالبة تكرار الفوترة إساءة الاستخدام",
+      check: "هل تحقّقت من عدم وجود موافقة أو مطالبة سابقة بنفس رمز الخدمة والتاريخ لهذا المستفيد؟",
+    },
+    ELIGIBILITY: {
+      query: "أهلية المستفيد سريان الوثيقة التحقق من هوية المريض قبل تقديم الخدمة",
+      check: "هل تحقّقت من سريان وثيقة المستفيد وهويته لحظة تقديم الخدمة، لا لحظة الإرسال؟",
+    },
+    NETWORK: {
+      query: "شبكة مقدمي الخدمة المعتمدين القائمة المعتمدة تقديم الخدمة",
+      check: "هل المنشأة معتمدة لدى هذه الشركة لهذه الفئة من الخدمة؟ وهل الحالة طارئة (فيسقط شرط الشبكة)؟",
+    },
+    LATE_SUBMISSION: {
+      query: "مدة رفع المطالبة والإشعار المهلة النظامية تأخر التقديم",
+      check: "متى قُدِّمت الخدمة، ومتى أُرسل الطلب؟ احسب الفارق وقارنه بالمهلة النظامية أدناه.",
+    },
+    PRICING_CODING: {
+      query: "الترميز الطبي المعتمد قائمة الأسعار المتعاقد عليها بيانات المطالبة",
+      check: "هل الرموز مطابقة للترميز المعتمد من المجلس، والسعر مطابق للمتعاقد عليه؟",
+    },
+    REFERRAL_REQUIRED: {
+      query: "الإحالة من الرعاية الصحية الأولية إلى المستشفى إجراءات الإحالة",
+      check: "هل الخدمة تستوجب إحالة؟ وهل الإحالة مرفقة وسارية؟",
+    },
+    DOCUMENTATION: {
+      query: "المستندات المطلوبة الحد الأدنى للبيانات التقرير الطبي المرفقات",
+      check: "أي المستندات المطلوبة نظاماً غير مرفقة الآن؟ راجع القائمة أدناه بنداً بنداً.",
+    },
+    URGENCY: {
+      query: "معايير الحالة الطارئة تعريف الطوارئ إجراءات الحالات الطارئة",
+      check: "هل تنطبق على الحالة معايير الطوارئ النظامية؟ إن لم تنطبق فالمسار هو الموافقة المسبقة.",
+    },
+    OPD_NOT_COVERED: {
+      query: "مرضى العيادات الخارجية والأدوية والمنافع الصحية الأساسية",
+      check: "هل الخدمة ضمن منافع وثيقة هذا المستفيد تحديداً، أم ضمن التحديدات؟",
+    },
+    DIAGNOSIS_NOT_COVERED: {
+      query: "التشخيص المشمول بالتغطية التحديدات والاستثناءات المنافع",
+      check: "هل التشخيص المرسَل هو الأدقّ للحالة؟ التشخيص غير الدقيق سبب شائع للرفض.",
+    },
+    MEDICAL_NECESSITY: {
+      query: "الضرورة الطبية تبرير الخدمة المطلوبة التقرير الطبي الداعم",
+      check: "هل يوضّح التقرير الضرورة الطبية: الأعراض، والفحوص السابقة، وسبب اختيار هذه الخدمة؟",
+    },
+    LIMIT_EXCEEDED: {
+      query: "حدود التغطية السقف السنوي مبلغ التحمل حدود المنفعة",
+      check: "كم المتبقّي من سقف هذه المنفعة للمستفيد؟ وهل يُغطّي قيمة الطلب كاملةً؟",
+    },
+    POLICY_EXCLUSION: {
+      query: "الاستثناءات المنافع غير المغطاة في وثيقة الضمان الصحي",
+      check: "هل الحالة مذكورة صراحةً ضمن الاستثناءات، أم يمكن ردّها إلى منفعة مشمولة؟",
+    },
+    NO_PRIOR_AUTH_REQUIRED: {
+      query: "الخدمات التي لا تتطلب موافقة مسبقة",
+      check: "إن كانت الخدمة لا تستوجب موافقة مسبقة، فالمسار هو المطالبة مباشرةً.",
+    },
+    APPROVED_WITH_TERMS: {
+      query: "شروط الوثيقة الأسعار المتعاقد عليها الموافقة المشروطة",
+      check: "ما الشروط المقترنة بالموافقة؟ استيفاؤها قبل تقديم الخدمة يمنع التخفيض لاحقاً.",
+    },
+  };
+
+  function load() {
+    try {
+      var raw = localStorage.getItem(KEY);
+      if (!raw) return null;
+      var o = JSON.parse(raw);
+      return o && o.payload ? o : null;
+    } catch (e) { return null; }
+  }
+
+  function clear() {
+    try { localStorage.removeItem(KEY); } catch (e) { /* لا شيء */ }
+  }
+
+  function pct(x) { return (x * 100).toFixed(1) + "٪"; }
+
+  /** ملخّص نصّي مختصر للحالة — يُعرض للمستخدم ويُرسل للنموذج اللغوي عند تفعيله */
+  function summarize(c) {
+    var p = c.payload, L = [];
+    L.push("نتيجة نموذج سديد: " + p.prediction_ar +
+           " (احتمال عدم اكتمال الموافقة " + pct(p.probabilities.notFullyApproved) +
+           "، عتبة القرار " + p.threshold + ")");
+    if (p.topReasons && p.topReasons.length) {
+      L.push("أرجح أسباب عدم اكتمال الموافقة:");
+      p.topReasons.forEach(function (r, i) {
+        L.push("  " + (i + 1) + ". " + r.label + " (" + pct(r.probability) + ") — " + r.action);
+      });
+    }
+    if (p.shap && p.shap.length) {
+      L.push("أكثر العوامل رفعاً/خفضاً للخطر (SHAP):");
+      p.shap.slice(0, 5).forEach(function (g) {
+        L.push("  • " + g.label + ": " + (g.value >= 0 ? "+" : "") + g.value.toFixed(3));
+      });
+    }
+    var inp = p.input || {};
+    var keep = ["guarantor", "provider", "department", "serviceType", "icdChapter",
+                "total", "quantity", "visitDate", "priorRejectRate"];
+    var vals = keep.filter(function (k) { return inp[k] !== "" && inp[k] != null; })
+                   .map(function (k) { return k + "=" + inp[k]; });
+    if (vals.length) L.push("مدخلات الحالة: " + vals.join(" · "));
+    return L.join("\n");
+  }
+
+  /**
+   * خطة تحسين الطلب: لكل سبب متوقَّع، النصّ النظامي المنطبق وسؤال تحقّق.
+   * تعمل بلا نموذج لغوي — الاسترجاع والتصنيف محليّان بالكامل.
+   */
+  function plan(c, corpus, S, R) {
+    var p = c.payload;
+    var reasons = (p.topReasons || []).slice(0, 3);
+    return reasons.map(function (r) {
+      var m = REASON_MAP[r.code] || { query: r.label, check: "راجع النصّ النظامي المنطبق أدناه." };
+      var hits = S.search(corpus, m.query, 4);
+      var analysis = hits.length ? R.analyze(m.query, hits, { depth: 3 }) : null;
+      return {
+        code: r.code, label: r.label, probability: r.probability, action: r.action,
+        check: m.check, query: m.query, hits: hits.slice(0, 3), analysis: analysis,
+      };
+    });
+  }
+
+  root.RCMCase = {
+    KEY: KEY, load: load, clear: clear, summarize: summarize, plan: plan,
+    REASON_MAP: REASON_MAP,
+  };
+})(typeof window !== "undefined" ? window : globalThis);
+
+if (typeof module !== "undefined" && module.exports) module.exports = globalThis.RCMCase;

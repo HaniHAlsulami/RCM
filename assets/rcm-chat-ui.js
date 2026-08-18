@@ -6,6 +6,7 @@
   "use strict";
 
   var C = window.CHI_CORPUS, S = window.RCMChat, R = window.RCMReason;
+  var LLM = window.RCMLlm;
   var $ = function (id) { return document.getElementById(id); };
 
   var SUGGESTIONS = [
@@ -23,6 +24,9 @@
   };
 
   var ANS = 0;                       // ترقيم الإجابات كي تبقى معرّفات المراجع فريدة
+  var HISTORY = [];                  // حوار الطبقة التوليدية — يبقى في الذاكرة وحدها
+  var SOURCES = [];                  // المقاطع المسترجَعة، مرقّمة تراكمياً عبر الجلسة
+  var CASE = window.RCMCase, CASE_ON = false;
 
   function esc(s) { return S.escapeHtml(s); }
 
@@ -178,6 +182,287 @@
     scrollTo(a);
   }
 
+
+  // ════════════════════════════════════════════════════════════════
+  // الطبقة التوليدية — حوار مع النموذج، مقيَّد بما يسترجعه من الفهرس
+  // ════════════════════════════════════════════════════════════════
+
+  /** سياق الأداة: البحث محليّ، والترقيم تراكميّ ليثبت [n] عبر الحوار كلّه */
+  var TOOL_CTX = {
+    search: function (q, n) { return S.search(C, q, n); },
+    addSource: function (h) {
+      for (var i = 0; i < SOURCES.length; i++) {
+        if (SOURCES[i].pi === h.pi) return i + 1;
+      }
+      SOURCES.push(h);
+      return SOURCES.length;
+    },
+  };
+
+  /**
+   * تنسيق ردّ النموذج: تهريب أوّلاً ثم إعادة بناء التوكيد والقوائم —
+   * فلا يصل وسمٌ من النصّ إلى الصفحة.
+   */
+  function fmtAnswer(text) {
+    var h = esc(text);
+    h = h.replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>");
+    h = h.replace(/\[(\d{1,2})\]/g, function (m, n) {
+      var i = +n;
+      if (i < 1 || i > SOURCES.length) return m;      // رقم لا يقابل مرجعاً: يُترك نصّاً
+      return '<a class="refchip" href="#llm-src' + i + '">[' + i + "]</a>";
+    });
+    return h.split(/\n{2,}/).map(function (para) {
+      var lines = para.split("\n").filter(function (l) { return l.trim(); });
+      var isList = lines.length > 1 && lines.every(function (l) {
+        return /^\s*(?:[-•*]|[0-9\u0660-\u0669]{1,2}[.)\u061F-])\s+/.test(l);
+      });
+      if (isList) {
+        return "<ul>" + lines.map(function (l) {
+          return "<li>" + l.replace(/^\s*(?:[-•*]|[0-9\u0660-\u0669]{1,2}[.)])\s+/, "") + "</li>";
+        }).join("") + "</ul>";
+      }
+      return "<p>" + lines.join("<br>") + "</p>";
+    }).join("");
+  }
+
+  /** بطاقات المصادر التي استشهد بها النموذج فعلاً */
+  function sourcesHtml(from) {
+    if (SOURCES.length <= from) return "";
+    var h = '<div class="srchead">المراجع المسترجَعة — النصّ الرسمي</div>';
+    for (var i = from; i < SOURCES.length; i++) {
+      var r = SOURCES[i], n = i + 1, img = S.pageImage(r);
+      h += '<div class="hit" id="llm-src' + n + '">' +
+        '<div class="src"><span class="rank">' + n + "</span>" +
+        '<span class="meta"><span class="doct">' + esc(r.doc.title) + "</span>" +
+        '<span class="pageno">صفحة ' + r.page + " من " + r.doc.pages + "</span></span></div>" +
+        (r.heading && r.heading.length > 3 ? '<span class="art">' + esc(r.heading) + "</span>" : "") +
+        '<div class="quote">' + esc(r.text) + "</div>" +
+        '<a class="shot" href="' + img + '" data-cap="' + esc(r.doc.title) + " — صفحة " + r.page + '">' +
+        '<img loading="lazy" src="' + img + '" alt="صورة صفحة ' + r.page + '">' +
+        '<span class="cap">📄 صورة المصدر — صفحة ' + r.page + " · اضغط للتكبير</span></a></div>";
+    }
+    return h;
+  }
+
+  function askLlm(query) {
+    var cfg = LLM.loadCfg();
+    var chat = $("chat");
+    var srcFrom = SOURCES.length;
+
+    var a = document.createElement("div");
+    a.className = "msg";
+    a.innerHTML = '<div class="ans"><div class="llmhead">' +
+      '<span class="tag">✨ إجابة مولَّدة ومقيَّدة بنصّ اللائحة</span>' +
+      '<span class="intent">' + esc(cfg.model) + '</span></div>' +
+      '<div class="llmbody"><div class="typing"><i></i><i></i><i></i></div></div>' +
+      '<div class="llmsrc"></div></div>';
+    chat.appendChild(a);
+    scrollTo(a);
+
+    var bodyEl = a.querySelector(".llmbody");
+    var srcEl = a.querySelector(".llmsrc");
+    var acc = "", started = false;
+    setBusy(true);
+
+    var content = [{ type: "text", text: query }];
+    if (CASE_ON && CASE) {
+      var c = CASE.load();
+      if (c) {
+        content = [{ type: "text", text:
+          "حالة من نموذج سديد:\n" + CASE.summarize(c) + "\n\nسؤال المستخدم: " + query }];
+      }
+    }
+    HISTORY.push({ role: "user", content: content });
+
+    LLM.ask(cfg, HISTORY, TOOL_CTX, {
+      onText: function (t) {
+        if (!started) { bodyEl.innerHTML = ""; started = true; }
+        acc += t;
+        bodyEl.textContent = acc;                    // بثّ خام أثناء الكتابة
+        scrollTo(a);
+      },
+      onTool: function (q) {
+        if (started) return;
+        bodyEl.innerHTML = '<div class="searching">🔎 يبحث في اللوائح: ' +
+          esc(q || "") + "</div>";
+      },
+    }).then(function (res) {
+      HISTORY = res.messages;
+      if (res.refused || (!acc && !res.text)) {
+        bodyEl.innerHTML = '<p class="warnline">' +
+          esc(res.text || "لم يصل ردّ. أعد المحاولة.") + "</p>";
+      } else {
+        bodyEl.innerHTML = fmtAnswer(res.text || acc);
+      }
+      srcEl.innerHTML = sourcesHtml(srcFrom);
+      setBusy(false);
+      scrollTo(a);
+    }).catch(function (e) {
+      bodyEl.innerHTML = '<p class="warnline">تعذّر توليد الإجابة: ' +
+        esc(LLM.explain(e)) + "</p>" +
+        '<p class="disc">النتائج المرجعية من الفهرس المحلّي ما زالت تعمل — ' +
+        "أطفئ الطبقة التوليدية من ⚙ الإعدادات للعودة إليها.</p>";
+      setBusy(false);
+      // الدور الفاشل لا يبقى في التاريخ فيُفسد ما بعده
+      HISTORY.pop();
+    });
+  }
+
+  function setBusy(on) {
+    var b = $("send"), q = $("q");
+    if (b) { b.disabled = on; b.textContent = on ? "…" : (LLM.ready() ? "اسأل" : "بحث"); }
+    if (q) q.disabled = on;
+  }
+
+  // ════════════════════════════════════════════════════════════════
+  // بطاقة الحالة القادمة من منصّة سديد
+  // ════════════════════════════════════════════════════════════════
+  function caseHtml(c) {
+    var p = c.payload, risk = p.probabilities.notFullyApproved;
+    var band = risk >= 0.65 ? "hi" : risk >= 0.45 ? "md" : "lo";
+    var h = '<div class="casecard"><div class="chead">' +
+      '<span class="tag">🔗 حالة من منصّة سديد</span>' +
+      '<span class="conf ' + (band === "hi" ? "lo" : band === "md" ? "md" : "hi") + '">' +
+      "خطر عدم اكتمال الموافقة " + (risk * 100).toFixed(1) + "٪</span></div>";
+    if (p.topReasons && p.topReasons.length) {
+      h += '<ul class="creasons">';
+      p.topReasons.forEach(function (r) {
+        h += "<li><b>" + esc(r.label) + "</b> <span class=\"rp\">" +
+             (r.probability * 100).toFixed(0) + "٪</span><br><span class=\"ract\">" +
+             esc(r.action) + "</span></li>";
+      });
+      h += "</ul>";
+    }
+    h += '<div class="cbtns">' +
+      '<button id="caseAsk">🛠 كيف أحسّن هذا الطلب؟</button>' +
+      '<button id="caseToggle" class="' + (CASE_ON ? "on" : "") + '">' +
+      (CASE_ON ? "✓ الحالة مرفقة بالمحادثة" : "إرفاق الحالة بالمحادثة") + "</button>" +
+      '<button id="caseDrop" class="ghost">إزالة</button></div>';
+    return h + "</div>";
+  }
+
+  var CASE_PARAM_READ = false;
+
+  function initCase() {
+    var host = $("caseBox");
+    if (!host || !CASE) return;
+    var c = CASE.load();
+    if (!c) { host.style.display = "none"; return; }
+    // القدوم من زرّ «اسأل سَنَد» يُرفق الحالة تلقائياً — قبل أوّل رسم لا بعده
+    if (!CASE_PARAM_READ) {
+      CASE_PARAM_READ = true;
+      if (new URLSearchParams(location.search).get("case")) CASE_ON = true;
+    }
+    host.style.display = "";
+    host.innerHTML = caseHtml(c);
+    $("caseToggle").onclick = function () { CASE_ON = !CASE_ON; initCase(); };
+    $("caseDrop").onclick = function () { CASE.clear(); CASE_ON = false; initCase(); };
+    $("caseAsk").onclick = function () {
+      CASE_ON = true; initCase();
+      var empty = $("chat").querySelector(".empty");
+      if (empty) empty.remove();
+      ask("بناءً على هذه الحالة، ما الذي ينبغي إرفاقه أو تصحيحه أو التحقّق منه " +
+          "قبل إرسال الطلب حتى ترتفع فرصة الموافقة الكاملة؟");
+    };
+  }
+
+  /** خطة تحسين الطلب بلا نموذج لغوي — استرجاع وتصنيف محليّان */
+  function renderCasePlan() {
+    var c = CASE && CASE.load();
+    if (!c) return false;
+    var chat = $("chat"), aid = "a" + (++ANS);
+    var items = CASE.plan(c, C, S, R);
+    var q = document.createElement("div");
+    q.className = "msg q";
+    q.innerHTML = '<div class="bubble">خطة تحسين الطلب — لهذه الحالة</div>';
+    chat.appendChild(q);
+
+    var a = document.createElement("div");
+    a.className = "msg";
+    var h = '<div class="ans"><div class="lead"><span>لكل سبب متوقَّع: ما يوجبه النظام، ' +
+      "وسؤال تحقّق قبل الإرسال</span></div>";
+    var n = 0;
+    items.forEach(function (it) {
+      h += '<div class="planitem"><div class="ptitle"><span class="pn">' +
+        (++n) + '</span>' + esc(it.label) +
+        '<span class="pp">' + (it.probability * 100).toFixed(0) + "٪</span></div>" +
+        '<div class="pcheck">❓ ' + esc(it.check) + "</div>" +
+        '<div class="paction">🛠 ' + esc(it.action) + "</div>";
+      if (it.analysis && it.analysis.statements.length) {
+        h += '<ul class="stmts">';
+        it.analysis.statements.slice(0, 2).forEach(function (st) {
+          h += '<li class="' + (MOD_CLASS[st.modality] || "nu") + '">' +
+            (st.modalityLabel ? '<span class="mod">' + esc(st.modalityLabel) + "</span>" : "") +
+            '<span class="stx">' + esc(st.text) + "</span>" +
+            '<a class="refchip" href="#' + aid + "-p" + n + "-s" + st.ref + '">[' + st.ref + "]</a></li>";
+        });
+        h += "</ul>";
+      }
+      it.hits.forEach(function (r, i) {
+        h += '<div class="psrc" id="' + aid + "-p" + n + "-s" + (i + 1) + '">' +
+          '<span class="rank">' + (i + 1) + "</span> " + esc(r.doc.title) + " — صفحة " + r.page +
+          ' · <a class="shotlink" href="' + S.pageImage(r) + '" data-cap="' +
+          esc(r.doc.title) + " — صفحة " + r.page + '">صورة الصفحة</a>' +
+          '<div class="quote">' + esc(r.text.slice(0, 340)) + (r.text.length > 340 ? "…" : "") +
+          "</div></div>";
+      });
+      h += "</div>";
+    });
+    h += '<div class="disc">الخطة مبنيّة على أسباب النموذج المتوقَّعة والنصوص المسترجَعة لكلٍّ منها. ' +
+      "<b>النصّ الرسمي هو المرجع عند أي تعارض.</b></div></div>";
+    a.innerHTML = h;
+    chat.appendChild(a);
+    scrollTo(a);
+    return true;
+  }
+
+  // ════════════════════════════════════════════════════════════════
+  // إعدادات الطبقة التوليدية
+  // ════════════════════════════════════════════════════════════════
+  function initSettings() {
+    var cfg = LLM.loadCfg();
+    var box = $("llmBox");
+
+    function paint() {
+      $("llmEnabled").checked = cfg.enabled;
+      $("llmMode").value = cfg.mode;
+      $("llmKey").value = cfg.apiKey;
+      $("llmEndpoint").value = cfg.endpoint;
+      $("llmModel").value = cfg.model;
+      $("llmEffort").value = cfg.effort;
+      $("rowKey").style.display = cfg.mode === "direct" ? "" : "none";
+      $("rowEndpoint").style.display = cfg.mode === "proxy" ? "" : "none";
+      $("llmState").textContent = !cfg.enabled ? "مُطفأة — الإجابات من الفهرس المحلّي"
+        : LLM.ready(cfg) ? "مفعّلة" : "مفعّلة لكن الإعداد ناقص";
+      $("llmState").className = "llmstate " + (!cfg.enabled ? "off"
+        : LLM.ready(cfg) ? "on" : "warn");
+      setBusy(false);
+    }
+
+    $("llmModel").innerHTML = LLM.MODELS.map(function (m) {
+      return '<option value="' + m.id + '">' + esc(m.label) + "</option>";
+    }).join("");
+
+    function bind(id, key) {
+      $(id).onchange = function () {
+        cfg[key] = $(id).type === "checkbox" ? $(id).checked : $(id).value;
+        LLM.saveCfg(cfg); paint();
+      };
+    }
+    ["llmEnabled|enabled", "llmMode|mode", "llmKey|apiKey",
+     "llmEndpoint|endpoint", "llmModel|model", "llmEffort|effort"]
+      .forEach(function (pair) { var p = pair.split("|"); bind(p[0], p[1]); });
+
+    $("llmForget").onclick = function () {
+      LLM.clearCfg(); cfg = LLM.loadCfg(); paint();
+    };
+    $("llmGear").onclick = function () {
+      box.style.display = box.style.display === "none" ? "" : "none";
+    };
+    paint();
+    box.style.display = "none";
+  }
+
   function scrollTo(el) {
     setTimeout(function () {
       el.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -233,7 +518,21 @@
     var empty = $("chat").querySelector(".empty");
     if (empty) empty.remove();
     $("q").value = "";
+
+    if (LLM && LLM.ready()) {
+      var chat = $("chat");
+      var q = document.createElement("div");
+      q.className = "msg q";
+      q.innerHTML = '<div class="bubble">' + esc(text) +
+        (CASE_ON ? '<span class="qcase">مع الحالة</span>' : "") + "</div>";
+      chat.appendChild(q);
+      askLlm(text);
+      return;
+    }
+
+    // بلا طبقة توليدية: استرجاع + صياغة واستنتاج محليّان
     render(text);
+    if (CASE_ON) renderCasePlan();
   }
 
   function boot() {
@@ -246,16 +545,23 @@
     initRefs();
     initEmpty();
     initLightbox();
+    if (LLM) initSettings();
+    initCase();
     $("send").onclick = function () { ask(); };
     $("q").addEventListener("keydown", function (e) {
       if (e.key === "Enter") ask();
     });
     $("boot").style.display = "none";
     $("app").style.display = "block";
+    setBusy(false);
 
     var pre = new URLSearchParams(location.search).get("q");
     if (pre) { $("q").value = pre; ask(pre); }
-    window.RCMCHAT = { search: function (q) { return S.search(C, q, 8); }, corpus: C };
+    window.RCMCHAT = {
+      search: function (q) { return S.search(C, q, 8); },
+      corpus: C,
+      reset: function () { HISTORY = []; SOURCES = []; },
+    };
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);

@@ -333,6 +333,7 @@
     renderShap(out);
     renderReasons(out, reasons);
     postToParent(out, reasons, input);
+    saveCase(out, reasons, input);
     return out;
   }
 
@@ -763,6 +764,23 @@
     };
   }
 
+  var CASE_KEY = "sadeed.case.v1";
+
+  /**
+   * حفظ الحالة الأخيرة محلياً ليقرأها المساعد المرجعي «سَنَد» في الصفحة الأخرى.
+   * التخزين على الجهاز وحده (localStorage)، ولا يُرسَل شيء إلى أي خادم من هنا.
+   */
+  function saveCase(out, reasons, input) {
+    try {
+      localStorage.setItem(CASE_KEY, JSON.stringify({
+        savedAt: new Date().toISOString(),
+        payload: resultPayload(out, reasons, input),
+      }));
+      var b = $("btnAskSanad");
+      if (b) b.style.display = "";
+    } catch (e) { /* التخزين ممتلئ أو محظور — الميزة اختيارية فلا نُعطّل التنبؤ */ }
+  }
+
   function postToParent(out, reasons, input) {
     try {
       if (window.parent && window.parent !== window) {
@@ -871,6 +889,14 @@
 
     $("in_icdCode").addEventListener("input", syncIcd);
     $("btnPredict").onclick = runPredict;
+    var ask = $("btnAskSanad");
+    if (ask) {
+      ask.onclick = function () {
+        if (!LAST) { alert("شغّل تنبّؤاً أولاً."); return; }
+        saveCase(LAST, LAST.reasons, LAST_INPUT);
+        window.open("chatbot.html?case=1", "_blank");
+      };
+    }
     $("btnReset").onclick = resetForm;
     $("btnSample").onclick = loadSample;
 
