@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>التنبؤ بالموافقة التأمينية — تجمع مكة الصحي</title>
+<meta name="description" content="نموذج تعلّم آلة للتنبؤ بنتيجة الموافقة التأمينية وأسباب الرفض المتوقّعة مع تفسير SHAP — جاهز للدمج في Power BI">
+<style>
+:root{
+  --bg:#0c0f18; --surface:#131826; --card:#1a2033; --card2:#151b2b; --border:#242d44;
+  --accent:#4f8ef7; --accent-dim:rgba(79,142,247,.12);
+  --green:#22d3a0; --red:#f87171; --yellow:#fbbf24; --purple:#a78bfa; --orange:#fb923c;
+  --text:#dde4f0; --muted:#6b7591; --muted2:#8d97b0;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:"IBM Plex Sans Arabic","Segoe UI",Tahoma,"Noto Sans Arabic",Arial,sans-serif;
+  background:var(--bg);color:var(--text);min-height:100vh;padding:20px 16px 50px;
+  -webkit-font-smoothing:antialiased;line-height:1.6;
+}
+.wrap{max-width:900px;margin:0 auto}
+a{color:var(--accent)}
+
+/* ── الرأس ── */
+.header{text-align:center;margin-bottom:20px}
+.badge{display:inline-flex;align-items:center;gap:6px;background:var(--accent-dim);
+  border:1px solid rgba(79,142,247,.25);color:var(--accent);font-size:11px;font-weight:600;
+  padding:4px 14px;border-radius:20px;margin-bottom:10px}
+.header h1{font-size:22px;font-weight:700;color:#fff;margin-bottom:4px}
+.header p{font-size:12.5px;color:var(--muted)}
+.chips{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:12px}
+.chip{background:var(--card);border:1px solid var(--border);border-radius:20px;
+  padding:5px 13px;font-size:11px;color:var(--muted2)}
+.chip b{color:var(--green);font-size:12px}
+.chip.warn b{color:var(--yellow)}
+
+/* ── التبويبات ── */
+.tabs{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:18px 0 16px}
+.tab{background:var(--card);border:1px solid var(--border);color:var(--muted2);
+  font-family:inherit;font-size:12px;font-weight:600;padding:8px 16px;border-radius:9px;cursor:pointer;
+  transition:all .18s}
+.tab:hover{border-color:var(--accent);color:var(--text)}
+.tab.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.panel{display:none;animation:fade .25s ease}
+.panel.active{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+/* ── البطاقات ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:14px}
+.sec-label{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.6px;
+  margin-bottom:13px;padding-bottom:7px;border-bottom:1px solid var(--border)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:16px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px;margin-bottom:16px}
+.grid1{display:grid;gap:11px;margin-bottom:16px}
+@media(max-width:640px){.grid2,.grid3{grid-template-columns:1fr}}
+.field{display:flex;flex-direction:column;gap:5px;position:relative;min-width:0}
+.field label{font-size:11.5px;color:var(--muted);font-weight:500;display:flex;justify-content:space-between;gap:6px}
+.field label .hint{color:var(--muted);opacity:.65;font-size:10px}
+.field input[type=number],.field input[type=text],.field input[type=datetime-local]{
+  background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:inherit;
+  font-size:13px;padding:9px 11px;border-radius:8px;outline:none;transition:border-color .2s;width:100%}
+.field input:focus{border-color:var(--accent)}
+
+/* ── القوائم المنسدلة القابلة للبحث ── */
+.search-wrap{position:relative}
+.search-input{background:var(--surface);border:1px solid var(--border);color:var(--text);
+  font-family:inherit;font-size:13px;padding:9px 32px 9px 11px;border-radius:8px;outline:none;
+  width:100%;cursor:pointer;text-overflow:ellipsis;white-space:nowrap;overflow:hidden}
+.search-input:focus{border-color:var(--accent)}
+.search-arrow{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);
+  font-size:10px;pointer-events:none}
+.dropdown-panel{display:none;position:absolute;top:calc(100% + 4px);right:0;left:0;background:var(--card);
+  border:1px solid var(--accent);border-radius:10px;z-index:1000;box-shadow:0 10px 30px rgba(0,0,0,.6);
+  max-height:290px;overflow:hidden;flex-direction:column}
+.dropdown-panel.open{display:flex}
+.dropdown-search{padding:8px;border-bottom:1px solid var(--border)}
+.dropdown-search input{width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);
+  font-family:inherit;font-size:12px;padding:7px 10px;border-radius:6px;outline:none}
+.dropdown-list{overflow-y:auto;max-height:230px}
+.dropdown-list::-webkit-scrollbar{width:5px}
+.dropdown-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.dropdown-item{padding:8px 12px;font-size:12px;cursor:pointer;color:var(--text);
+  border-bottom:1px solid rgba(255,255,255,.03);display:flex;justify-content:space-between;
+  align-items:center;gap:10px}
+.dropdown-item:hover,.dropdown-item.selected{background:var(--accent-dim);color:var(--accent)}
+.dropdown-item .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dropdown-item .rr{font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;white-space:nowrap;
+  font-variant-numeric:tabular-nums}
+.dropdown-item.hidden{display:none}
+.rr-lo{background:rgba(34,211,160,.14);color:var(--green)}
+.rr-md{background:rgba(251,191,36,.14);color:var(--yellow)}
+.rr-hi{background:rgba(248,113,113,.14);color:var(--red)}
+
+.btn{width:100%;padding:13px;background:var(--accent);border:none;color:#fff;font-family:inherit;
+  font-size:14px;font-weight:700;border-radius:10px;cursor:pointer;transition:background .2s}
+.btn:hover{background:#3a7ae0}
+.btn.ghost{background:none;border:1px solid var(--border);color:var(--muted2);font-size:12px;
+  padding:9px 16px;width:auto}
+.btn.ghost:hover{border-color:var(--accent);color:var(--accent)}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:12px}
+
+/* ── النتيجة ── */
+.result{border-radius:14px;padding:22px;text-align:center;border:2px solid;display:none;margin-bottom:14px}
+.result.show{display:block}
+.result.approved{background:rgba(34,211,160,.06);border-color:var(--green)}
+.result.rejected{background:rgba(248,113,113,.06);border-color:var(--red)}
+.result.partial{background:rgba(251,191,36,.06);border-color:var(--yellow)}
+.r-icon{font-size:42px;margin-bottom:6px}
+.r-label{font-size:11.5px;color:var(--muted)}
+.r-value{font-size:26px;font-weight:700;margin-bottom:12px}
+.r-value.approved{color:var(--green)}.r-value.rejected{color:var(--red)}.r-value.partial{color:var(--yellow)}
+.conf-label{font-size:11px;color:var(--muted);display:flex;justify-content:space-between;margin-bottom:4px}
+.bar-wrap{background:var(--border);border-radius:8px;height:8px;overflow:hidden;margin-bottom:16px}
+.bar{height:100%;border-radius:8px;transition:width .7s ease}
+.probs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px}
+.prob{background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:11px 6px;text-align:center}
+.prob .nm{font-size:10.5px;color:var(--muted);margin-bottom:5px}
+.prob .vl{font-size:17px;font-weight:700;font-variant-numeric:tabular-nums}
+.prob .bs{font-size:9.5px;color:var(--muted);opacity:.75;margin-top:3px}
+.money{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.money .box{background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:11px}
+.money .k{font-size:10.5px;color:var(--muted);margin-bottom:4px}
+.money .v{font-size:16px;font-weight:700;font-variant-numeric:tabular-nums}
+.tip{background:var(--accent-dim);border:1px solid rgba(79,142,247,.18);border-radius:9px;
+  padding:11px 13px;font-size:12px;color:var(--muted2);text-align:right;line-height:1.85}
+.tip strong{color:var(--accent)}
+.tip.warn{background:rgba(248,113,113,.06);border-color:rgba(248,113,113,.2)}
+.tip.warn strong{color:var(--red)}
+.tip.ok{background:rgba(34,211,160,.06);border-color:rgba(34,211,160,.2)}
+.tip.ok strong{color:var(--green)}
+
+/* ── الرسوم ── */
+.chart{direction:ltr;overflow-x:auto;padding:2px 0}
+.chart svg{display:block;min-width:100%}
+.chart-title{font-size:12.5px;font-weight:700;color:var(--text);margin-bottom:3px;direction:rtl}
+.chart-sub{font-size:11px;color:var(--muted);margin-bottom:12px;direction:rtl;line-height:1.75}
+.cls-switch{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.cls-btn{background:var(--surface);border:1px solid var(--border);color:var(--muted2);font-family:inherit;
+  font-size:11.5px;font-weight:600;padding:6px 13px;border-radius:8px;cursor:pointer}
+.cls-btn.active{border-color:var(--accent);color:var(--accent);background:var(--accent-dim)}
+
+/* ── أسباب الرفض ── */
+.reason{background:var(--surface);border:1px solid var(--border);
+  border-inline-start:3px solid var(--red);border-radius:9px;padding:13px;margin-bottom:9px}
+.reason .top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:7px}
+.reason .nm{font-size:13px;font-weight:700;color:var(--text);flex:1}
+.reason .pc{font-size:15px;font-weight:700;color:var(--red);font-variant-numeric:tabular-nums;white-space:nowrap}
+.reason .rk{background:var(--card);border:1px solid var(--border);border-radius:6px;width:22px;height:22px;
+  display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--muted);flex-shrink:0}
+.reason .mini{background:var(--border);height:4px;border-radius:3px;overflow:hidden;
+  margin-bottom:9px;direction:ltr}
+.reason .mini i{display:block;height:100%;background:var(--red);border-radius:3px}
+.reason .act{font-size:11.5px;color:var(--muted2);line-height:1.8}
+.reason .act b{color:var(--accent);font-weight:600}
+.reason .drv{margin-top:7px;display:flex;gap:5px;flex-wrap:wrap}
+.reason .drv span{font-size:10px;background:var(--card);border:1px solid var(--border);
+  border-radius:12px;padding:2px 9px;color:var(--muted)}
+
+/* ── الجداول ── */
+table{width:100%;border-collapse:collapse;font-size:12px}
+th,td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--border)}
+th{color:var(--muted);font-weight:600;font-size:11px}
+td{color:var(--text);font-variant-numeric:tabular-nums}
+td:not(:first-child){direction:ltr;text-align:left}
+.kv .v,.prob .vl,.money .v{direction:ltr;unicode-bidi:isolate}
+tr.best td{color:var(--green);font-weight:700}
+.tbl-wrap{overflow-x:auto}
+.kv{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:14px}
+.kv .box{background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:12px}
+.kv .k{font-size:10.5px;color:var(--muted);margin-bottom:4px}
+.kv .v{font-size:17px;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums}
+.kv .s{font-size:10px;color:var(--muted);margin-top:3px}
+
+pre{background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:13px;
+  overflow-x:auto;font-size:11px;line-height:1.7;direction:ltr;text-align:left;
+  font-family:"SF Mono",Menlo,Consolas,monospace;color:#a8c5f0;white-space:pre}
+code{background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:1px 5px;
+  font-size:11px;direction:ltr;display:inline-block;font-family:"SF Mono",Menlo,Consolas,monospace}
+.steps{font-size:12.5px;color:var(--muted2);line-height:2;padding-right:18px}
+.steps li{margin-bottom:7px}
+.steps b{color:var(--text)}
+.note{font-size:11.5px;color:var(--muted);line-height:1.9;background:var(--surface);
+  border:1px solid var(--border);border-radius:9px;padding:12px;margin-top:11px}
+.note b{color:var(--text)}
+.url-box{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px;
+  font-size:10.5px;direction:ltr;text-align:left;word-break:break-all;color:#a8c5f0;
+  font-family:"SF Mono",Menlo,Consolas,monospace;max-height:110px;overflow-y:auto;line-height:1.7}
+
+.footer{text-align:center;margin-top:30px;padding-top:18px;border-top:1px solid var(--border)}
+.footer-dev{display:inline-flex;align-items:center;gap:8px;background:var(--card);
+  border:1px solid var(--border);border-radius:20px;padding:8px 20px}
+.footer-text{font-size:12px;color:var(--muted)}
+.footer-text strong{color:var(--accent);font-size:12.5px}
+.footer-sub{font-size:11px;color:var(--muted);margin-top:6px}
+
+.loading{text-align:center;padding:50px 20px;color:var(--muted);font-size:13px}
+.spin{width:26px;height:26px;border:2.5px solid var(--border);border-top-color:var(--accent);
+  border-radius:50%;animation:sp .8s linear infinite;margin:0 auto 14px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.err{background:rgba(248,113,113,.07);border:1px solid var(--red);border-radius:10px;padding:16px;
+  font-size:12.5px;color:var(--text);line-height:1.9}
+
+/* ── وضع التضمين داخل Power BI ── */
+body.embed{padding:10px 10px 14px}
+body.embed .reason{padding:10px}
+body.embed .reason .act{font-size:11px}
+body.embed .header,body.embed .footer,body.embed .tabs,body.embed #embedHide{display:none}
+body.embed .card{padding:13px;margin-bottom:10px}
+body.embed .wrap{max-width:100%}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="header">
+  <div class="badge">🏥 تجمع مكة الصحي · RCM · LightGBM + SHAP</div>
+  <h1>التنبؤ بنتيجة الموافقة التأمينية</h1>
+  <p>تقدير نتيجة المطالبة والأسباب المتوقّعة للرفض قبل إرسالها للضامن</p>
+  <div class="chips" id="headChips"></div>
+</div>
+
+<div class="tabs" id="tabs">
+  <button class="tab active" data-p="predict">🔮 التنبؤ</button>
+  <button class="tab" data-p="shap">📊 تفسير SHAP</button>
+  <button class="tab" data-p="reasons">⚠️ أسباب الرفض</button>
+  <button class="tab" data-p="model">🧠 عن النموذج</button>
+  <button class="tab" data-p="pbi">📈 Power BI</button>
+</div>
+
+<div id="boot" class="loading"><div class="spin"></div>جارٍ تحميل النموذج…</div>
+
+<div id="app" style="display:none">
+
+<!-- ═══ تبويب التنبؤ ═══ -->
+<div class="panel active" id="p-predict">
+  <div class="card" id="embedHide">
+    <div class="sec-label">💰 قيمة المطالبة والتوقيت</div>
+    <div class="grid3">
+      <div class="field">
+        <label>إجمالي الفاتورة <span class="hint">ريال</span></label>
+        <input type="number" id="in_total" placeholder="مثال: 500" min="0" step="0.01">
+      </div>
+      <div class="field">
+        <label>تاريخ ووقت الزيارة</label>
+        <input type="datetime-local" id="in_visitDate">
+      </div>
+      <div class="field" data-dd="triage"><label>درجة الطوارئ</label></div>
+    </div>
+
+    <div class="sec-label">🏥 بيانات الزيارة</div>
+    <div class="grid2">
+      <div class="field" data-dd="visit_type"><label>نوع الزيارة</label></div>
+      <div class="field" data-dd="hospital"><label>المستشفى</label></div>
+      <div class="field" data-dd="clinic"><label>القسم / العيادة</label></div>
+      <div class="field" data-dd="bill_status"><label>حالة الفاتورة</label></div>
+    </div>
+
+    <div class="sec-label">🩺 التشخيص وعقد التأمين</div>
+    <div class="grid2">
+      <div class="field">
+        <label>رمز ICD-10 <span class="hint">يملأ الحقلين تلقائياً</span></label>
+        <input type="text" id="in_icdCode" placeholder="مثال: J06.9" autocomplete="off">
+      </div>
+      <div class="field" data-dd="icd_chapter"><label>فصل التشخيص</label></div>
+      <div class="field" data-dd="icd_block"><label>كتلة التشخيص</label></div>
+      <div class="field" data-dd="contract"><label>عقد التأمين (الضامن)</label></div>
+      <div class="field" data-dd="nphies_elig"><label>فحص الأهلية — نفيس</label></div>
+    </div>
+
+    <div class="sec-label">👤 بيانات المريض</div>
+    <div class="grid3">
+      <div class="field" data-dd="gender"><label>الجنس</label></div>
+      <div class="field" data-dd="nationality"><label>الجنسية</label></div>
+      <div class="field" data-dd="patient_class"><label>تصنيف المريض</label></div>
+    </div>
+    <div class="grid2">
+      <div class="field">
+        <label>عدد مطالبات المريض السابقة <span class="hint">اختياري</span></label>
+        <input type="number" id="in_priorClaims" placeholder="اتركه فارغاً إن لم يُعرف" min="0" step="1">
+      </div>
+      <div class="field">
+        <label>نسبة رفض المريض التاريخية % <span class="hint">اختياري</span></label>
+        <input type="number" id="in_priorRejectRate" placeholder="اتركه فارغاً إن لم يُعرف" min="0" max="100" step="1">
+      </div>
+    </div>
+
+    <button class="btn" id="btnPredict">🔮 تنبّأ بنتيجة المطالبة</button>
+    <div class="btn-row">
+      <button class="btn ghost" id="btnReset">🔄 تفريغ الحقول</button>
+      <button class="btn ghost" id="btnSample">🎲 مثال جاهز</button>
+    </div>
+  </div>
+
+  <div class="result" id="result">
+    <div class="r-icon" id="rIcon"></div>
+    <div class="r-label">التنبؤ بنتيجة المطالبة</div>
+    <div class="r-value" id="rValue"></div>
+    <div class="conf-label"><span>ثقة النموذج في هذا التصنيف</span><span id="rPct"></span></div>
+    <div class="bar-wrap"><div class="bar" id="rBar"></div></div>
+    <div class="probs">
+      <div class="prob"><div class="nm">✅ مقبولة</div><div class="vl" id="pA" style="color:var(--green)"></div><div class="bs" id="bA"></div></div>
+      <div class="prob"><div class="nm">🟡 جزئية</div><div class="vl" id="pP" style="color:var(--yellow)"></div><div class="bs" id="bP"></div></div>
+      <div class="prob"><div class="nm">❌ مرفوضة</div><div class="vl" id="pR" style="color:var(--red)"></div><div class="bs" id="bR"></div></div>
+    </div>
+    <div class="money" id="moneyBox" style="display:none">
+      <div class="box"><div class="k">الإيراد المتوقّع تحصيله</div><div class="v" id="mExp" style="color:var(--green)"></div></div>
+      <div class="box"><div class="k">المبلغ المعرّض للخطر</div><div class="v" id="mRisk" style="color:var(--red)"></div></div>
+    </div>
+    <div class="tip" id="rTip"></div>
+  </div>
+
+  <div class="card" id="embedReasons" style="display:none"></div>
+
+  <div class="card" id="quickShap" style="display:none">
+    <div class="chart-title">أبرز العوامل المؤثّرة على هذا القرار</div>
+    <div class="chart-sub">تفصيل كامل في تبويب «تفسير SHAP»</div>
+    <div class="chart" id="quickChart"></div>
+  </div>
+</div>
+
+<!-- ═══ تبويب SHAP ═══ -->
+<div class="panel" id="p-shap">
+  <div class="card" id="shapEmpty">
+    <div class="tip">شغّل تنبّؤاً أولاً من تبويب <strong>التنبؤ</strong> لعرض تفسير SHAP الخاص بالمطالبة.</div>
+  </div>
+  <div id="shapBody" style="display:none">
+    <div class="card">
+      <div class="chart-title">مخطط الشلال — Waterfall</div>
+      <div class="chart-sub">
+        يبدأ من <b>القيمة الأساسية</b> (متوسّط سلوك النموذج على كل المطالبات التاريخية)
+        وينتهي عند درجة هذه المطالبة. كل شريط يمثّل قيمة شابلي (SHAP) لعامل واحد على
+        مقياس اللوغاريتم الاحتمالي: الأحمر يرفع احتمال الفئة المختارة، والأزرق يخفضه.
+      </div>
+      <div class="cls-switch" id="clsSwitch"></div>
+      <div class="chart" id="waterfall"></div>
+    </div>
+    <div class="card">
+      <div class="chart-title">مخطط القوى — Force</div>
+      <div class="chart-sub">القوى الدافعة نحو الفئة مقابل الدافعة ضدّها، بمقياس واحد.</div>
+      <div class="chart" id="force"></div>
+    </div>
+    <div class="card">
+      <div class="chart-title">الأهمية العالمية للخصائص</div>
+      <div class="chart-sub">متوسّط القيمة المطلقة لـ SHAP على عيّنة من 4,000 مطالبة — يوضّح ما يعتمد عليه النموذج إجمالاً، لا في هذه المطالبة وحدها.</div>
+      <div class="chart" id="globalChart"></div>
+    </div>
+    <div class="card">
+      <div class="chart-title">التحقّق من صحّة التفكيك</div>
+      <div class="chart-sub">خاصية الجمعية في SHAP: القيمة الأساسية + مجموع كل قيم شابلي = درجة النموذج بالضبط.</div>
+      <div id="shapCheck"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ تبويب الأسباب ═══ -->
+<div class="panel" id="p-reasons">
+  <div class="card" id="reasonEmpty">
+    <div class="tip">شغّل تنبّؤاً أولاً من تبويب <strong>التنبؤ</strong> لعرض أسباب الرفض المتوقّعة.</div>
+  </div>
+  <div id="reasonBody" style="display:none">
+    <div class="card">
+      <div class="chart-title">الأسباب المتوقّعة لعدم القبول الكامل</div>
+      <div class="chart-sub" id="reasonSub"></div>
+      <div id="reasonList"></div>
+    </div>
+    <div class="card">
+      <div class="chart-title">توزيع احتمالات الأسباب</div>
+      <div class="chart-sub">مشروطة بعدم قبول المطالبة كاملةً.</div>
+      <div class="chart" id="reasonChart"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ تبويب النموذج ═══ -->
+<div class="panel" id="p-model"><div id="modelBody"></div></div>
+
+<!-- ═══ تبويب Power BI ═══ -->
+<div class="panel" id="p-pbi"><div id="pbiBody"></div></div>
+
+</div><!-- /app -->
+
+<div class="footer">
+  <div class="footer-dev">
+    <span>👨‍💻</span>
+    <div class="footer-text"><strong>Built and developed by: Hani Alsulami</strong></div>
+  </div>
+  <div class="footer-sub">Makkah Health Cluster · RCM &amp; Data Analytics</div>
+</div>
+
+</div><!-- /wrap -->
+
+<script src="model/artifacts/model_bundle.js"></script>
+<script src="assets/rcm-engine.js"></script>
+<script src="assets/rcm-app.js"></script>
+</body>
+</html>
