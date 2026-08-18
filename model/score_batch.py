@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 score_batch.py — تسجيل دفعي لملف مطالبات كامل
-Makkah Health Cluster · Revenue Development Performance
+Sadeed · Makkah Health Cluster · Revenue Development Performance
 
 يقرأ ملف مطالبات (xlsx/csv) ويُخرج ملفاً مسجَّلاً جاهزاً للاستيراد في Power BI،
 يحتوي لكل مطالبة على: التنبؤ، احتمالات الفئات الثلاث، شريحة الخطر، الإيراد

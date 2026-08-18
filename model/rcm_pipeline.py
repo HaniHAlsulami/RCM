@@ -2,7 +2,7 @@
 """
 rcm_pipeline.py
 تنظيف البيانات + هندسة الخصائص + تصنيف أسباب الرفض
-Makkah Health Cluster · Revenue Development Performance
+Sadeed · Makkah Health Cluster · Revenue Development Performance
 
 يُستخدم من train_model.py و score_batch.py و powerbi_python_script.py
 لضمان أن نفس المنطق يُطبّق أثناء التدريب وأثناء التنبؤ.
