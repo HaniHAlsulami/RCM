@@ -22,6 +22,8 @@ body{font-family:"IBM Plex Sans Arabic","Segoe UI",Tahoma,"Noto Sans Arabic",Ari
 
 /* ── الرأس ── */
 .head{grid-column:1/-1;text-align:center;margin-bottom:8px}
+.org-logo{height:56px;width:auto;display:block;margin:0 auto 12px;border-radius:14px}
+@media print{.org-logo{height:46px}}
 .badge{display:inline-flex;gap:6px;background:var(--accent-dim);border:1px solid rgba(79,142,247,.25);
   color:var(--accent);font-size:11px;font-weight:600;padding:4px 14px;border-radius:20px;margin-bottom:12px}
 .head h1{font-size:26px;color:#fff;margin-bottom:6px;line-height:1.5}
@@ -159,7 +161,8 @@ details p:last-child{margin-bottom:0}
 <div class="shell">
 
 <div class="head">
-  <div class="badge">🏥 تجمع مكة الصحي · إدارة الدورة الإيرادية</div>
+  <img class="org-logo" src="assets/logo.svg" alt="شعار تجمع مكة الصحي" onerror="this.onerror=null;this.src='assets/logo.png'">
+  <div class="badge">🏥 تجمع مكة الصحي · إدارة أداء تنمية الإيرادات</div>
   <h1>دليل استخدام أداة التنبؤ بتحصيل المطالبات</h1>
   <p>كل ما تحتاجه لتشغيل الأداة وقراءة نتائجها والتصرّف بناءً عليها</p>
   <div class="cta">
@@ -210,7 +213,7 @@ details p:last-child{margin-bottom:0}
     الأداة لا تفرّق بين «الرفض الكامل» و«الموافقة الجزئية»، بل تجمعهما في فئة واحدة:
     <b>«لم تُقبل بالكامل»</b>. السبب عملي بحت — الموافقة الجزئية خسارة إيراد أيضاً:
     متوسّط ما يُحصَّل منها <b>49.9%</b> من الفاتورة، مقابل <b>92.6%</b> للمقبولة بالكامل.
-    فمن منظور الدورة الإيرادية كلتاهما تستحقّ التدخّل قبل الإرسال.
+    فمن منظور تنمية الإيرادات كلتاهما تستحقّ التدخّل قبل الإرسال.
   </p>
 
   <figure>
@@ -629,7 +632,7 @@ details p:last-child{margin-bottom:0}
   </figure>
 
   <ul>
-    <li><b>ليست قراراً طبياً ولا تأمينياً.</b> الأداة مساعد قرار لفريق الدورة الإيرادية،
+    <li><b>ليست قراراً طبياً ولا تأمينياً.</b> الأداة مساعد قرار لفريق تنمية الإيرادات،
       ولا يجوز إطلاقاً منع خدمة عن مريض أو تأخيرها بناءً على مخرجاتها.</li>
     <li><b>لا تميّز بين الرفض الكامل والخصم الجزئي.</b> تنذر فقط بأن المطالبة لن تُحصَّل
       بالكامل، دون تحديد حجم الخسارة.</li>
@@ -734,7 +737,7 @@ details p:last-child{margin-bottom:0}
   </table></div>
 
   <div class="note info">
-    <b>للدعم الفني وطلبات إعادة التدريب:</b> إدارة الدورة الإيرادية وتحليل البيانات —
+    <b>للدعم الفني وطلبات إعادة التدريب:</b> إدارة أداء تنمية الإيرادات —
     تجمع مكة الصحي.
   </div>
 </section>
@@ -743,7 +746,8 @@ details p:last-child{margin-bottom:0}
 
 <div class="foot">
   <div class="dev">👨‍💻 <span>Built and developed by: <strong>Hani Alsulami</strong></span></div>
-  <div class="sub">Makkah Health Cluster · RCM &amp; Data Analytics</div>
+  <div class="sub">تجمع مكة الصحي · إدارة أداء تنمية الإيرادات</div>
+  <div class="sub" style="opacity:.65;margin-top:2px">Makkah Health Cluster · Revenue Development Performance</div>
 </div>
 
 </div>

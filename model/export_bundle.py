@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 export_bundle.py — تحويل نموذج LightGBM إلى حزمة JSON مضغوطة يقرأها المتصفح
-Makkah Health Cluster · RCM & Data Analytics
+Makkah Health Cluster · Revenue Development Performance
 
 الحزمة تحتوي على:
   • الأشجار بصيغة مصفوفات مسطّحة (تنبؤ + TreeSHAP دقيق داخل المتصفح)
@@ -356,7 +356,7 @@ def _write_model_card(m, art_dir, bundle):
     lines = [
         "# بطاقة النموذج — التنبؤ بنتيجة الموافقة التأمينية",
         "",
-        "**تجمع مكة الصحي · إدارة الدورة الإيرادية وتحليل البيانات**",
+        "**تجمع مكة الصحي · إدارة أداء تنمية الإيرادات**",
         "",
         f"تاريخ التوليد: {m.get('generated_at')}",
         "",

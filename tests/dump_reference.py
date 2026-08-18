@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 dump_reference.py — توليد مرجع التحقّق من محرّك المتصفح
-Makkah Health Cluster · RCM & Data Analytics
+Makkah Health Cluster · Revenue Development Performance
 
 يُخرج عيّنة صفوف مع مخرجات LightGBM ومكتبة shap في بايثون، ليقارنها
 tests/verify_engine.js بمخرجات محرّك JavaScript.

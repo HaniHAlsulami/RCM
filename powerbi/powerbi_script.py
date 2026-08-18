@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 powerbi_script.py — تشغيل النموذج داخل Power BI مباشرةً
-Makkah Health Cluster · RCM & Data Analytics
+Makkah Health Cluster · Revenue Development Performance
 
 الاستخدام في Power BI Desktop:
     Home ← Get Data ← More… ← Other ← Python script
