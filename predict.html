@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>سديد — منصة التنبؤ بتحصيل المطالبات التأمينية</title>
-<meta name="description" content="سديد — منصة تعلّم آلة تتنبأ بتحصيل المطالبة التأمينية قبل إرسالها، وترتّب أسباب عدم التحصيل مع تفسير SHAP. جاهزة للدمج في Power BI">
+<title>سديد — منصة التنبؤ بالموافقة التأمينية</title>
+<meta name="description" content="سديد — منصة تعلّم آلة تتنبأ بالموافقة على المطالبة التأمينية قبل إرسالها، وترتّب أسباب عدم الموافقة مع تفسير SHAP. جاهزة للدمج في Power BI">
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <style>
 :root{
@@ -240,16 +240,16 @@ body.embed .wrap{max-width:100%}
     <img class="brand-mark" src="assets/sadeed-logo.svg" alt="">
     <div class="brand-text"><h1 class="ar">سديد</h1><span class="en">SADEED</span></div>
   </div>
-  <p class="tagline">منصة التنبؤ بتحصيل المطالبات التأمينية</p>
-  <p>هل ستُحصَّل هذه المطالبة بالكامل؟ — تقدير الخطر وأسبابه قبل الإرسال</p>
+  <p class="tagline">منصة التنبؤ بالموافقة التأمينية</p>
+  <p>هل ستصدر الموافقة على هذه المطالبة كاملةً؟ — تقدير الخطر وأسبابه قبل الإرسال</p>
   <div class="chips" id="headChips"></div>
-  <div class="chips"><a class="chip guide-link" href="guide.html">📘 دليل الاستخدام</a></div>
+  <div class="chips"><a class="chip guide-link" href="chatbot.html">💬 المساعد المرجعي</a><a class="chip guide-link" href="guide.html">📘 دليل الاستخدام</a></div>
 </div>
 
 <div class="tabs" id="tabs">
   <button class="tab active" data-p="predict">🔮 التنبؤ</button>
   <button class="tab" data-p="shap">📊 تفسير SHAP</button>
-  <button class="tab" data-p="reasons">⚠️ أسباب عدم التحصيل</button>
+  <button class="tab" data-p="reasons">⚠️ أسباب عدم الموافقة</button>
   <button class="tab" data-p="model">🧠 عن النموذج</button>
   <button class="tab" data-p="pbi">📈 Power BI</button>
 </div>
@@ -310,7 +310,7 @@ body.embed .wrap{max-width:100%}
       </div>
     </div>
 
-    <button class="btn" id="btnPredict">🔮 تنبّأ بنتيجة المطالبة</button>
+    <button class="btn" id="btnPredict">🔮 تنبّأ بنتيجة الموافقة</button>
     <div class="btn-row">
       <button class="btn ghost" id="btnReset">🔄 تفريغ الحقول</button>
       <button class="btn ghost" id="btnSample">🎲 مثال جاهز</button>
@@ -319,13 +319,13 @@ body.embed .wrap{max-width:100%}
 
   <div class="result" id="result">
     <div class="r-icon" id="rIcon"></div>
-    <div class="r-label">التنبؤ بنتيجة المطالبة</div>
+    <div class="r-label">التنبؤ بنتيجة الموافقة</div>
     <div class="r-value" id="rValue"></div>
     <div class="conf-label"><span>ثقة النموذج في هذا التصنيف</span><span id="rPct"></span></div>
     <div class="bar-wrap"><div class="bar" id="rBar"></div></div>
     <div class="probs">
-      <div class="prob"><div class="nm">✅ مقبولة بالكامل</div><div class="vl" id="pA" style="color:var(--green)"></div><div class="bs" id="bA"></div></div>
-      <div class="prob"><div class="nm">⚠️ لم تُقبل بالكامل</div><div class="vl" id="pR" style="color:var(--red)"></div><div class="bs" id="bR"></div></div>
+      <div class="prob"><div class="nm">✅ موافقة كاملة</div><div class="vl" id="pA" style="color:var(--green)"></div><div class="bs" id="bA"></div></div>
+      <div class="prob"><div class="nm">⚠️ موافقة غير كاملة</div><div class="vl" id="pR" style="color:var(--red)"></div><div class="bs" id="bR"></div></div>
     </div>
     <div class="money" id="moneyBox" style="display:none">
       <div class="box"><div class="k">الإيراد المتوقّع تحصيله</div><div class="v" id="mExp" style="color:var(--green)"></div></div>

@@ -49,8 +49,8 @@ DIVIDE( [مطالبات عالية الخطر], [عدد المطالبات] )
 متوسّط خطر عدم التحصيل = AVERAGE( Claims[p_not_fully_approved] )
 
 // ── 4. دقّة النموذج على المطالبات التي صدر فيها قرار فعلي ──────────
-// الهدف ثنائي: تُقارن «مقبولة بالكامل» بحالة Approved، وكل ما عداها
-// (Rejected أو Partially Approved) يقابل «لم تُقبل بالكامل».
+// الهدف ثنائي: تُقارن «موافقة كاملة» بحالة Approved، وكل ما عداها
+// (Rejected أو Partially Approved) يقابل «موافقة غير كاملة».
 دقّة النموذج =
 VAR Decided =
     FILTER( Claims, Claims[Approval Status] IN { "Approved", "Partially Approved", "Rejected" } )
@@ -66,9 +66,9 @@ VAR Hits =
 RETURN
     DIVIDE( Hits, COUNTROWS( Decided ) )
 
-// استرجاع الفئة الحرجة: نسبة المطالبات الخاسرة فعلاً التي التقطها النموذج.
+// استرجاع الفئة الحرجة: نسبة الحالات الخاسرة فعلاً التي التقطها النموذج.
 // هذا هو المؤشّر التشغيلي الأهم — أهم من الدقّة الإجمالية.
-استرجاع المطالبات الخاسرة =
+استرجاع الحالات الخاسرة =
 VAR Lost = FILTER( Claims, Claims[Approval Status] IN { "Rejected", "Partially Approved" } )
 VAR Caught = COUNTROWS( FILTER( Lost, Claims[pred_label] = "NotFullyApproved" ) )
 RETURN

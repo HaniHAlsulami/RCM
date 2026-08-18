@@ -9,7 +9,7 @@
   var LAST = null, LAST_INPUT = null, ACTIVE_CLASS = 2;   // 2 = مرفوضة
   var $ = function (id) { return document.getElementById(id); };
 
-  // فئتان: 0 = مقبولة بالكامل، 1 = لم تُقبل بالكامل
+  // فئتان: 0 = موافقة كاملة، 1 = موافقة غير كاملة
   /**
    * ألوان الرسوم تُقرأ من متغيّرات CSS لا من قيم مثبّتة، فتتبع لوحة الهوية
    * تلقائياً عند أي تغيير في السمة دون تعديل شيفرة الرسوم.
@@ -23,11 +23,11 @@
     return _cssCache[name];
   }
 
-  // فئتان: 0 = مقبولة بالكامل، 1 = لم تُقبل بالكامل
+  // فئتان: 0 = موافقة كاملة، 1 = موافقة غير كاملة
   function COLORS_() { return [C("green", "#0B7A5E"), C("red", "#C4362F")]; }
   var CLS_KEY = ["approved", "rejected"];
   var CLS_ICON = ["✅", "⚠️"];
-  var NFA = 1;                       // فهرس فئة «لم تُقبل بالكامل»
+  var NFA = 1;                       // فهرس فئة «موافقة غير كاملة»
 
   // الحقول الفئوية المعروضة كقوائم منسدلة
   var DD = ["visit_type", "hospital", "clinic", "nationality",
@@ -368,11 +368,11 @@
 
     // في وضع التضمين لا توجد تبويبات، فتُذكر الأسباب بموضعها الفعلي أدناه.
     var where = document.body.classList.contains("embed")
-      ? "القائمة أدناه" : "تبويب «أسباب عدم التحصيل»";
+      ? "القائمة أدناه" : "تبويب «أسباب عدم الموافقة»";
     var risk = p[NFA], tip, cls;
     if (risk >= 0.65) {
       cls = "warn";
-      tip = "<strong>خطر مرتفع لعدم التحصيل الكامل.</strong> راجع الأسباب المرجّحة في " +
+      tip = "<strong>خطر مرتفع لعدم الموافقة الكاملة.</strong> راجع الأسباب المرجّحة في " +
             where + " وعالجها قبل الإرسال — التصحيح المسبق أرخص بكثير من الاستئناف.";
     } else if (risk >= 0.45) {
       cls = "";
@@ -380,7 +380,7 @@
             "التغطية في العقد قبل الإرسال — الأسباب المرجّحة في " + where + ".";
     } else {
       cls = "ok";
-      tip = "<strong>مؤشّرات إيجابية.</strong> احتمال التحصيل الكامل مرتفع؛ تأكّد فقط من " +
+      tip = "<strong>مؤشّرات إيجابية.</strong> احتمال الموافقة الكاملة مرتفع؛ تأكّد فقط من " +
             "اكتمال البيانات الأساسية.";
     }
     $("rTip").className = "tip " + cls;
@@ -404,8 +404,8 @@
     if (!rs.length) { host.style.display = "none"; return; }
     host.style.display = "block";
     host.innerHTML =
-      '<div class="chart-title">أرجح أسباب عدم التحصيل الكامل</div>' +
-      '<div class="chart-sub">احتمال عدم التحصيل الكامل ' +
+      '<div class="chart-title">أرجح أسباب عدم الموافقة الكاملة</div>' +
+      '<div class="chart-sub">احتمال عدم الموافقة الكاملة ' +
         pct(LAST.proba[NFA]) + "</div>" +
       rs.slice(0, 3).map(function (r, i) {
         return '<div class="reason" style="border-inline-start-color:' +
@@ -456,7 +456,7 @@
     $("reasonEmpty").style.display = "none";
     $("reasonBody").style.display = "block";
     $("reasonSub").innerHTML =
-      "احتمال عدم التحصيل الكامل لهذه المطالبة <b>" + pct(out.proba[NFA]) + "</b>. " +
+      "احتمال عدم الموافقة الكاملة لهذه المطالبة <b>" + pct(out.proba[NFA]) + "</b>. " +
       "النسب أدناه مشروطة بحدوث ذلك، ومرتّبة من الأرجح. " +
       "دقّة النموذج في وضع السبب الصحيح ضمن أعلى ثلاثة: <b>" +
       pct(B.metrics.reason_model.top3_accuracy) + "</b>.";
@@ -499,14 +499,14 @@
     h.push(kv("F1 (ماكرو)", m.f1_macro.toFixed(3), "متوسّط متوازن على الفئتين"));
     h.push("</div>");
 
-    h.push('<div class="chart-sub">أداء الفئة الحرجة «لم تُقبل بالكامل» — وهي ما يهمّ ' +
+    h.push('<div class="chart-sub">أداء الفئة الحرجة «موافقة غير كاملة» — وهي ما يهمّ ' +
       "تنمية الإيرادات فعلاً:</div><div class=\"kv\">");
-    h.push(kv("الاسترجاع", pct(m.recall_nfa), "نسبة المطالبات الخاسرة التي يلتقطها"));
+    h.push(kv("الاسترجاع", pct(m.recall_nfa), "نسبة الحالات الخاسرة التي يلتقطها"));
     h.push(kv("الدقة", pct(m.precision_nfa), "نسبة الإنذارات الصحيحة"));
     h.push("</div>");
     h.push('<div class="note"><b>عتبة القرار ' + m.threshold + "</b> — اختيرت بتعظيم F1 " +
       "الماكرو على شريحة تحقّق مقتطعة من نهاية فترة التدريب، لا على بيانات الاختبار. " +
-      "خُفِّضت دون 0.5 عمداً: تفويت مطالبة خاسرة أغلى من إنذار زائد يُراجَع في دقيقة.</div></div>");
+      "خُفِّضت دون 0.5 عمداً: تفويت حالة خاسرة أغلى من إنذار زائد يُراجَع في دقيقة.</div></div>");
 
     // مصفوفة الالتباس
     if (cm.length) {
@@ -580,7 +580,7 @@
 
     // أسباب الرفض
     var rm = m.reason_model || {};
-    h.push('<div class="card"><div class="sec-label">⚠️ نموذج أسباب عدم التحصيل</div><div class="kv">');
+    h.push('<div class="card"><div class="sec-label">⚠️ نموذج أسباب عدم الموافقة</div><div class="kv">');
     h.push(kv("دقّة أعلى ٣ أسباب", pct(rm.top3_accuracy), "السبب الصحيح ضمن أعلى ثلاثة"));
     h.push(kv("دقّة السبب الأول", pct(rm.top1_accuracy), "مقابل أساس " + pct(rm.baseline)));
     h.push("</div>");
@@ -680,7 +680,7 @@
     h.push('<ol class="steps">' +
       "<li><b>Home ← Get Data ← More… ← Other ← Python script</b>.</li>" +
       "<li>ألصق محتوى <code>powerbi/powerbi_script.py</code> بعد تعديل مسار ملف البيانات.</li>" +
-      "<li>اختر جدول <b>scored</b> — يحتوي على احتمال عدم التحصيل الكامل، التنبؤ، شريحة " +
+      "<li>اختر جدول <b>scored</b> — يحتوي على احتمال عدم الموافقة الكاملة، التنبؤ، شريحة " +
       "الخطر، المبلغ المعرّض للخطر، أعلى ٣ عوامل SHAP، وأعلى ٣ أسباب متوقّعة لكل مطالبة.</li>" +
       "<li>حدّث البيانات دورياً عبر <b>Personal Gateway</b>.</li></ol>");
     h.push('<div class="note"><b>الأعمدة الناتجة:</b> <code>pred_label</code>، <code>p_approved</code>، ' +
