@@ -3,8 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>دليل استخدام أداة التنبؤ بتحصيل المطالبات — تجمع مكة المكرمة الصحي</title>
-<meta name="description" content="دليل عملي لاستخدام أداة التنبؤ بتحصيل المطالبات التأمينية: شرح الحقول، قراءة النتيجة، أسباب عدم التحصيل، تفسير SHAP، والدمج في Power BI">
+<title>دليل استخدام منصة سديد — تجمع مكة المكرمة الصحي</title>
+<meta name="description" content="دليل عملي لاستخدام منصة سديد: شرح الحقول، قراءة النتيجة، أسباب عدم التحصيل، تفسير SHAP، والدمج في Power BI">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <style>
 :root{
   --bg:#0c0f18; --surface:#131826; --card:#1a2033; --border:#242d44;
@@ -27,6 +28,14 @@ body{font-family:"IBM Plex Sans Arabic","Segoe UI",Tahoma,"Noto Sans Arabic",Ari
 .badge{display:inline-flex;gap:6px;background:var(--accent-dim);border:1px solid rgba(79,142,247,.25);
   color:var(--accent);font-size:11px;font-weight:600;padding:4px 14px;border-radius:20px;margin-bottom:12px}
 .head h1{font-size:26px;color:#fff;margin-bottom:6px;line-height:1.5}
+/* ── هوية «سديد» ── */
+.brand{display:flex;align-items:center;justify-content:center;gap:13px;margin-bottom:7px}
+.brand-mark{width:54px;height:54px;flex-shrink:0}
+.brand-text{text-align:right;line-height:1}
+.brand-text .ar{font-size:31px;font-weight:700;color:#fff;letter-spacing:-.5px;margin:0}
+.brand-text .en{display:block;font-size:11px;font-weight:600;letter-spacing:3.4px;
+  color:var(--accent);margin-top:5px}
+.tagline{font-size:13.5px;color:var(--muted2);margin-bottom:3px}
 .head p{font-size:13px;color:var(--muted)}
 .head .cta{margin-top:16px;display:flex;gap:9px;justify-content:center;flex-wrap:wrap}
 .btn{display:inline-block;background:var(--accent);color:#fff;text-decoration:none;font-size:13px;
@@ -163,10 +172,14 @@ details p:last-child{margin-bottom:0}
 <div class="head">
   <img class="org-logo" src="assets/logo.png" alt="شعار تجمع مكة المكرمة الصحي">
   <div class="badge">إدارة أداء تنمية الإيرادات</div>
-  <h1>دليل استخدام أداة التنبؤ بتحصيل المطالبات</h1>
-  <p>كل ما تحتاجه لتشغيل الأداة وقراءة نتائجها والتصرّف بناءً عليها</p>
+  <div class="brand">
+    <img class="brand-mark" src="assets/sadeed-logo.svg" alt="">
+    <div class="brand-text"><h1 class="ar">سديد</h1><span class="en">SADEED</span></div>
+  </div>
+  <p class="tagline">دليل استخدام منصة التنبؤ بتحصيل المطالبات التأمينية</p>
+  <p>كل ما تحتاجه لتشغيل المنصة وقراءة نتائجها والتصرّف بناءً عليها</p>
   <div class="cta">
-    <a class="btn" href="predict.html">🔮 افتح الأداة</a>
+    <a class="btn" href="predict.html">🔮 افتح المنصة</a>
     <a class="btn ghost" href="#s7">أمثلة جاهزة</a>
     <a class="btn ghost" href="javascript:window.print()">🖨 اطبع الدليل</a>
   </div>
@@ -174,7 +187,7 @@ details p:last-child{margin-bottom:0}
 
 <nav>
   <h2>محتويات الدليل</h2>
-  <a href="#s1"><span class="n">١</span>ما هذه الأداة؟</a>
+  <a href="#s1"><span class="n">١</span>ما هي «سديد»؟</a>
   <a href="#s2"><span class="n">٢</span>البدء في دقيقة</a>
   <a href="#s3"><span class="n">٣</span>شرح الحقول</a>
   <a href="#s4"><span class="n">٤</span>قراءة النتيجة</a>
@@ -191,14 +204,14 @@ details p:last-child{margin-bottom:0}
 
 <!-- ═════════ ١ ═════════ -->
 <section id="s1">
-  <h2><span class="num">١</span>ما هذه الأداة؟</h2>
+  <h2><span class="num">١</span>ما هي «سديد»؟</h2>
   <div class="lede">
-    أداة تجيب عن سؤال واحد، قبل إرسال المطالبة للضامن:
+    <b>سديد</b> منصّة تجيب عن سؤال واحد، قبل إرسال المطالبة للضامن:
     <b>هل ستُحصَّل هذه المطالبة بالكامل؟</b>
   </div>
 
   <p>
-    تعمل الأداة على نموذج تعلّم آلة (LightGBM) دُرِّب على <b>41,042 مطالبة</b> صدر فيها
+    تعمل المنصّة على نموذج تعلّم آلة (LightGBM) دُرِّب على <b>41,042 مطالبة</b> صدر فيها
     قرار نهائي من الضامنين. تُدخل بيانات المطالبة المتاحة لديك قبل الإرسال، فتحصل على:
   </p>
   <ul>
@@ -217,8 +230,8 @@ details p:last-child{margin-bottom:0}
   </p>
 
   <figure>
-    <img src="docs/img/chips.png" alt="مؤشرات أداء النموذج المعروضة أعلى الأداة">
-    <figcaption>مؤشّرات أداء النموذج تظهر دائماً أعلى الأداة — للشفافية، لا للزينة.</figcaption>
+    <img src="docs/img/chips.png" alt="مؤشرات أداء النموذج المعروضة أعلى المنصّة">
+    <figcaption>مؤشّرات أداء النموذج تظهر دائماً أعلى المنصّة — للشفافية، لا للزينة.</figcaption>
   </figure>
 
   <div class="note ok">
@@ -234,7 +247,7 @@ details p:last-child{margin-bottom:0}
   <div class="lede">ثلاث خطوات، ولا تحتاج تثبيت أي برنامج.</div>
 
   <ol class="steps">
-    <li><b>افتح الأداة</b>
+    <li><b>افتح المنصّة</b>
       افتح الرابط في متصفّح Chrome:
       <a class="urlcode" href="predict.html"><code>https://hanihalsulami.github.io/RCM/predict.html</code></a><br>
       أوّل تحميل يستغرق ثانية أو ثانيتين لأن النموذج يُنزَّل مرّة واحدة. بعدها كل تنبّؤ فوري.
@@ -407,7 +420,7 @@ details p:last-child{margin-bottom:0}
   </figure>
 
   <div class="note warn">
-    <b>انتبه لهذه التكلفة المقصودة:</b> نحو <b>29%</b> من المطالبات التي تصنّفها الأداة
+    <b>انتبه لهذه التكلفة المقصودة:</b> نحو <b>29%</b> من المطالبات التي تصنّفها المنصّة
     «لن تُحصَّل بالكامل» تُقبل فعلاً بالكامل. هذه إنذارات زائدة مقبولة عمداً، مقابل التقاط
     <b>74%</b> من المطالبات الخاسرة حقاً. فالإنذار الزائد يُراجَع في دقيقة، أمّا المطالبة
     الخاسرة التي تمرّ دون إنذار فتكلّف استئنافاً كاملاً — أو تُفقد.
@@ -574,8 +587,8 @@ details p:last-child{margin-bottom:0}
 
   <div class="note tip">
     <b>استخدم الروابط في عملك:</b> أي رابط بهذا الشكل يعمل داخل بريد إلكتروني أو تذكرة
-    أو رسالة — يفتح الأداة بمطالبة محدّدة ويشغّل التنبّؤ تلقائياً. قائمة المعاملات الكاملة
-    في تبويب <b>Power BI</b> داخل الأداة.
+    أو رسالة — يفتح المنصّة بمطالبة محدّدة ويشغّل التنبّؤ تلقائياً. قائمة المعاملات الكاملة
+    في تبويب <b>Power BI</b> داخل المنصّة.
   </div>
 </section>
 
@@ -617,22 +630,22 @@ details p:last-child{margin-bottom:0}
 
   <div class="note tip">
     <b>أهم مقياس في اللوحة:</b> «استرجاع المطالبات الخاسرة» — نسبة المطالبات التي خسرت
-    فعلاً والتقطها النموذج مسبقاً. هو المؤشّر الذي يقيس قيمة الأداة، أكثر من الدقّة الإجمالية.
+    فعلاً والتقطها النموذج مسبقاً. هو المؤشّر الذي يقيس قيمة المنصّة، أكثر من الدقّة الإجمالية.
   </div>
 </section>
 
 <!-- ═════════ ٩ ═════════ -->
 <section id="s9">
-  <h2><span class="num">٩</span>حدود الاستخدام — ما لا تفعله الأداة</h2>
-  <div class="lede">اقرأ هذا القسم قبل بناء أي إجراء تشغيلي على مخرجات الأداة.</div>
+  <h2><span class="num">٩</span>حدود الاستخدام — ما لا تفعله «سديد»</h2>
+  <div class="lede">اقرأ هذا القسم قبل بناء أي إجراء تشغيلي على مخرجات المنصّة.</div>
 
   <figure>
     <img src="docs/img/metrics.png" alt="مؤشرات أداء النموذج">
-    <figcaption>مؤشّرات الأداء كاملةً، معروضة داخل الأداة في تبويب «عن النموذج».</figcaption>
+    <figcaption>مؤشّرات الأداء كاملةً، معروضة داخل المنصّة في تبويب «عن النموذج».</figcaption>
   </figure>
 
   <ul>
-    <li><b>ليست قراراً طبياً ولا تأمينياً.</b> الأداة مساعد قرار لفريق تنمية الإيرادات،
+    <li><b>ليست قراراً طبياً ولا تأمينياً.</b> المنصّة مساعد قرار لفريق تنمية الإيرادات،
       ولا يجوز إطلاقاً منع خدمة عن مريض أو تأخيرها بناءً على مخرجاتها.</li>
     <li><b>لا تميّز بين الرفض الكامل والخصم الجزئي.</b> تنذر فقط بأن المطالبة لن تُحصَّل
       بالكامل، دون تحديد حجم الخسارة.</li>

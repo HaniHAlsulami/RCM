@@ -3,8 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>التنبؤ بتحصيل المطالبة التأمينية — تجمع مكة المكرمة الصحي</title>
-<meta name="description" content="نموذج تعلّم آلة للتنبؤ بنتيجة الموافقة التأمينية وأسباب الرفض المتوقّعة مع تفسير SHAP — جاهز للدمج في Power BI">
+<title>سديد — منصة التنبؤ بتحصيل المطالبات التأمينية</title>
+<meta name="description" content="سديد — منصة تعلّم آلة تتنبأ بتحصيل المطالبة التأمينية قبل إرسالها، وترتّب أسباب عدم التحصيل مع تفسير SHAP. جاهزة للدمج في Power BI">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <style>
 :root{
   --bg:#0c0f18; --surface:#131826; --card:#1a2033; --card2:#151b2b; --border:#242d44;
@@ -30,6 +31,14 @@ a{color:var(--accent)}
   border:1px solid rgba(79,142,247,.25);color:var(--accent);font-size:11px;font-weight:600;
   padding:4px 14px;border-radius:20px;margin-bottom:10px}
 .header h1{font-size:22px;font-weight:700;color:#fff;margin-bottom:4px}
+/* ── هوية «سديد» ── */
+.brand{display:flex;align-items:center;justify-content:center;gap:13px;margin-bottom:7px}
+.brand-mark{width:54px;height:54px;flex-shrink:0}
+.brand-text{text-align:right;line-height:1}
+.brand-text .ar{font-size:31px;font-weight:700;color:#fff;letter-spacing:-.5px;margin:0}
+.brand-text .en{display:block;font-size:11px;font-weight:600;letter-spacing:3.4px;
+  color:var(--accent);margin-top:5px}
+.tagline{font-size:13.5px;color:var(--muted2);margin-bottom:3px}
 .header p{font-size:12.5px;color:var(--muted)}
 .chips{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:12px}
 .chip{background:var(--card);border:1px solid var(--border);border-radius:20px;
@@ -221,7 +230,11 @@ body.embed .wrap{max-width:100%}
 <div class="header">
   <img class="org-logo" src="assets/logo.png" alt="شعار تجمع مكة المكرمة الصحي">
   <div class="badge">إدارة أداء تنمية الإيرادات · LightGBM ثنائي + SHAP</div>
-  <h1>التنبؤ بنتيجة الموافقة التأمينية</h1>
+  <div class="brand">
+    <img class="brand-mark" src="assets/sadeed-logo.svg" alt="">
+    <div class="brand-text"><h1 class="ar">سديد</h1><span class="en">SADEED</span></div>
+  </div>
+  <p class="tagline">منصة التنبؤ بتحصيل المطالبات التأمينية</p>
   <p>هل ستُحصَّل هذه المطالبة بالكامل؟ — تقدير الخطر وأسبابه قبل الإرسال</p>
   <div class="chips" id="headChips"></div>
   <div class="chips"><a class="chip guide-link" href="guide.html">📘 دليل الاستخدام</a></div>
