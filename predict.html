@@ -33,6 +33,9 @@ a{color:var(--accent)}
 .chip{background:var(--card);border:1px solid var(--border);border-radius:20px;
   padding:5px 13px;font-size:11px;color:var(--muted2)}
 .chip b{color:var(--green);font-size:12px}
+a.chip.guide-link{text-decoration:none;color:var(--accent);border-color:rgba(79,142,247,.3);
+  background:var(--accent-dim);font-weight:600;transition:border-color .2s}
+a.chip.guide-link:hover{border-color:var(--accent)}
 .chip.warn b{color:var(--yellow)}
 
 /* ── التبويبات ── */
@@ -218,6 +221,7 @@ body.embed .wrap{max-width:100%}
   <h1>التنبؤ بنتيجة الموافقة التأمينية</h1>
   <p>هل ستُحصَّل هذه المطالبة بالكامل؟ — تقدير الخطر وأسبابه قبل الإرسال</p>
   <div class="chips" id="headChips"></div>
+  <div class="chips"><a class="chip guide-link" href="guide.html">📘 دليل الاستخدام</a></div>
 </div>
 
 <div class="tabs" id="tabs">

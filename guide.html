@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>دليل استخدام أداة التنبؤ بتحصيل المطالبات — تجمع مكة الصحي</title>
+<meta name="description" content="دليل عملي لاستخدام أداة التنبؤ بتحصيل المطالبات التأمينية: شرح الحقول، قراءة النتيجة، أسباب عدم التحصيل، تفسير SHAP، والدمج في Power BI">
+<style>
+:root{
+  --bg:#0c0f18; --surface:#131826; --card:#1a2033; --border:#242d44;
+  --accent:#4f8ef7; --accent-dim:rgba(79,142,247,.12);
+  --green:#22d3a0; --red:#f87171; --yellow:#fbbf24; --orange:#fb923c;
+  --text:#dde4f0; --muted:#6b7591; --muted2:#8d97b0;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;scroll-padding-top:20px}
+body{font-family:"IBM Plex Sans Arabic","Segoe UI",Tahoma,"Noto Sans Arabic",Arial,sans-serif;
+  background:var(--bg);color:var(--text);line-height:1.9;padding:24px 16px 70px;
+  -webkit-font-smoothing:antialiased}
+.shell{max-width:1160px;margin:0 auto;display:grid;grid-template-columns:230px 1fr;gap:26px;align-items:start}
+@media(max-width:900px){.shell{grid-template-columns:1fr;gap:16px}}
+
+/* ── الرأس ── */
+.head{grid-column:1/-1;text-align:center;margin-bottom:8px}
+.badge{display:inline-flex;gap:6px;background:var(--accent-dim);border:1px solid rgba(79,142,247,.25);
+  color:var(--accent);font-size:11px;font-weight:600;padding:4px 14px;border-radius:20px;margin-bottom:12px}
+.head h1{font-size:26px;color:#fff;margin-bottom:6px;line-height:1.5}
+.head p{font-size:13px;color:var(--muted)}
+.head .cta{margin-top:16px;display:flex;gap:9px;justify-content:center;flex-wrap:wrap}
+.btn{display:inline-block;background:var(--accent);color:#fff;text-decoration:none;font-size:13px;
+  font-weight:700;padding:10px 22px;border-radius:9px;transition:background .2s}
+.btn:hover{background:#3a7ae0}
+.btn.ghost{background:none;border:1px solid var(--border);color:var(--muted2);font-weight:600}
+.btn.ghost:hover{border-color:var(--accent);color:var(--accent)}
+
+/* ── الفهرس ── */
+nav{position:sticky;top:20px;background:var(--card);border:1px solid var(--border);
+  border-radius:13px;padding:15px}
+@media(max-width:900px){nav{position:static}}
+nav h2{font-size:11px;color:var(--muted);letter-spacing:.6px;margin-bottom:11px;
+  padding-bottom:8px;border-bottom:1px solid var(--border)}
+nav a{display:block;color:var(--muted2);text-decoration:none;font-size:12.5px;padding:5px 8px;
+  border-radius:6px;transition:all .15s}
+nav a:hover{background:var(--accent-dim);color:var(--accent)}
+nav a .n{display:inline-block;width:20px;color:var(--muted);font-size:11px}
+
+/* ── الأقسام ── */
+main{min-width:0}
+section{background:var(--card);border:1px solid var(--border);border-radius:14px;
+  padding:22px;margin-bottom:16px;scroll-margin-top:16px}
+section h2{font-size:19px;color:#fff;margin-bottom:6px;display:flex;align-items:center;gap:9px}
+section h2 .num{background:var(--accent-dim);border:1px solid rgba(79,142,247,.25);color:var(--accent);
+  font-size:12px;width:26px;height:26px;border-radius:8px;display:inline-flex;
+  align-items:center;justify-content:center;flex-shrink:0;font-weight:700}
+section .lede{font-size:13.5px;color:var(--muted2);margin-bottom:18px;padding-bottom:14px;
+  border-bottom:1px solid var(--border)}
+h3{font-size:14.5px;color:#fff;margin:20px 0 9px}
+h3:first-of-type{margin-top:4px}
+p{font-size:13.5px;color:var(--text);margin-bottom:11px}
+ul,ol{margin:0 20px 13px 0;font-size:13.5px}
+li{margin-bottom:7px}
+b,strong{color:#fff;font-weight:600}
+code{background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:1px 6px;
+  font-size:11.5px;direction:ltr;font-family:"SF Mono",Menlo,Consolas,monospace;color:#a8c5f0;
+  max-width:100%;overflow-wrap:anywhere;word-break:break-word}
+a.urlcode{text-decoration:none}
+a.urlcode:hover code{border-color:var(--accent)}
+a{color:var(--accent)}
+
+/* ── الخطوات ── */
+.steps{list-style:none;margin:0;counter-reset:s}
+.steps li{counter-increment:s;position:relative;padding-right:44px;margin-bottom:16px;font-size:13.5px}
+.steps li::before{content:counter(s);position:absolute;right:0;top:1px;width:29px;height:29px;
+  background:var(--accent);color:#fff;border-radius:9px;display:flex;align-items:center;
+  justify-content:center;font-weight:700;font-size:13px}
+.steps li b{display:block;color:#fff;margin-bottom:2px}
+
+/* ── الصور ── */
+figure{margin:16px 0;background:var(--surface);border:1px solid var(--border);border-radius:11px;
+  padding:11px;overflow:hidden}
+figure img{width:100%;height:auto;display:block;border-radius:7px}
+figcaption{font-size:11.5px;color:var(--muted);margin-top:10px;text-align:center;line-height:1.75}
+
+/* ── الجداول ── */
+.tw{overflow-x:auto;margin:13px 0;border:1px solid var(--border);border-radius:10px}
+table{width:100%;border-collapse:collapse;font-size:12.5px;min-width:520px}
+th,td{padding:9px 12px;text-align:right;border-bottom:1px solid var(--border);vertical-align:top}
+th{color:var(--muted);font-weight:600;font-size:11.5px;background:var(--surface);white-space:nowrap}
+tr:last-child td{border-bottom:none}
+td b{color:var(--text)}
+.req{color:var(--red);font-size:11px;font-weight:700}
+.opt{color:var(--muted);font-size:11px}
+
+/* ── التنبيهات ── */
+.note{border-radius:10px;padding:13px 15px;font-size:13px;line-height:1.85;margin:14px 0;
+  border:1px solid;background:var(--surface)}
+.note.info{background:var(--accent-dim);border-color:rgba(79,142,247,.22)}
+.note.info b{color:var(--accent)}
+.note.warn{background:rgba(248,113,113,.07);border-color:rgba(248,113,113,.22)}
+.note.warn b{color:var(--red)}
+.note.ok{background:rgba(34,211,160,.07);border-color:rgba(34,211,160,.22)}
+.note.ok b{color:var(--green)}
+.note.tip{background:rgba(251,191,36,.06);border-color:rgba(251,191,36,.22)}
+.note.tip b{color:var(--yellow)}
+
+/* ── شرائح الخطر ── */
+.bands{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0}
+@media(max-width:640px){.bands{grid-template-columns:1fr}}
+.band{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:13px;
+  border-top:3px solid}
+.band .t{font-size:13.5px;font-weight:700;margin-bottom:3px}
+.band .r{font-size:11px;color:var(--muted);margin-bottom:7px;direction:ltr;text-align:right}
+.band .d{font-size:12px;color:var(--muted2);line-height:1.75}
+
+/* ── الأمثلة ── */
+.ex{background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:15px;
+  margin-bottom:11px}
+.ex .top{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px;
+  flex-wrap:wrap}
+.ex .t{font-size:13.5px;font-weight:700;color:#fff}
+.ex .tag{font-size:10.5px;font-weight:700;padding:3px 11px;border-radius:12px;white-space:nowrap}
+.ex .d{font-size:12.5px;color:var(--muted2);margin-bottom:11px;line-height:1.8}
+.ex a{display:inline-block;font-size:12px;font-weight:600;background:var(--card);
+  border:1px solid var(--border);border-radius:8px;padding:7px 15px;text-decoration:none;
+  color:var(--accent);transition:border-color .2s}
+.ex a:hover{border-color:var(--accent)}
+
+/* ── الأسئلة ── */
+details{background:var(--surface);border:1px solid var(--border);border-radius:10px;
+  padding:12px 15px;margin-bottom:9px}
+details[open]{border-color:rgba(79,142,247,.3)}
+summary{font-size:13.5px;font-weight:600;color:#fff;cursor:pointer;list-style:none;
+  display:flex;justify-content:space-between;align-items:center;gap:10px}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";color:var(--accent);font-size:17px;font-weight:400;flex-shrink:0}
+details[open] summary::after{content:"−"}
+details p{margin:11px 0 0;font-size:13px;color:var(--muted2);line-height:1.9}
+details p:last-child{margin-bottom:0}
+
+.foot{grid-column:1/-1;text-align:center;margin-top:26px;padding-top:20px;
+  border-top:1px solid var(--border)}
+.foot .dev{display:inline-flex;align-items:center;gap:8px;background:var(--card);
+  border:1px solid var(--border);border-radius:20px;padding:8px 20px;font-size:12px;color:var(--muted)}
+.foot .dev strong{color:var(--accent)}
+.foot .sub{font-size:11px;color:var(--muted);margin-top:7px}
+
+@media print{
+  body{background:#fff;color:#000;padding:0}
+  nav,.head .cta{display:none}
+  .shell{grid-template-columns:1fr;max-width:100%}
+  section{border:1px solid #ccc;page-break-inside:avoid;background:#fff}
+  section h2,h3,b,strong,td b{color:#000}
+  p,li,td{color:#222}
+  a{color:#000;text-decoration:underline}
+}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<div class="head">
+  <div class="badge">🏥 تجمع مكة الصحي · إدارة الدورة الإيرادية</div>
+  <h1>دليل استخدام أداة التنبؤ بتحصيل المطالبات</h1>
+  <p>كل ما تحتاجه لتشغيل الأداة وقراءة نتائجها والتصرّف بناءً عليها</p>
+  <div class="cta">
+    <a class="btn" href="predict.html">🔮 افتح الأداة</a>
+    <a class="btn ghost" href="#s7">أمثلة جاهزة</a>
+    <a class="btn ghost" href="javascript:window.print()">🖨 اطبع الدليل</a>
+  </div>
+</div>
+
+<nav>
+  <h2>محتويات الدليل</h2>
+  <a href="#s1"><span class="n">١</span>ما هذه الأداة؟</a>
+  <a href="#s2"><span class="n">٢</span>البدء في دقيقة</a>
+  <a href="#s3"><span class="n">٣</span>شرح الحقول</a>
+  <a href="#s4"><span class="n">٤</span>قراءة النتيجة</a>
+  <a href="#s5"><span class="n">٥</span>أسباب عدم التحصيل</a>
+  <a href="#s6"><span class="n">٦</span>تفسير SHAP</a>
+  <a href="#s7"><span class="n">٧</span>أمثلة عملية</a>
+  <a href="#s8"><span class="n">٨</span>الدمج في Power BI</a>
+  <a href="#s9"><span class="n">٩</span>حدود الاستخدام</a>
+  <a href="#s10"><span class="n">١٠</span>أسئلة شائعة</a>
+  <a href="#s11"><span class="n">١١</span>حل المشكلات</a>
+</nav>
+
+<main>
+
+<!-- ═════════ ١ ═════════ -->
+<section id="s1">
+  <h2><span class="num">١</span>ما هذه الأداة؟</h2>
+  <div class="lede">
+    أداة تجيب عن سؤال واحد، قبل إرسال المطالبة للضامن:
+    <b>هل ستُحصَّل هذه المطالبة بالكامل؟</b>
+  </div>
+
+  <p>
+    تعمل الأداة على نموذج تعلّم آلة (LightGBM) دُرِّب على <b>41,042 مطالبة</b> صدر فيها
+    قرار نهائي من الضامنين. تُدخل بيانات المطالبة المتاحة لديك قبل الإرسال، فتحصل على:
+  </p>
+  <ul>
+    <li><b>احتمال عدم التحصيل الكامل</b> — رقم بين 0% و100%.</li>
+    <li><b>المبلغ المعرّض للخطر</b> بالريال، مبنيّاً على نسب التحصيل التاريخية الفعلية.</li>
+    <li><b>أرجح أسباب عدم التحصيل</b>، ومع كل سبب <b>إجراء تصحيحي محدّد</b> تنفّذه قبل الإرسال.</li>
+    <li><b>تفسير كامل</b> لكل عامل ساهم في القرار — لا صندوق أسود.</li>
+  </ul>
+
+  <h3>لماذا فئتان فقط؟</h3>
+  <p>
+    الأداة لا تفرّق بين «الرفض الكامل» و«الموافقة الجزئية»، بل تجمعهما في فئة واحدة:
+    <b>«لم تُقبل بالكامل»</b>. السبب عملي بحت — الموافقة الجزئية خسارة إيراد أيضاً:
+    متوسّط ما يُحصَّل منها <b>49.9%</b> من الفاتورة، مقابل <b>92.6%</b> للمقبولة بالكامل.
+    فمن منظور الدورة الإيرادية كلتاهما تستحقّ التدخّل قبل الإرسال.
+  </p>
+
+  <figure>
+    <img src="docs/img/chips.png" alt="مؤشرات أداء النموذج المعروضة أعلى الأداة">
+    <figcaption>مؤشّرات أداء النموذج تظهر دائماً أعلى الأداة — للشفافية، لا للزينة.</figcaption>
+  </figure>
+
+  <div class="note ok">
+    <b>خصوصية البيانات:</b> الأداة تعمل بالكامل داخل متصفّحك. النموذج يُحمَّل مرّة واحدة
+    ثم تُنفَّذ كل الحسابات محلّياً على جهازك. <b>لا تُرسل بيانات أي مطالبة إلى أي خادم</b>،
+    ولا يستخدم النموذج اسم المريض ولا رقم هويته ولا أي معرّف شخصي.
+  </div>
+</section>
+
+<!-- ═════════ ٢ ═════════ -->
+<section id="s2">
+  <h2><span class="num">٢</span>البدء في دقيقة واحدة</h2>
+  <div class="lede">ثلاث خطوات، ولا تحتاج تثبيت أي برنامج.</div>
+
+  <ol class="steps">
+    <li><b>افتح الأداة</b>
+      افتح الرابط في متصفّح Chrome:
+      <a class="urlcode" href="predict.html"><code>https://hanihalsulami.github.io/RCM/predict.html</code></a><br>
+      أوّل تحميل يستغرق ثانية أو ثانيتين لأن النموذج يُنزَّل مرّة واحدة. بعدها كل تنبّؤ فوري.
+    </li>
+    <li><b>املأ بيانات المطالبة</b>
+      الحقول مملوءة مسبقاً بالقيم الأكثر شيوعاً، فغيّر ما يخصّ مطالبتك فقط.
+      أهمّها: <b>إجمالي الفاتورة</b>، <b>المستشفى</b>، <b>الضامن</b>، <b>رمز ICD-10</b>.
+    </li>
+    <li><b>اضغط «تنبّأ بنتيجة المطالبة»</b>
+      تظهر النتيجة فوراً أسفل النموذج، وتُملأ بقية التبويبات بالتفاصيل.
+    </li>
+  </ol>
+
+  <figure>
+    <img src="docs/img/form.png" alt="نموذج إدخال بيانات المطالبة">
+    <figcaption>نموذج الإدخال — كل قائمة منسدلة قابلة للبحث بالكتابة.</figcaption>
+  </figure>
+
+  <h3>التبويبات الخمسة</h3>
+  <figure>
+    <img src="docs/img/tabs.png" alt="تبويبات الأداة الخمسة">
+  </figure>
+  <div class="tw"><table>
+    <tr><th>التبويب</th><th>ماذا يعرض</th></tr>
+    <tr><td><b>🔮 التنبؤ</b></td><td>نموذج الإدخال والنتيجة وأهم العوامل — نقطة البداية.</td></tr>
+    <tr><td><b>📊 تفسير SHAP</b></td><td>تفصيل كامل لمساهمة كل عامل في القرار.</td></tr>
+    <tr><td><b>⚠️ أسباب عدم التحصيل</b></td><td>الأسباب المرجّحة مرتّبة، مع الإجراء التصحيحي لكل سبب.</td></tr>
+    <tr><td><b>🧠 عن النموذج</b></td><td>دقّة النموذج، مقارنة الخوارزميات، حدود الاستخدام.</td></tr>
+    <tr><td><b>📈 Power BI</b></td><td>أدوات الدمج في لوحات Power BI.</td></tr>
+  </table></div>
+
+  <div class="note tip">
+    <b>جرّبها فوراً:</b> اضغط زرّ <b>«🎲 مثال جاهز»</b> أسفل النموذج — يملأ مطالبة نموذجية
+    ويشغّل التنبؤ مباشرةً، لتفهم شكل المخرجات قبل إدخال بياناتك.
+  </div>
+</section>
+
+<!-- ═════════ ٣ ═════════ -->
+<section id="s3">
+  <h2><span class="num">٣</span>شرح الحقول</h2>
+  <div class="lede">
+    كل الحقول اختيارية تقنياً — الأداة تعمل بأي قدر من البيانات — لكن كلما اكتملت، دقّ التنبّؤ.
+  </div>
+
+  <div class="tw"><table>
+    <tr><th>الحقل</th><th>من أين تأخذه</th><th>الأهمية</th><th>ملاحظات</th></tr>
+    <tr>
+      <td><b>إجمالي الفاتورة</b></td><td>حقل <code>Total</code> في نظام الفوترة</td>
+      <td><span class="req">عالية</span></td>
+      <td>ثالث أقوى عامل (13.7%). أدخله بالريال دون فواصل.</td>
+    </tr>
+    <tr>
+      <td><b>عقد التأمين (الضامن)</b></td><td><code>Contract Name</code></td>
+      <td><span class="req">الأعلى</span></td>
+      <td>أقوى عامل على الإطلاق (19.7%). اختر من القائمة — 81 عقداً مدرجاً، وابحث بالكتابة.</td>
+    </tr>
+    <tr>
+      <td><b>المستشفى</b></td><td><code>Hospital Name</code></td>
+      <td><span class="req">الأعلى</span></td>
+      <td>ثاني أقوى عامل (17.4%). 20 منشأة.</td>
+    </tr>
+    <tr>
+      <td><b>القسم / العيادة</b></td><td><code>Clinic Name</code></td>
+      <td><span class="req">عالية</span></td>
+      <td>11.2%. أكثر 61 عيادة تكراراً؛ ما عداها يقع تحت «أخرى».</td>
+    </tr>
+    <tr>
+      <td><b>رمز ICD-10</b></td><td>التشخيص الرئيسي</td>
+      <td><span class="req">عالية</span></td>
+      <td>اكتب الرمز كاملاً (مثل <code>J06.9</code>) فيملأ حقلَي «الفصل» و«الكتلة» تلقائياً.</td>
+    </tr>
+    <tr>
+      <td><b>نوع الزيارة</b></td><td><code>Visit Type</code></td>
+      <td><span class="opt">متوسطة</span></td>
+      <td>طوارئ / عيادة خارجية / تنويم.</td>
+    </tr>
+    <tr>
+      <td><b>درجة الطوارئ CTAS</b></td><td>فرز الطوارئ</td>
+      <td><span class="opt">متوسطة</span></td>
+      <td>من CTAS 1 (الأحرج) إلى CTAS 5. مهمّ جداً لمطالبات الطوارئ.</td>
+    </tr>
+    <tr>
+      <td><b>فحص الأهلية — نفيس</b></td><td>نتيجة فحص NPHIES</td>
+      <td><span class="opt">متوسطة</span></td>
+      <td>مؤهل / خطأ / خارج الشبكة / غير مغطى / بوليصة غير فعّالة.</td>
+    </tr>
+    <tr>
+      <td><b>تاريخ ووقت الزيارة</b></td><td>—</td>
+      <td><span class="opt">متوسطة</span></td>
+      <td>مملوء بالوقت الحالي. يؤثّر عبر: الساعة، يوم الأسبوع، الزيارات الليلية.</td>
+    </tr>
+    <tr>
+      <td><b>الجنسية · تصنيف المريض · الجنس</b></td><td>ملف المريض</td>
+      <td><span class="opt">منخفضة</span></td>
+      <td>الجنسية 6.3%، تصنيف المريض 2.3%، الجنس 0.2%.</td>
+    </tr>
+    <tr>
+      <td><b>سجل المريض السابق</b></td><td>نظام RCM</td>
+      <td><span class="opt">اختياري</span></td>
+      <td>عدد المطالبات السابقة ونسبة عدم تحصيلها. <b>اتركه فارغاً إن لم تعرفه</b> — لا تخمّن.</td>
+    </tr>
+  </table></div>
+
+  <div class="note info">
+    <b>مؤشّر المخاطرة داخل القوائم:</b> بجانب كل خيار في القوائم المنسدلة تجد نسبة مئوية
+    ملوّنة — هي <b>نسبة الرفض التاريخية</b> لذلك الخيار في بياناتكم.
+    <span style="color:var(--green)">أخضر</span> أقل من 30%،
+    <span style="color:var(--yellow)">أصفر</span> بين 30% و55%،
+    <span style="color:var(--red)">أحمر</span> أعلى من 55%.
+    مرّر الفأرة فوق النسبة لترى عدد المطالبات التي بُنيت عليها.
+  </div>
+
+  <div class="note warn">
+    <b>حقل حُذف عمداً:</b> «حالة الفاتورة» (Issued / Opened) كان في النسخة السابقة وحُذف.
+    السبب أنه حقل من دورة الفوترة قد يُحدَّث <b>بعد</b> صدور قرار الضامن، فيعطي النموذج
+    معلومة لا تتوفّر فعلياً وقت التنبّؤ. حذفه كلّف نحو 3 نقاط دقّة، لكنه جعل الرقم صادقاً.
+  </div>
+</section>
+
+<!-- ═════════ ٤ ═════════ -->
+<section id="s4">
+  <h2><span class="num">٤</span>قراءة النتيجة</h2>
+  <div class="lede">بطاقة النتيجة تحمل خمس معلومات — كلٌّ منها له استخدام مختلف.</div>
+
+  <figure>
+    <img src="docs/img/result.png" alt="بطاقة النتيجة">
+    <figcaption>مطالبة بـ 1,450 ﷼ — احتمال عدم التحصيل الكامل 89%.</figcaption>
+  </figure>
+
+  <div class="tw"><table>
+    <tr><th>العنصر</th><th>معناه</th></tr>
+    <tr><td><b>التصنيف</b><br>(مقبولة بالكامل / لم تُقبل بالكامل)</td>
+      <td>حكم الأداة النهائي. يُحسم بعتبة <b>0.45</b> على احتمال عدم التحصيل — أي أن احتمال 45% فأكثر يُصنَّف «لم تُقبل».</td></tr>
+    <tr><td><b>شريط الثقة</b></td>
+      <td>ثقة النموذج في هذا التصنيف تحديداً. كلما اقترب من 100% كان الحكم أوضح.</td></tr>
+    <tr><td><b>الاحتمالان</b></td>
+      <td>احتمال التحصيل الكامل مقابل عدمه. تحتهما مقارنة بالمعدّل العام: <b>▲ 32% عن المتوسّط</b> تعني أن هذه المطالبة أخطر من المطالبة الاعتيادية بـ 32 نقطة.</td></tr>
+    <tr><td><b>الإيراد المتوقّع تحصيله</b></td>
+      <td>تقدير بالريال، محسوب من نسب التحصيل التاريخية الفعلية (92.6% للمقبولة، 8.8% لغيرها).</td></tr>
+    <tr><td><b>المبلغ المعرّض للخطر</b></td>
+      <td>الفرق بين الفاتورة والإيراد المتوقّع. <b>هذا الرقم هو ما تُجمّعه في لوحة Power BI</b> لقياس حجم الخطر على مستوى الضامن أو المستشفى.</td></tr>
+  </table></div>
+
+  <h3>شرائح الخطر الثلاث</h3>
+  <div class="bands">
+    <div class="band" style="border-top-color:var(--green)">
+      <div class="t" style="color:var(--green)">خطر منخفض</div>
+      <div class="r">&lt; 45%</div>
+      <div class="d">أرسل المطالبة. تأكّد فقط من اكتمال البيانات الأساسية.</div>
+    </div>
+    <div class="band" style="border-top-color:var(--yellow)">
+      <div class="t" style="color:var(--yellow)">خطر متوسّط</div>
+      <div class="r">45% – 65%</div>
+      <div class="d">راجع المستندات والترميز وحدود التغطية قبل الإرسال.</div>
+    </div>
+    <div class="band" style="border-top-color:var(--red)">
+      <div class="t" style="color:var(--red)">خطر مرتفع</div>
+      <div class="r">≥ 65%</div>
+      <div class="d">لا ترسلها قبل معالجة الأسباب المرجّحة. التصحيح المسبق أرخص من الاستئناف.</div>
+    </div>
+  </div>
+
+  <h3>أهم العوامل — نظرة سريعة</h3>
+  <figure>
+    <img src="docs/img/quickshap.png" alt="أبرز العوامل المؤثرة">
+    <figcaption>
+      أسفل النتيجة مباشرةً: أقوى ستة عوامل.
+      <b style="color:var(--red)">الأحمر</b> يرفع الخطر و<b style="color:var(--accent)">الأزرق</b> يخفضه.
+    </figcaption>
+  </figure>
+
+  <div class="note warn">
+    <b>انتبه لهذه التكلفة المقصودة:</b> نحو <b>29%</b> من المطالبات التي تصنّفها الأداة
+    «لن تُحصَّل بالكامل» تُقبل فعلاً بالكامل. هذه إنذارات زائدة مقبولة عمداً، مقابل التقاط
+    <b>74%</b> من المطالبات الخاسرة حقاً. فالإنذار الزائد يُراجَع في دقيقة، أمّا المطالبة
+    الخاسرة التي تمرّ دون إنذار فتكلّف استئنافاً كاملاً — أو تُفقد.
+  </div>
+</section>
+
+<!-- ═════════ ٥ ═════════ -->
+<section id="s5">
+  <h2><span class="num">٥</span>أسباب عدم التحصيل والإجراء المطلوب</h2>
+  <div class="lede">
+    هذا هو الجزء الأكثر فائدة عملياً: لا يخبرك النموذج بأن المطالبة ستخسر فحسب،
+    بل <b>بما ينبغي إصلاحه قبل الإرسال</b>.
+  </div>
+
+  <figure>
+    <img src="docs/img/reason1.png" alt="بطاقة سبب واحد">
+    <figcaption>كل سبب يحمل: ترتيبه، احتماله، شريط نسبته، والإجراء التصحيحي المقترح.</figcaption>
+  </figure>
+
+  <p>
+    النسب <b>مشروطة بعدم التحصيل</b> — أي أنها تجيب عن سؤال: «إذا لم تُحصَّل هذه المطالبة
+    بالكامل، فما أرجح السبب؟» ولذلك يبلغ مجموعها 100% بغضّ النظر عن مستوى الخطر نفسه.
+  </p>
+
+  <div class="note info">
+    <b>كيف تستخدمها؟</b> ابدأ بالسبب الأول، نفّذ إجراءه، ثم أعد التنبّؤ بعد تعديل البيانات
+    إن تغيّرت. النموذج يضع السبب الصحيح ضمن <b>أعلى ثلاثة بنسبة 68%</b> — لذا راجع الثلاثة
+    الأولى دائماً، لا الأول وحده.
+  </div>
+
+  <h3>الأسباب الأربعة عشر المعتمدة</h3>
+  <p>
+    صُنِّف <b>4,844</b> ردّاً نصّياً حرّاً من الضامنين إلى 16 سبباً معيارياً، ويتنبّأ النموذج
+    بأربعة عشر منها (تلك التي تجاوزت 150 حالة). مرتّبة هنا بحسب تكرارها الفعلي:
+  </p>
+
+  <div class="tw"><table>
+    <tr><th>#</th><th>السبب</th><th>الإجراء التصحيحي</th><th>الحالات</th></tr>
+    <tr><td>1</td><td><b>نقص في المستندات أو التقارير الطبية</b></td><td>أرفق تقرير الطوارئ والتاريخ المرضي والفحص السريري ونتائج التحاليل.</td><td>3,821</td></tr>
+    <tr><td>2</td><td><b>لا تنطبق معايير الطوارئ</b></td><td>وثّق مؤشرات الحالة الحرجة (العلامات الحيوية وتصنيف CTAS) لإثبات صفة الطوارئ.</td><td>3,649</td></tr>
+    <tr><td>3</td><td><b>خدمات/أدوية العيادات الخارجية غير مغطاة</b></td><td>راجع نطاق تغطية العيادات الخارجية في العقد قبل تقديم الخدمة أو الدواء.</td><td>2,927</td></tr>
+    <tr><td>4</td><td><b>تجاوز حدود أو سقف التغطية</b></td><td>راجع الحد المتبقي في وثيقة المريض، وجزّئ الخدمات إن لزم.</td><td>1,696</td></tr>
+    <tr><td>5</td><td><b>ضمن استثناءات وثيقة التأمين</b></td><td>راجع بنود الاستثناءات في العقد قبل الإرسال، وأبلغ المريض بالتحمّل.</td><td>1,586</td></tr>
+    <tr><td>6</td><td><b>عدم أهلية المؤمَّن عليه</b></td><td>أعد فحص الأهلية في نفيس وتأكد من سريان البوليصة ورقم العضوية.</td><td>1,261</td></tr>
+    <tr><td>7</td><td><b>خطأ في التسعير أو الترميز</b></td><td>راجع التسعير ومطابقة رموز الخدمات مع قائمة أسعار الضامن قبل الإرسال.</td><td>1,010</td></tr>
+    <tr><td>8</td><td><b>سبب آخر غير مصنّف</b></td><td>راجع نص رد الضامن يدوياً وصنّفه ضمن الأسباب المعتمدة.</td><td>983</td></tr>
+    <tr><td>9</td><td><b>عدم كفاية المبرر الطبي</b></td><td>أرفق مبرراً طبياً مفصّلاً يربط الخدمة بحالة المريض ودلائل الممارسة.</td><td>827</td></tr>
+    <tr><td>10</td><td><b>مطالبة مكرّرة</b></td><td>تحقّق من عدم وجود مطالبة سابقة بنفس رمز الخدمة والتاريخ.</td><td>535</td></tr>
+    <tr><td>11</td><td><b>مقدّم الخدمة خارج الشبكة</b></td><td>تأكد من أن المنشأة ضمن شبكة الضامن، أو احصل على موافقة استثنائية مسبقة.</td><td>487</td></tr>
+    <tr><td>12</td><td><b>تأخّر التقديم أو الإشعار</b></td><td>أرسل المطالبة خلال المهلة النظامية (30 يوماً) ووثّق تاريخ الإشعار.</td><td>414</td></tr>
+    <tr><td>13</td><td><b>التشخيص غير مشمول بالتغطية</b></td><td>تحقق من شمول التشخيص في العقد، وأضف تشخيصاً داعماً إن وُجد.</td><td>301</td></tr>
+    <tr><td>14</td><td><b>موافقة مشروطة بشروط الوثيقة</b></td><td>التزم بالأسعار المتعاقد عليها وحدود الوثيقة عند الفوترة.</td><td>244</td></tr>
+  </table></div>
+
+  <p>
+    تحت كل سبب تجد <b>وسوماً رمادية</b> تُظهر العوامل التي دفعت النموذج لترجيحه — مثل
+    «عقد التأمين» أو «التشخيص ICD-10» — فتعرف من أين جاء الترجيح.
+  </p>
+</section>
+
+<!-- ═════════ ٦ ═════════ -->
+<section id="s6">
+  <h2><span class="num">٦</span>تفسير SHAP — لماذا قال النموذج ذلك؟</h2>
+  <div class="lede">
+    SHAP طريقة رياضية تقسّم قرار النموذج بين العوامل بحيث يكون مجموع المساهمات
+    مساوياً للقرار بالضبط. لا تخمين ولا تقريب.
+  </div>
+
+  <h3>مخطّط الشلال (Waterfall)</h3>
+  <figure>
+    <img src="docs/img/waterfall.png" alt="مخطط الشلال لتفسير SHAP">
+    <figcaption>يبدأ من القيمة الأساسية وينتهي عند درجة هذه المطالبة تحديداً.</figcaption>
+  </figure>
+
+  <p><b>كيف تقرأه؟</b></p>
+  <ul>
+    <li><b>القيمة الأساسية</b> (أعلى المخطّط): سلوك النموذج المتوسّط على كل المطالبات التاريخية — نقطة الانطلاق قبل النظر إلى أي بيان.</li>
+    <li><b>كل شريط</b> عامل واحد. طوله = قوّة أثره.</li>
+    <li><b><span style="color:var(--red)">الأحمر يميناً</span></b> يرفع احتمال الفئة المختارة، و<b><span style="color:var(--accent)">الأزرق يساراً</span></b> يخفضه.</li>
+    <li><b>درجة المطالبة</b> (أسفل): حصيلة الأساس + كل المساهمات.</li>
+    <li><b>الأزرار أعلى المخطّط</b> تبدّل الفئة المعروضة بين «مقبولة بالكامل» و«لم تُقبل بالكامل».</li>
+  </ul>
+
+  <div class="note info">
+    <b>الأرقام على مقياس logit لا نسبة مئوية.</b> لا تحاول قراءتها كنِسَب — المهم هو
+    <b>الترتيب والاتجاه والحجم النسبي</b>: أيّ العوامل أقوى، وهل يرفع أم يخفض.
+  </div>
+
+  <h3>مخطّط القوى (Force)</h3>
+  <figure>
+    <img src="docs/img/force.png" alt="مخطط القوى">
+    <figcaption>نفس المعلومة في شريط واحد: القوى الدافعة نحو الفئة مقابل الدافعة ضدّها.</figcaption>
+  </figure>
+  <p>
+    مفيد للعرض السريع على مدير أو ضامن: يُظهر بلمحة أيّ الجانبين رجَح وبأي قدر.
+    مرّر الفأرة فوق أي شريحة لترى اسم العامل وقيمته.
+  </p>
+
+  <h3>الأهمية العالمية</h3>
+  <p>
+    أسفل التبويب مخطّط يوضّح ما يعتمد عليه النموذج <b>إجمالاً</b> عبر 4,000 مطالبة —
+    لا في مطالبتك وحدها. الترتيب الحالي: الضامن 19.7%، المستشفى 17.4%، إجمالي الفاتورة 13.7%،
+    العيادة 11.2%، التشخيص 9.1%.
+  </p>
+
+  <div class="note ok">
+    <b>بطاقة «التحقّق من صحّة التفكيك»</b> في أسفل التبويب تثبت أن القيم دقيقة رياضياً:
+    القيمة الأساسية + مجموع قيم SHAP = درجة النموذج، بفارق يقارب الصفر
+    (‎9×10⁻⁸‎). هذه ليست تقديرات تقريبية.
+  </div>
+</section>
+
+<!-- ═════════ ٧ ═════════ -->
+<section id="s7">
+  <h2><span class="num">٧</span>أمثلة عملية</h2>
+  <div class="lede">
+    ثلاث مطالبات حقيقية الشكل تغطّي شرائح الخطر الثلاث. اضغط أي مثال ليفتح في الأداة
+    مملوءاً ومحسوباً فوراً. النسب المذكورة قيست فعلياً من النموذج الحالي، وقد تتغيّر قليلاً
+    بعد كل إعادة تدريب.
+  </div>
+
+  <div class="ex">
+    <div class="top">
+      <span class="t">عيادة خارجية اعتيادية</span>
+      <span class="tag" style="background:rgba(34,211,160,.14);color:var(--green)">خطر منخفض · ‎17%‎</span>
+    </div>
+    <div class="d">
+      عيادة خارجية في <b>مستشفى خليص العام</b> بمبلغ 320 ﷼، متابعة سكري (E11.9)،
+      الأهلية مؤهلة. المستشفى وقيمة الفاتورة يخفضان الخطر معاً — أرسلها كما هي.
+    </div>
+    <a href="predict.html?auto=1&amp;total=320&amp;visitType=opd&amp;hospital=khalais%20general%20hospital&amp;clinic=OTHER&amp;contract=OTHER&amp;icd=E11.9&amp;nphies=eligible&amp;triage=4">▶ افتح هذا المثال</a>
+  </div>
+
+  <div class="ex">
+    <div class="top">
+      <span class="t">إصابة طوارئ — حالة حدّية</span>
+      <span class="tag" style="background:rgba(251,191,36,.14);color:var(--yellow)">خطر متوسّط · ‎54%‎</span>
+    </div>
+    <div class="d">
+      طوارئ في <b>مستشفى أجياد</b> بمبلغ 900 ﷼، إصابة رسغ (S61.9)، عقد حج 1447، CTAS 4.
+      حالة تستحقّ مراجعة قبل الإرسال: راجع الأسباب الثلاثة الأولى ونفّذ إجراءاتها.
+    </div>
+    <a href="predict.html?auto=1&amp;total=900&amp;visitType=er&amp;hospital=ajyad%20emergency%20hospital&amp;clinic=emergeny%20dept&amp;contract=hajj1447&amp;icd=S61.9&amp;nphies=eligible&amp;triage=4">▶ افتح هذا المثال</a>
+  </div>
+
+  <div class="ex">
+    <div class="top">
+      <span class="t">مستشفى ميداني وفحص أهلية فاشل</span>
+      <span class="tag" style="background:rgba(248,113,113,.14);color:var(--red)">خطر مرتفع · ‎90%‎</span>
+    </div>
+    <div class="d">
+      طوارئ في <b>المستشفى الميداني بمنى</b> بمبلغ 2,600 ﷼، صداع (R51)، CTAS 5،
+      وفحص نفيس أعاد <b>خطأ</b>. لاحظ في تبويب SHAP كيف يتصدّر «المستشفى» و«التشخيص»
+      دفع الخطر لأعلى. لا ترسلها قبل المعالجة.
+    </div>
+    <a href="predict.html?auto=1&amp;total=2600&amp;visitType=er&amp;hospital=field%20hospital%20in%20mina&amp;clinic=emergency%20department&amp;contract=hajj1447&amp;icd=R51&amp;nphies=error&amp;triage=5">▶ افتح هذا المثال</a>
+  </div>
+
+  <div class="note info">
+    <b>قارن بين الثلاثة:</b> افتحها بالترتيب ولاحظ كيف يتغيّر ترتيب الأسباب — لا الخطر
+    وحده. المثال الأول يتصدّره «سبب غير مصنّف» لأن الخطر أصلاً منخفض فلا سبب واضح،
+    بينما الثالث يتصدّره «خطأ في التسعير أو الترميز».
+  </div>
+
+  <div class="note tip">
+    <b>استخدم الروابط في عملك:</b> أي رابط بهذا الشكل يعمل داخل بريد إلكتروني أو تذكرة
+    أو رسالة — يفتح الأداة بمطالبة محدّدة ويشغّل التنبّؤ تلقائياً. قائمة المعاملات الكاملة
+    في تبويب <b>Power BI</b> داخل الأداة.
+  </div>
+</section>
+
+<!-- ═════════ ٨ ═════════ -->
+<section id="s8">
+  <h2><span class="num">٨</span>الدمج في لوحة Power BI</h2>
+  <div class="lede">ثلاث طرق، من الأسرع إلى الأقوى.</div>
+
+  <h3>الطريقة ١ — تضمين الصفحة</h3>
+  <p>في Power BI Desktop: <b>Insert ← Web content</b>، ثم ألصق:</p>
+  <div class="tw"><table><tr><td><code>&lt;iframe src="https://hanihalsulami.github.io/RCM/predict.html?embed=1" width="100%" height="900" frameborder="0"&gt;&lt;/iframe&gt;</code></td></tr></table></div>
+  <p>
+    المعامل <code>embed=1</code> يُخفي الترويسة والتبويبات ويعرض النتيجة وأرجح ثلاثة أسباب
+    وأهم العوامل في عمود واحد مضغوط.
+  </p>
+  <figure>
+    <img src="docs/img/embed.png" alt="وضع التضمين المضغوط">
+    <figcaption>وضع التضمين — مصمَّم ليملأ مربّعاً ضيّقاً داخل اللوحة.</figcaption>
+  </figure>
+
+  <h3>الطريقة ٢ — تمرير المطالبة المحدّدة</h3>
+  <p>
+    مقياس DAX يبني الرابط من الصف الذي يختاره المستخدم في اللوحة، فتُحدَّث الصفحة وتشغّل
+    التنبّؤ تلقائياً. المقياس جاهز في <code>powerbi/measures.dax</code>.
+  </p>
+
+  <h3>الطريقة ٣ — تسجيل دفعي (الموصى بها للوحات)</h3>
+  <p>
+    تُدخل التنبّؤات <b>كأعمدة</b> في نموذج البيانات عبر
+    <b>Get Data ← Python script</b>، فتبني عليها بطاقات ومخطّطات عادية:
+    احتمال عدم التحصيل، شريحة الخطر، المبلغ المعرّض للخطر، أعلى ٣ عوامل SHAP،
+    وأعلى ٣ أسباب متوقّعة لكل مطالبة.
+  </p>
+
+  <div class="note info">
+    <b>الدليل التفصيلي</b> بخطواته الكاملة ومقاييس DAX الجاهزة موجود في ملف
+    <code>powerbi/README_POWERBI.md</code> داخل المستودع.
+  </div>
+
+  <div class="note tip">
+    <b>أهم مقياس في اللوحة:</b> «استرجاع المطالبات الخاسرة» — نسبة المطالبات التي خسرت
+    فعلاً والتقطها النموذج مسبقاً. هو المؤشّر الذي يقيس قيمة الأداة، أكثر من الدقّة الإجمالية.
+  </div>
+</section>
+
+<!-- ═════════ ٩ ═════════ -->
+<section id="s9">
+  <h2><span class="num">٩</span>حدود الاستخدام — ما لا تفعله الأداة</h2>
+  <div class="lede">اقرأ هذا القسم قبل بناء أي إجراء تشغيلي على مخرجات الأداة.</div>
+
+  <figure>
+    <img src="docs/img/metrics.png" alt="مؤشرات أداء النموذج">
+    <figcaption>مؤشّرات الأداء كاملةً، معروضة داخل الأداة في تبويب «عن النموذج».</figcaption>
+  </figure>
+
+  <ul>
+    <li><b>ليست قراراً طبياً ولا تأمينياً.</b> الأداة مساعد قرار لفريق الدورة الإيرادية،
+      ولا يجوز إطلاقاً منع خدمة عن مريض أو تأخيرها بناءً على مخرجاتها.</li>
+    <li><b>لا تميّز بين الرفض الكامل والخصم الجزئي.</b> تنذر فقط بأن المطالبة لن تُحصَّل
+      بالكامل، دون تحديد حجم الخسارة.</li>
+    <li><b>تخطئ في نحو ربع الحالات.</b> الدقة 72.4% — أي أن مطالبة من كل أربع تُصنَّف خطأً.
+      استخدمها لترتيب الأولويات، لا كحكم نهائي.</li>
+    <li><b>تنذر أكثر مما ينبغي عن قصد.</b> 29% من إنذاراتها زائدة، مقابل التقاط 74% من
+      المطالبات الخاسرة. هذه مفاضلة مقصودة لصالح عدم تفويت الخسائر.</li>
+    <li><b>لا تعرف ما لم يكن في بياناتها.</b> عقد أو عيادة أو تشخيص لم يظهر في بيانات
+      التدريب يُعامَل كـ«أخرى»، فيقلّ اعتماد التنبّؤ عليه.</li>
+    <li><b>تتقادم.</b> الأداء يتدهور عند تغيّر سياسات الضامنين. <b>أعِد التدريب كل ربع سنة</b>
+      على أحدث البيانات.</li>
+    <li><b>لا تستخدم أي معرّف شخصي</b> — لا اسم المريض ولا رقم هويته.</li>
+  </ul>
+
+  <div class="note warn">
+    <b>الأرقام مقيسة بأمانة:</b> كل مؤشّرات الأداء مقيسة على <b>تقسيم زمني</b> — التدريب على
+    الفترة الأقدم والاختبار على الأحدث — وهو أقسى من التقسيم العشوائي وأقرب لواقع التشغيل.
+    كما أن عتبة القرار (0.45) اختيرت على شريحة تحقّق مستقلّة، <b>لا على بيانات الاختبار</b>.
+  </div>
+</section>
+
+<!-- ═════════ ١٠ ═════════ -->
+<section id="s10">
+  <h2><span class="num">١٠</span>أسئلة شائعة</h2>
+  <div class="lede">أكثر ما يُسأل عن الأداة.</div>
+
+  <details><summary>هل تُرسل بيانات المطالبة إلى الإنترنت؟</summary>
+    <p>لا. يُحمَّل النموذج مرّة واحدة عند فتح الصفحة، ثم تُنفَّذ كل الحسابات — بما فيها
+    قيم SHAP — داخل متصفّحك. لا تغادر بيانات المطالبة جهازك، وتعمل الأداة حتى بعد قطع
+    الإنترنت ما دامت الصفحة مفتوحة.</p></details>
+
+  <details><summary>لماذا اختفت فئة «الموافقة الجزئية»؟</summary>
+    <p>دُمجت في «لم تُقبل بالكامل» لأنها خسارة إيراد فعلية (تحصيل 49.9% مقابل 92.6%).
+    جُرِّب البديل — ضمّها إلى «المقبولة» — فرفع الدقة الظاهرية إلى 74.2% لكنه أسقط التقاط
+    المطالبات الخاسرة إلى 51.6%، ومرّر 82% من الموافقات الجزئية على أنها «لا خطر».</p></details>
+
+  <details><summary>دقّة 72% — أليست منخفضة؟</summary>
+    <p>الرقم المهم ليس الدقة وحدها بل <b>الرفع فوق الأساس</b>: نسبة فئة الأغلبية 50.6%،
+    فالنموذج يضيف <b>+21.8 نقطة</b> فوق التخمين. كما أن AUC يبلغ 0.810، أي قدرة تمييز
+    جيّدة. والأهم عملياً أنه يلتقط <b>74%</b> من المطالبات الخاسرة قبل إرسالها.</p></details>
+
+  <details><summary>لماذا لا يظهر عقدي أو عيادتي في القائمة؟</summary>
+    <p>القوائم تضمّ الأكثر تكراراً في بيانات التدريب: 81 عقداً و61 عيادة و121 كتلة تشخيص.
+    ما عداها يقع تحت «أخرى / غير مدرج» ويعامله النموذج بالمعدّل العام. إن كان عقدكم كبيراً
+    وغير مدرج، فذلك مؤشّر على الحاجة لإعادة التدريب على بيانات أحدث.</p></details>
+
+  <details><summary>هل أترك الحقول التي لا أعرفها فارغة أم أخمّن؟</summary>
+    <p><b>اتركها فارغة.</b> النموذج مدرَّب على التعامل مع القيم المفقودة، والتخمين الخاطئ
+    يضلّله أكثر من غيابها. هذا ينطبق خصوصاً على حقلَي سجل المريض السابق.</p></details>
+
+  <details><summary>غيّرت حقلاً واحداً فتغيّرت النتيجة كثيراً — هل هذا طبيعي؟</summary>
+    <p>نعم، خصوصاً في الحقول عالية الأثر: الضامن والمستشفى وإجمالي الفاتورة تشكّل مجتمعةً
+    أكثر من نصف قوّة النموذج. راجع تبويب SHAP لترى بالضبط كم أضاف ذلك الحقل أو خصم.</p></details>
+
+  <details><summary>كيف أعرف أن النموذج مُحدَّث؟</summary>
+    <p>في أسفل تبويب «عن النموذج» تجد <b>تاريخ توليد النموذج</b>. إن مضى عليه أكثر من
+    ثلاثة أشهر فاطلب إعادة التدريب على أحدث البيانات.</p></details>
+
+  <details><summary>هل أستطيع تشغيلها على كل مطالبات الشهر دفعةً واحدة؟</summary>
+    <p>نعم. سكربت <code>model/score_batch.py</code> يسجّل ملف مطالبات كاملاً ويُخرج
+    ملف CSV يحتوي على التنبّؤ والاحتمال وشريحة الخطر والمبلغ المعرّض للخطر وأعلى ٣ عوامل
+    وأعلى ٣ أسباب لكل مطالبة — جاهزاً للاستيراد في Power BI.</p></details>
+</section>
+
+<!-- ═════════ ١١ ═════════ -->
+<section id="s11">
+  <h2><span class="num">١١</span>حل المشكلات</h2>
+  <div class="lede">أعطال بسيطة وحلولها.</div>
+
+  <div class="tw"><table>
+    <tr><th>المشكلة</th><th>الحل</th></tr>
+    <tr>
+      <td><b>الصفحة تعرض «جارٍ تحميل النموذج…» ولا تتقدّم</b></td>
+      <td>حجم النموذج نحو 2 ميغابايت؛ انتظر ثانيتين. إن استمرّ، حدّث الصفحة بـ
+        <code>Ctrl + Shift + R</code>. إن ظهرت رسالة خطأ حمراء فالملف
+        <code>model_bundle.js</code> غير موجود — راجع فريق البيانات.</td>
+    </tr>
+    <tr>
+      <td><b>أرى نسخة قديمة من الأداة</b></td>
+      <td>تخزين Chrome المؤقّت. اضغط <code>Ctrl + Shift + R</code> لتجاوزه.</td>
+    </tr>
+    <tr>
+      <td><b>القائمة المنسدلة لا تُظهر خياري</b></td>
+      <td>اكتب في مربّع البحث أعلى القائمة — تُصفَّى بالعربية والإنجليزية معاً.
+        إن لم يوجد، اختر «أخرى / غير مدرج».</td>
+    </tr>
+    <tr>
+      <td><b>التبويبات تظهر «شغّل تنبّؤاً أولاً»</b></td>
+      <td>تبويبا SHAP والأسباب يحتاجان نتيجة. ارجع لتبويب «التنبؤ» واضغط زرّ التنبّؤ.</td>
+    </tr>
+    <tr>
+      <td><b>الصفحة لا تظهر داخل Power BI</b></td>
+      <td>تأكّد أن مرئي <b>Web content</b> مسموح في إعدادات المؤسسة، وأن الرابط
+        يبدأ بـ <code>https</code>. جرّب فتح الرابط في Chrome أولاً للتأكد من عمله.</td>
+    </tr>
+    <tr>
+      <td><b>الأرقام تبدو غير منطقية لمطالبة أعرفها</b></td>
+      <td>افتح تبويب SHAP وراجع مخطّط الشلال — سيُظهر بالضبط أي عامل دفع النتيجة.
+        غالباً يكون حقلاً أُدخل خطأً. وإن تبيّن خطأ منهجي، أبلغ فريق البيانات ليُدرَس
+        في دورة إعادة التدريب القادمة.</td>
+    </tr>
+  </table></div>
+
+  <div class="note info">
+    <b>للدعم الفني وطلبات إعادة التدريب:</b> إدارة الدورة الإيرادية وتحليل البيانات —
+    تجمع مكة الصحي.
+  </div>
+</section>
+
+</main>
+
+<div class="foot">
+  <div class="dev">👨‍💻 <span>Built and developed by: <strong>Hani Alsulami</strong></span></div>
+  <div class="sub">Makkah Health Cluster · RCM &amp; Data Analytics</div>
+</div>
+
+</div>
+</body>
+</html>
