@@ -1,0 +1,386 @@
+{
+  "generated_at": "2026-08-18 14:00",
+  "dataset": {
+    "rows_total": 98181,
+    "rows_decided": 41042,
+    "date_from": "2026-01-01",
+    "date_to": "2026-07-18",
+    "split_date": "2026-06-03",
+    "class_distribution": {
+      "مقبولة": 17754,
+      "موافقة جزئية": 5145,
+      "مرفوضة": 18143
+    }
+  },
+  "comparison": [
+    {
+      "model": "Baseline (نسبة أساسية)",
+      "accuracy": 0.3743,
+      "f1_macro": 0.1816,
+      "f1_weighted": 0.2039,
+      "roc_auc_ovr": 0.5,
+      "log_loss": 0.9842,
+      "note": "توقّع الفئة الأكثر شيوعاً"
+    },
+    {
+      "model": "Logistic Regression",
+      "accuracy": 0.6219,
+      "f1_macro": 0.476,
+      "f1_weighted": 0.5926,
+      "roc_auc_ovr": 0.7453,
+      "log_loss": 0.8616,
+      "note": "نموذج خطي مرجعي"
+    },
+    {
+      "model": "Random Forest",
+      "accuracy": 0.6732,
+      "f1_macro": 0.5332,
+      "f1_weighted": 0.6488,
+      "roc_auc_ovr": 0.8003,
+      "log_loss": 0.7491,
+      "note": "النموذج المستخدم سابقاً"
+    },
+    {
+      "model": "Extra Trees",
+      "accuracy": 0.67,
+      "f1_macro": 0.4957,
+      "f1_weighted": 0.6346,
+      "roc_auc_ovr": 0.7973,
+      "log_loss": 0.7494,
+      "note": ""
+    },
+    {
+      "model": "HistGradientBoosting",
+      "accuracy": 0.6892,
+      "f1_macro": 0.5651,
+      "f1_weighted": 0.6724,
+      "roc_auc_ovr": 0.8033,
+      "log_loss": 0.8003,
+      "note": ""
+    },
+    {
+      "model": "XGBoost",
+      "accuracy": 0.6939,
+      "f1_macro": 0.5588,
+      "f1_weighted": 0.672,
+      "roc_auc_ovr": 0.8176,
+      "log_loss": 0.7367,
+      "note": ""
+    },
+    {
+      "model": "LightGBM (المُعتمد)",
+      "accuracy": 0.693,
+      "f1_macro": 0.5697,
+      "f1_weighted": 0.6751,
+      "roc_auc_ovr": 0.813,
+      "log_loss": 0.7378,
+      "note": "أشجار معزَّزة + دعم أصلي للفئات",
+      "confusion_matrix": [
+        [
+          3274,
+          119,
+          764
+        ],
+        [
+          476,
+          170,
+          333
+        ],
+        [
+          752,
+          76,
+          2245
+        ]
+      ],
+      "per_class": {
+        "مقبولة": {
+          "precision": 0.727232341181697,
+          "recall": 0.7875872023093577,
+          "f1-score": 0.7562074142510683,
+          "support": 4157.0
+        },
+        "موافقة جزئية": {
+          "precision": 0.4657534246575342,
+          "recall": 0.17364657814096016,
+          "f1-score": 0.25297619047619047,
+          "support": 979.0
+        },
+        "مرفوضة": {
+          "precision": 0.6717534410532615,
+          "recall": 0.7305564594858445,
+          "f1-score": 0.6999220576773187,
+          "support": 3073.0
+        },
+        "accuracy": 0.6930198562553295,
+        "macro avg": {
+          "precision": 0.6215797356308309,
+          "recall": 0.5639300799787208,
+          "f1-score": 0.5697018874681925,
+          "support": 8209.0
+        },
+        "weighted avg": {
+          "precision": 0.6752802740149486,
+          "recall": 0.6930198562553295,
+          "f1-score": 0.6751222310586285,
+          "support": 8209.0
+        }
+      },
+      "auc_per_class": {
+        "مقبولة": 0.8205,
+        "موافقة جزئية": 0.7835,
+        "مرفوضة": 0.835
+      },
+      "top2_accuracy": 0.9055,
+      "deployment": {
+        "accuracy": 0.6919,
+        "f1_macro": 0.5746,
+        "roc_auc_ovr": 0.8156,
+        "log_loss": 0.7238,
+        "top2_accuracy": 0.9134,
+        "confusion_matrix": [
+          [
+            3257,
+            132,
+            768
+          ],
+          [
+            457,
+            188,
+            334
+          ],
+          [
+            748,
+            90,
+            2235
+          ]
+        ],
+        "auc_per_class": {
+          "مقبولة": 0.8251,
+          "موافقة جزئية": 0.7787,
+          "مرفوضة": 0.8428
+        }
+      }
+    }
+  ],
+  "selected": {
+    "model": "LightGBM (المُعتمد)",
+    "accuracy": 0.693,
+    "f1_macro": 0.5697,
+    "f1_weighted": 0.6751,
+    "roc_auc_ovr": 0.813,
+    "log_loss": 0.7378,
+    "note": "أشجار معزَّزة + دعم أصلي للفئات",
+    "confusion_matrix": [
+      [
+        3274,
+        119,
+        764
+      ],
+      [
+        476,
+        170,
+        333
+      ],
+      [
+        752,
+        76,
+        2245
+      ]
+    ],
+    "per_class": {
+      "مقبولة": {
+        "precision": 0.727232341181697,
+        "recall": 0.7875872023093577,
+        "f1-score": 0.7562074142510683,
+        "support": 4157.0
+      },
+      "موافقة جزئية": {
+        "precision": 0.4657534246575342,
+        "recall": 0.17364657814096016,
+        "f1-score": 0.25297619047619047,
+        "support": 979.0
+      },
+      "مرفوضة": {
+        "precision": 0.6717534410532615,
+        "recall": 0.7305564594858445,
+        "f1-score": 0.6999220576773187,
+        "support": 3073.0
+      },
+      "accuracy": 0.6930198562553295,
+      "macro avg": {
+        "precision": 0.6215797356308309,
+        "recall": 0.5639300799787208,
+        "f1-score": 0.5697018874681925,
+        "support": 8209.0
+      },
+      "weighted avg": {
+        "precision": 0.6752802740149486,
+        "recall": 0.6930198562553295,
+        "f1-score": 0.6751222310586285,
+        "support": 8209.0
+      }
+    },
+    "auc_per_class": {
+      "مقبولة": 0.8205,
+      "موافقة جزئية": 0.7835,
+      "مرفوضة": 0.835
+    },
+    "top2_accuracy": 0.9055,
+    "deployment": {
+      "accuracy": 0.6919,
+      "f1_macro": 0.5746,
+      "roc_auc_ovr": 0.8156,
+      "log_loss": 0.7238,
+      "top2_accuracy": 0.9134,
+      "confusion_matrix": [
+        [
+          3257,
+          132,
+          768
+        ],
+        [
+          457,
+          188,
+          334
+        ],
+        [
+          748,
+          90,
+          2235
+        ]
+      ],
+      "auc_per_class": {
+        "مقبولة": 0.8251,
+        "موافقة جزئية": 0.7787,
+        "مرفوضة": 0.8428
+      }
+    }
+  },
+  "reason_model": {
+    "top1_accuracy": 0.3345,
+    "top3_accuracy": 0.6799,
+    "baseline": 0.1765,
+    "n_rows": 19741,
+    "n_classes": 14,
+    "class_distribution": {
+      "DOCUMENTATION": 3821,
+      "URGENCY": 3649,
+      "OPD_NOT_COVERED": 2927,
+      "LIMIT_EXCEEDED": 1696,
+      "POLICY_EXCLUSION": 1586,
+      "ELIGIBILITY": 1261,
+      "PRICING_CODING": 1010,
+      "OTHER": 983,
+      "MEDICAL_NECESSITY": 827,
+      "DUPLICATE": 535,
+      "NETWORK": 487,
+      "LATE_SUBMISSION": 414,
+      "DIAGNOSIS_NOT_COVERED": 301,
+      "APPROVED_WITH_TERMS": 244
+    }
+  },
+  "global_shap": {
+    "hospital": {
+      "label": "المستشفى",
+      "value": 0.43137,
+      "pct": 16.95
+    },
+    "contract": {
+      "label": "عقد التأمين (الضامن)",
+      "value": 0.40106,
+      "pct": 15.76
+    },
+    "clinic": {
+      "label": "القسم / العيادة",
+      "value": 0.3227,
+      "pct": 12.68
+    },
+    "bill_status": {
+      "label": "حالة الفاتورة",
+      "value": 0.32261,
+      "pct": 12.68
+    },
+    "total": {
+      "label": "إجمالي الفاتورة",
+      "value": 0.28321,
+      "pct": 11.13
+    },
+    "icd": {
+      "label": "التشخيص ICD-10",
+      "value": 0.21103,
+      "pct": 8.29
+    },
+    "visit_time": {
+      "label": "توقيت الزيارة",
+      "value": 0.12759,
+      "pct": 5.01
+    },
+    "nationality": {
+      "label": "الجنسية",
+      "value": 0.12476,
+      "pct": 4.9
+    },
+    "visit_type": {
+      "label": "نوع الزيارة",
+      "value": 0.08547,
+      "pct": 3.36
+    },
+    "triage": {
+      "label": "درجة الطوارئ CTAS",
+      "value": 0.08457,
+      "pct": 3.32
+    },
+    "nphies_elig": {
+      "label": "فحص الأهلية — نفيس",
+      "value": 0.0587,
+      "pct": 2.31
+    },
+    "patient_class": {
+      "label": "تصنيف المريض",
+      "value": 0.04544,
+      "pct": 1.79
+    },
+    "history": {
+      "label": "سجل المريض السابق",
+      "value": 0.03791,
+      "pct": 1.49
+    },
+    "gender": {
+      "label": "الجنس",
+      "value": 0.00794,
+      "pct": 0.31
+    }
+  },
+  "features": [
+    "total",
+    "log_total",
+    "triage",
+    "visit_hour",
+    "visit_dow",
+    "visit_month",
+    "is_night",
+    "is_weekend",
+    "prior_claims",
+    "prior_reject_rate",
+    "visit_type",
+    "hospital",
+    "clinic",
+    "bill_status",
+    "nationality",
+    "contract",
+    "nphies_elig",
+    "gender",
+    "icd_chapter",
+    "icd_block",
+    "patient_class",
+    "contract_hist_rej",
+    "contract_hist_appr",
+    "contract_vol",
+    "hosp_hist_rej",
+    "hosp_hist_appr",
+    "hosp_vol",
+    "clinic_hist_rej",
+    "clinic_hist_appr",
+    "clinic_vol"
+  ]
+}

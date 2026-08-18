@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>الدورة الإيرادية — تجمع مكة الصحي</title>
+<style>
+:root{--bg:#0c0f18;--card:#1a2033;--border:#242d44;--accent:#4f8ef7;--green:#22d3a0;
+  --text:#dde4f0;--muted:#6b7591}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"IBM Plex Sans Arabic","Segoe UI",Tahoma,"Noto Sans Arabic",Arial,sans-serif;
+  background:var(--bg);color:var(--text);min-height:100vh;padding:56px 18px;line-height:1.7}
+.wrap{max-width:660px;margin:0 auto}
+.badge{display:inline-flex;gap:6px;background:rgba(79,142,247,.1);border:1px solid rgba(79,142,247,.25);
+  color:var(--accent);font-size:11px;font-weight:600;padding:4px 14px;border-radius:20px;margin-bottom:14px}
+h1{font-size:25px;color:#fff;margin-bottom:8px}
+.sub{font-size:13px;color:var(--muted);margin-bottom:32px}
+a.card{display:block;background:var(--card);border:1px solid var(--border);border-radius:14px;
+  padding:20px;margin-bottom:13px;text-decoration:none;color:inherit;transition:border-color .2s}
+a.card:hover{border-color:var(--accent)}
+a.card h2{font-size:16px;color:#fff;margin-bottom:5px}
+a.card p{font-size:12.5px;color:var(--muted)}
+a.card .tags{margin-top:11px;display:flex;gap:6px;flex-wrap:wrap}
+a.card .tags span{font-size:10.5px;background:rgba(34,211,160,.1);border:1px solid rgba(34,211,160,.2);
+  color:var(--green);border-radius:12px;padding:3px 10px}
+a.card.alt .tags span{background:rgba(107,117,145,.1);border-color:var(--border);color:var(--muted)}
+.foot{text-align:center;margin-top:34px;font-size:12px;color:var(--muted)}
+.foot b{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="badge">🏥 تجمع مكة الصحي · RCM &amp; Data Analytics</div>
+  <h1>الدورة الإيرادية — أدوات التنبؤ</h1>
+  <p class="sub">نماذج تعلّم آلة للتنبؤ بنتائج المطالبات التأمينية وتقليل الرفض</p>
+
+  <a class="card" href="predict.html">
+    <h2>🔮 التنبؤ بنتيجة الموافقة التأمينية</h2>
+    <p>يتنبّأ بنتيجة المطالبة قبل إرسالها، ويُرتّب الأسباب المرجّحة للرفض مع إجراء
+       تصحيحي لكل سبب، ويشرح كل تنبّؤ بقيم SHAP. جاهز للدمج في Power BI.</p>
+    <div class="tags">
+      <span>LightGBM</span><span>SHAP</span><span>دقّة 69.2%</span>
+      <span>41,042 مطالبة</span><span>Power BI</span>
+    </div>
+  </a>
+
+  <a class="card alt" href="rcm-clean-app-v3.html">
+    <h2>📋 النسخة السابقة</h2>
+    <p>الإصدار الأول المبني على جداول معدّلات تقريبية — محفوظ للمرجع.</p>
+    <div class="tags"><span>أرشيف</span></div>
+  </a>
+
+  <div class="foot">Built and developed by: <b>Hani Alsulami</b></div>
+</div>
+</body>
+</html>
