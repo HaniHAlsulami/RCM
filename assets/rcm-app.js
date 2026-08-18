@@ -10,7 +10,21 @@
   var $ = function (id) { return document.getElementById(id); };
 
   // فئتان: 0 = مقبولة بالكامل، 1 = لم تُقبل بالكامل
-  var COLORS = ["#22d3a0", "#f87171"];
+  /**
+   * ألوان الرسوم تُقرأ من متغيّرات CSS لا من قيم مثبّتة، فتتبع لوحة الهوية
+   * تلقائياً عند أي تغيير في السمة دون تعديل شيفرة الرسوم.
+   */
+  var _cssCache = {};
+  function C(name, fallback) {
+    if (_cssCache[name] === undefined) {
+      var v = getComputedStyle(document.documentElement).getPropertyValue("--" + name);
+      _cssCache[name] = (v || "").trim() || fallback;
+    }
+    return _cssCache[name];
+  }
+
+  // فئتان: 0 = مقبولة بالكامل، 1 = لم تُقبل بالكامل
+  function COLORS_() { return [C("green", "#0B7A5E"), C("red", "#C4362F")]; }
   var CLS_KEY = ["approved", "rejected"];
   var CLS_ICON = ["✅", "⚠️"];
   var NFA = 1;                       // فهرس فئة «لم تُقبل بالكامل»
@@ -192,10 +206,10 @@
 
     // صف القيمة الأساسية
     svg.appendChild(el("text", { x: LW, y: y + 15, "text-anchor": "end", "font-size": 11.5,
-      fill: "#8d97b0" }, "القيمة الأساسية"));
+      fill: C("muted2", "#456076") }, "القيمة الأساسية"));
     svg.appendChild(el("line", { x1: X(base), y1: y + 4, x2: X(base), y2: H - PAD - 18,
-      stroke: "#4a5570", "stroke-width": 1, "stroke-dasharray": "3 3" }));
-    svg.appendChild(el("text", { x: plotR + 6, y: y + 15, "font-size": 11, fill: "#6b7591" },
+      stroke: C("border-strong", "#C3D4E2"), "stroke-width": 1, "stroke-dasharray": "3 3" }));
+    svg.appendChild(el("text", { x: plotR + 6, y: y + 15, "font-size": 11, fill: C("muted", "#5A7085") },
       base.toFixed(3)));
     y += ROW;
 
@@ -205,10 +219,10 @@
       var x1 = X(Math.min(from, to)), x2 = X(Math.max(from, to));
       var w = Math.max(Math.abs(x2 - x1), 2);
       var pos = d.value >= 0;
-      var col = pos ? "#f87171" : "#4f8ef7";
+      var col = pos ? C("red", "#C4362F") : C("accent", "#1B6FA8");
 
       svg.appendChild(el("text", { x: LW, y: y + 15, "text-anchor": "end", "font-size": 11.5,
-        fill: "#dde4f0" }, d.label));
+        fill: C("text", "#12384F") }, d.label));
       svg.appendChild(el("rect", { x: x1, y: y + 3, width: w, height: 17, rx: 2.5,
         fill: col, opacity: .9 }));
       svg.appendChild(el("text", { x: plotR + 6, y: y + 15, "font-size": 11,
@@ -218,18 +232,18 @@
 
     // صف النتيجة
     svg.appendChild(el("line", { x1: X(run), y1: PAD + 4, x2: X(run), y2: y + 2,
-      stroke: COLORS[clsIdx], "stroke-width": 1.2, "stroke-dasharray": "3 3", opacity: .8 }));
+      stroke: COLORS_()[clsIdx], "stroke-width": 1.2, "stroke-dasharray": "3 3", opacity: .8 }));
     svg.appendChild(el("text", { x: LW, y: y + 15, "text-anchor": "end", "font-size": 12,
-      fill: COLORS[clsIdx], "font-weight": 700 }, "درجة المطالبة"));
-    svg.appendChild(el("circle", { cx: X(run), cy: y + 11, r: 4.5, fill: COLORS[clsIdx] }));
+      fill: COLORS_()[clsIdx], "font-weight": 700 }, "درجة المطالبة"));
+    svg.appendChild(el("circle", { cx: X(run), cy: y + 11, r: 4.5, fill: COLORS_()[clsIdx] }));
     svg.appendChild(el("text", { x: plotR + 6, y: y + 15, "font-size": 11.5,
-      fill: COLORS[clsIdx], "font-weight": 700 }, run.toFixed(3)));
+      fill: COLORS_()[clsIdx], "font-weight": 700 }, run.toFixed(3)));
     y += ROW;
 
-    svg.appendChild(el("text", { x: plotL, y: y + 10, "font-size": 10.5, fill: "#4f8ef7" },
+    svg.appendChild(el("text", { x: plotL, y: y + 10, "font-size": 10.5, fill: C("accent", "#1B6FA8") },
       "\u2190 يخفض الاحتمال"));
     svg.appendChild(el("text", { x: plotR, y: y + 10, "text-anchor": "end", "font-size": 10.5,
-      fill: "#f87171" }, "يرفع الاحتمال \u2192"));
+      fill: C("red", "#C4362F") }, "يرفع الاحتمال \u2192"));
     host.appendChild(svg);
   }
 
@@ -250,36 +264,36 @@
     var barW = W - PAD * 2, split = PAD + (sn / tot) * barW, y = 40;
 
     var svg = svgRoot(W, H);
-    svg.appendChild(el("text", { x: PAD, y: 18, "font-size": 11.5, fill: "#4f8ef7",
+    svg.appendChild(el("text", { x: PAD, y: 18, "font-size": 11.5, fill: C("accent", "#1B6FA8"),
       "font-weight": 600 }, "قوى ضد الفئة  −" + sn.toFixed(2)));
     var t = el("text", { x: W - PAD, y: 18, "text-anchor": "end", "font-size": 11.5,
-      fill: "#f87171", "font-weight": 600 }, "+" + sp.toFixed(2) + "  قوى نحو الفئة");
+      fill: C("red", "#C4362F"), "font-weight": 600 }, "+" + sp.toFixed(2) + "  قوى نحو الفئة");
     svg.appendChild(t);
 
     var x = PAD;
     neg.slice().sort(function (a, b) { return a.value - b.value; }).forEach(function (d) {
       var w = (-d.value / tot) * barW;
       svg.appendChild(el("rect", { x: x, y: y, width: Math.max(w - 1, .5), height: 26, rx: 2,
-        fill: "#4f8ef7", opacity: .85 })).appendChild(
+        fill: C("accent", "#1B6FA8"), opacity: .85 })).appendChild(
         el("title", {}, d.label + " : " + d.value.toFixed(4)));
       if (w > 60) svg.appendChild(el("text", { x: x + w / 2, y: y + 17, "text-anchor": "middle",
-        "font-size": 9.5, fill: "#0c0f18", "font-weight": 700 }, clip(d.label, w)));
+        "font-size": 9.5, fill: C("chart-on-fill", "#FFFFFF"), "font-weight": 700 }, clip(d.label, w)));
       x += w;
     });
     pos.slice().sort(function (a, b) { return b.value - a.value; }).forEach(function (d) {
       var w = (d.value / tot) * barW;
       svg.appendChild(el("rect", { x: x, y: y, width: Math.max(w - 1, .5), height: 26, rx: 2,
-        fill: "#f87171", opacity: .85 })).appendChild(
+        fill: C("red", "#C4362F"), opacity: .85 })).appendChild(
         el("title", {}, d.label + " : +" + d.value.toFixed(4)));
       if (w > 60) svg.appendChild(el("text", { x: x + w / 2, y: y + 17, "text-anchor": "middle",
-        "font-size": 9.5, fill: "#0c0f18", "font-weight": 700 }, clip(d.label, w)));
+        "font-size": 9.5, fill: C("chart-on-fill", "#FFFFFF"), "font-weight": 700 }, clip(d.label, w)));
       x += w;
     });
 
     svg.appendChild(el("line", { x1: split, y1: y - 7, x2: split, y2: y + 33,
-      stroke: "#dde4f0", "stroke-width": 1.6 }));
+      stroke: C("text", "#12384F"), "stroke-width": 1.6 }));
     svg.appendChild(el("text", { x: split, y: y + 48, "text-anchor": "middle", "font-size": 10.5,
-      fill: "#8d97b0" }, "الأساس " + base.toFixed(2) + "  →  الدرجة " + margin.toFixed(2)));
+      fill: C("muted2", "#456076") }, "الأساس " + base.toFixed(2) + "  →  الدرجة " + margin.toFixed(2)));
     host.appendChild(svg);
   }
 
@@ -295,10 +309,10 @@
       var w = Math.abs(d.value) / mx * (plotR - plotL);
       var c = typeof color === "function" ? color(d) : color;
       svg.appendChild(el("text", { x: LW, y: y + 14, "text-anchor": "end", "font-size": 11.5,
-        fill: "#dde4f0" }, d.label));
+        fill: C("text", "#12384F") }, d.label));
       svg.appendChild(el("rect", { x: plotL, y: y + 4, width: Math.max(w, 2), height: 14, rx: 2.5,
         fill: c, opacity: .88 }));
-      svg.appendChild(el("text", { x: plotR + 5, y: y + 14, "font-size": 10.5, fill: "#8d97b0" },
+      svg.appendChild(el("text", { x: plotR + 5, y: y + 14, "font-size": 10.5, fill: C("muted2", "#456076") },
         d.text != null ? d.text : (d.value.toFixed(3) + (unit || ""))));
       y += ROW;
     });
@@ -331,7 +345,7 @@
     $("rValue").className = "r-value " + CLS_KEY[i];
     $("rPct").textContent = pct(p[i]);
     $("rBar").style.width = (p[i] * 100) + "%";
-    $("rBar").style.background = COLORS[i];
+    $("rBar").style.background = COLORS_()[i];
     ["pA", "pR"].forEach(function (id, k) { $(id).textContent = pct(p[k]); });
     ["bA", "bR"].forEach(function (id, k) {
       var diff = p[k] - B.prior[k];
@@ -377,7 +391,7 @@
     drawBars($("quickChart"), out.groups[i].slice(0, 6).map(function (d) {
       return { label: d.label, value: d.value,
                text: (d.value >= 0 ? "+" : "") + d.value.toFixed(3) };
-    }), function (d) { return d.value >= 0 ? COLORS[i] : "#4f8ef7"; });
+    }), function (d) { return d.value >= 0 ? COLORS_()[i] : C("accent", "#1B6FA8"); });
 
     card.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
@@ -395,7 +409,7 @@
         pct(LAST.proba[NFA]) + "</div>" +
       rs.slice(0, 3).map(function (r, i) {
         return '<div class="reason" style="border-inline-start-color:' +
-          (i === 0 ? "#f87171" : "#fb923c") + '">' +
+          (i === 0 ? C("red", "#C4362F") : C("amber", "#96590F")) + '">' +
           '<div class="top"><span class="rk">' + (i + 1) + "</span>" +
           '<span class="nm">' + esc(r.label) + "</span>" +
           '<span class="pc">' + pct(r.p) + "</span></div>" +
@@ -425,7 +439,7 @@
       return { label: B.global_shap[k].label, value: B.global_shap[k].pct,
                text: B.global_shap[k].pct.toFixed(1) + "%" };
     }).sort(function (a, b) { return b.value - a.value; });
-    drawBars($("globalChart"), gs, "#4f8ef7");
+    drawBars($("globalChart"), gs, C("accent", "#1B6FA8"));
 
     var sum = out.groups[c].reduce(function (a, x) { return a + x.value; }, 0);
     $("shapCheck").innerHTML =
@@ -452,13 +466,13 @@
     reasons.slice(0, 6).forEach(function (r, i) {
       var d = document.createElement("div");
       d.className = "reason";
-      d.style.borderInlineStartColor = i === 0 ? "#f87171" : i < 3 ? "#fb923c" : "#6b7591";
+      d.style.borderInlineStartColor = i === 0 ? C("red", "#C4362F") : i < 3 ? C("amber", "#96590F") : C("muted", "#5A7085");
       d.innerHTML =
         '<div class="top"><span class="rk">' + (i + 1) + "</span>" +
         '<span class="nm">' + esc(r.label) + "</span>" +
         '<span class="pc">' + pct(r.p) + "</span></div>" +
         '<div class="mini"><i style="width:' + (r.p * 100).toFixed(1) + "%;background:" +
-          (i === 0 ? "#f87171" : i < 3 ? "#fb923c" : "#6b7591") + '"></i></div>' +
+          (i === 0 ? C("red", "#C4362F") : i < 3 ? C("amber", "#96590F") : C("muted", "#5A7085")) + '"></i></div>' +
         '<div class="act"><b>الإجراء المقترح:</b> ' + esc(r.action) + "</div>" +
         (r.drivers.length ? '<div class="drv">' + r.drivers.map(function (g) {
           return "<span>" + esc(g.label) + "</span>"; }).join("") + "</div>" : "");
@@ -468,7 +482,7 @@
     drawBars($("reasonChart"), reasons.slice(0, 10).map(function (r) {
       return { label: r.label.length > 34 ? r.label.slice(0, 33) + "…" : r.label,
                value: r.p, text: pct(r.p) };
-    }), function (d) { return d.value > 0.15 ? "#f87171" : d.value > 0.08 ? "#fb923c" : "#6b7591"; });
+    }), function (d) { return d.value > 0.15 ? C("red", "#C4362F") : d.value > 0.08 ? C("amber", "#96590F") : C("muted", "#5A7085"); });
   }
 
   // ══════════════════════════════════════════════════════════════
@@ -592,7 +606,7 @@
       return { label: B.global_shap[k].label, value: B.global_shap[k].pct,
                text: B.global_shap[k].pct.toFixed(1) + "%" };
     }).sort(function (a, b) { return b.value - a.value; });
-    drawBars($("mdlGlobal"), gs, "#4f8ef7");
+    drawBars($("mdlGlobal"), gs, C("accent", "#1B6FA8"));
   }
 
   function kv(k, v, s) {
