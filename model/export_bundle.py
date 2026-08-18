@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 
 import numpy as np
@@ -86,17 +87,36 @@ def _expected_value(t):
     return rec(0)
 
 
-def convert_model(model, n_class):
-    """يحوّل LGBMClassifier إلى قائمة أشجار + قيم الأساس لكل فئة."""
+def convert_model(model):
+    """
+    يحوّل LGBMClassifier إلى قائمة أشجار + قيم الأساس + وصف المهمّة.
+
+    الهدف الثنائي في LightGBM يُنتج شجرة واحدة لكل دورة ومخرَجاً واحداً
+    (logit) يُمرَّر عبر sigmoid، بينما متعدّد الفئات يُنتج شجرة لكل فئة
+    لكل دورة ومخرجات تُمرَّر عبر softmax. الحزمة تحمل الفرق صراحةً حتى
+    يطبّق المتصفّح التحويل الصحيح.
+    """
     dump = model.booster_.dump_model()
-    trees, base = [], [0.0] * n_class
+    n_out = int(dump.get("num_class", 1))
+    obj = str(dump.get("objective", ""))
+    binary = obj.startswith("binary")
+
+    # معامل sigmoid في LightGBM (الافتراضي 1.0): P = 1/(1+exp(-k·raw))
+    sig = 1.0
+    m = re.search(r"sigmoid:([0-9.eE+-]+)", obj)
+    if m:
+        sig = float(m.group(1))
+
+    trees, base = [], [0.0] * n_out
     for info in dump["tree_info"]:
         t = _flatten_tree(info["tree_structure"])
-        cls = int(info["tree_index"]) % n_class
+        cls = int(info["tree_index"]) % n_out
         t["c"] = cls
         base[cls] += _expected_value(t)
         trees.append(t)
-    return trees, [R6(b) for b in base], dump["feature_names"]
+
+    meta = dict(task="binary" if binary else "multiclass", sigmoid=R6(sig), outputs=n_out)
+    return trees, [R6(b) for b in base], dump["feature_names"], meta
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -118,10 +138,6 @@ NATIONALITY_AR = {
     "unknown": "غير محدد",
 }
 VISIT_AR = {"er": "طوارئ (ER)", "opd": "عيادة خارجية (OPD)", "ip": "تنويم (IP)"}
-BILL_AR = {"issued": "صادرة (Issued)", "opened": "مفتوحة (Opened)",
-           "transfered": "محوّلة (Transferred)", "pending": "معلّقة (Pending)",
-           "closed": "مغلقة (Closed)", "canceled": "ملغاة (Canceled)",
-           "unknown": "غير محدد"}
 NPHIES_AR = {"eligible": "مؤهل (eligible)", "error": "خطأ في الفحص (error)",
              "out_network": "خارج الشبكة (out-network)", "not_covered": "غير مغطى (not-covered)",
              "not_active": "بوليصة غير فعّالة (not-active)",
@@ -147,7 +163,7 @@ ICD_CHAPTER_AR = {
 TRIAGE_AR = {5: "CTAS 5 — غير عاجل", 4: "CTAS 4 — أقل عجلة", 3: "CTAS 3 — عاجل",
              2: "CTAS 2 — حرج", 1: "CTAS 1 — حرج جداً"}
 
-_AR_MAPS = {"visit_type": VISIT_AR, "bill_status": BILL_AR, "nphies_elig": NPHIES_AR,
+_AR_MAPS = {"visit_type": VISIT_AR, "nphies_elig": NPHIES_AR,
             "gender": GENDER_AR, "patient_class": PATIENT_AR, "icd_chapter": ICD_CHAPTER_AR,
             "nationality": NATIONALITY_AR}
 
@@ -220,11 +236,10 @@ def export(model, reason_model, reason_labels, vocab, snap, raw, metrics,
     df["_vd"] = pd.to_datetime(df["Visit Date"], errors="coerce")
     df = df.sort_values("_vd", kind="mergesort").reset_index(drop=True)
     X_enc, _ = P.build_features(df, vocab)
-    y = df[P.COL_TARGET].astype(str).str.strip().map(
-        {c: i for i, c in enumerate(P.CLASSES)}).values
+    y = P.to_binary(df[P.COL_TARGET]).values
 
-    trees, base, feat_names = convert_model(model, len(P.CLASSES))
-    r_trees, r_base, _ = convert_model(reason_model, len(reason_labels))
+    trees, base, feat_names, meta = convert_model(model)
+    r_trees, r_base, _, r_meta = convert_model(reason_model)
 
     # القيم الافتراضية = وسيط/منوال بيانات التدريب (تُستخدم للحقول غير المُدخلة)
     defaults = {}
@@ -245,8 +260,10 @@ def export(model, reason_model, reason_labels, vocab, snap, raw, metrics,
         shap_groups={k: dict(label=v[0], cols=v[1]) for k, v in shap_groups.items()},
         global_shap=global_shap,
         defaults=defaults,
-        approval=dict(trees=trees, base=base),
-        reason=dict(trees=r_trees, base=r_base, labels=reason_labels,
+        approval=dict(trees=trees, base=base, **meta,
+                      # عتبة تصنيف «لم تُقبل بالكامل»، مختارة على شريحة تحقّق
+                      threshold=(metrics.get("selected", {}) or {}).get("threshold", 0.5)),
+        reason=dict(trees=r_trees, base=r_base, labels=reason_labels, **r_meta,
                     labels_ar={c: P.REASON_AR.get(c, c) for c in reason_labels},
                     actions={c: P.REASON_ACTION.get(c, "") for c in reason_labels}),
         options=build_options(raw, df, vocab, X_enc),
@@ -260,9 +277,14 @@ def export(model, reason_model, reason_labels, vocab, snap, raw, metrics,
         metrics=dict(
             accuracy=_pick(metrics, "accuracy"),
             f1_macro=_pick(metrics, "f1_macro"),
-            roc_auc=_pick(metrics, "roc_auc_ovr"),
-            top2_accuracy=_pick(metrics, "top2_accuracy"),
-            auc_per_class=_pick(metrics, "auc_per_class"),
+            roc_auc=_pick(metrics, "roc_auc"),
+            pr_auc=_pick(metrics, "pr_auc"),
+            majority_baseline=_pick(metrics, "majority_baseline"),
+            lift_over_majority=_pick(metrics, "lift_over_majority"),
+            recall_nfa=_pick(metrics, "recall_nfa"),
+            precision_nfa=_pick(metrics, "precision_nfa"),
+            recall_approved=_pick(metrics, "recall_approved"),
+            threshold=_pick(metrics, "threshold"),
             confusion_matrix=_pick(metrics, "confusion_matrix"),
             per_class=metrics.get("selected", {}).get("per_class"),
             comparison=metrics.get("comparison"),
@@ -271,6 +293,7 @@ def export(model, reason_model, reason_labels, vocab, snap, raw, metrics,
         ),
         # معدّلات مرجعية عامة تُعرض للمقارنة
         prior=[round(float((y == i).mean()), 4) for i in range(len(P.CLASSES))],
+        class_icon=[P.CLASS_ICON[c] for c in P.CLASSES],
         # نسبة التحصيل الفعلية لكل نتيجة (المبلغ المغطى ÷ إجمالي الفاتورة)،
         # تُحسب من البيانات التاريخية وتُستخدم لتقدير الإيراد المتوقّع للمطالبة.
         recovery=_recovery_ratios(df),
@@ -305,16 +328,24 @@ def _pick(metrics, key):
 
 
 def _recovery_ratios(df):
-    """متوسط نسبة (المبلغ المغطى ÷ إجمالي الفاتورة) لكل نتيجة موافقة."""
+    """
+    نسبة التحصيل الوسيطة (المبلغ المغطى ÷ إجمالي الفاتورة) لكل فئة هدف.
+    فئة «لم تُقبل بالكامل» تجمع المرفوضة والمقبولة جزئياً، فتُحسب نسبتها
+    على الفئتين معاً بأوزانهما الفعلية في البيانات.
+    """
     tot = pd.to_numeric(df["Total"], errors="coerce")
     cov = pd.to_numeric(df.get("Total Covg"), errors="coerce")
     st = df[P.COL_TARGET].astype(str).str.strip()
-    ok = tot > 0
-    out = {}
-    for c in P.CLASSES:
-        m = ok & (st == c)
-        r = (cov[m] / tot[m]).clip(0, 1)
-        out[c] = round(float(r.median()), 4) if len(r) else 0.0
+    ok = (tot > 0) & P.decided_mask(df)
+    nfa = P.to_binary(df[P.COL_TARGET]).values.astype(bool)
+
+    def med(mask):
+        r = (cov[mask] / tot[mask]).clip(0, 1)
+        return round(float(r.median()), 4) if len(r) else 0.0
+
+    out = {P.CLASSES[0]: med(ok & ~nfa), P.CLASSES[1]: med(ok & nfa)}
+    # تفصيل إعلامي يُعرض في بطاقة النموذج
+    out["_detail"] = {s: med(ok & (st == s)) for s in P.RAW_DECIDED}
     return out
 
 
@@ -344,23 +375,39 @@ def _write_model_card(m, art_dir, bundle):
 
     lines += [
         "",
-        "## 2. مقارنة الخوارزميات",
+        "## 2. صياغة الهدف",
+        "",
+        "الهدف **ثنائي**: «مقبولة بالكامل» مقابل «لم تُقبل بالكامل» (المرفوضة",
+        "والمقبولة جزئياً معاً). سبب ضمّ الجزئية إلى الفئة الخاسرة أنها خسارة",
+        "إيراد فعلية — نسبة التحصيل الوسيطة فيها نحو النصف مقابل ~93% للمقبولة",
+        "بالكامل — وضمّها إلى «المقبولة» بدلاً من ذلك يرفع الدقة الظاهرية لكنه",
+        "يُسقط استرجاع الفئة الخاسرة إلى نحو 52% ويخفض AUC.",
+        "",
+        "## 3. مقارنة الخوارزميات",
         "",
         "التقييم على تقسيم **زمني** (التدريب على الفترة الأقدم والاختبار على الأحدث)،",
         "وهو التقييم الأمين لنموذج سيُستخدم على مطالبات مستقبلية.",
         "",
-        "| الخوارزمية | الدقة | F1 (ماكرو) | AUC | Log-loss |",
-        "|---|---|---|---|---|",
+        "| الخوارزمية | الدقة | الرفع فوق الأساس | F1 (ماكرو) | AUC | استرجاع «لم تُقبل» |",
+        "|---|---|---|---|---|---|",
     ]
     for r in m.get("comparison", []):
-        lines.append(f"| {r['model']} | {r['accuracy']:.4f} | {r['f1_macro']:.4f} | "
-                     f"{r['roc_auc_ovr']:.4f} | {r['log_loss']:.4f} |")
+        lines.append(f"| {r['model']} | {r['accuracy']:.4f} | {r['lift_over_majority']:+.4f} | "
+                     f"{r['f1_macro']:.4f} | {r['roc_auc']:.4f} | {r['recall_nfa']:.4f} |")
+    lines += [
+        "",
+        "«الرفع فوق الأساس» = الدقة ناقص نسبة فئة الأغلبية. وهو المقياس الوحيد",
+        "القابل للمقارنة بين صياغات مختلفة للهدف، إذ إن دمج فئتين يرفع سقف",
+        "«التخمين الغبي» فترتفع الدقة الظاهرية دون أن يتحسّن النموذج فعلياً.",
+    ]
 
     lines += [
         "",
-        "## 3. النموذج المعتمد",
+        "## 4. النموذج المعتمد",
         "",
-        "**LightGBM** (أشجار قرار معزَّزة بالتدرّج). تعادل عملياً مع XGBoost في الدقة",
+        "**LightGBM** (أشجار قرار معزَّزة بالتدرّج) بهدف ثنائي.",
+        "",
+        "تعادل عملياً مع XGBoost في الدقة",
         "(الفارق ضمن هامش الخطأ الإحصائي) وتفوّق عليه في F1 الماكرو، أي في فئة",
         "«الموافقة الجزئية» النادرة. ويدعم الخصائص الفئوية عالية التعدّد (العقود،",
         "العيادات، رموز ICD) دون توسيع one-hot، ويُصدَّر إلى المتصفّح بحجم صغير مع",
@@ -375,22 +422,23 @@ def _write_model_card(m, art_dir, bundle):
     ]
     dep = sel.get("deployment") or {}
     lines += [
-        f"- الدقة: **{dep.get('accuracy')}**",
-        f"- دقة أفضل تنبّؤين (Top-2): **{dep.get('top2_accuracy')}**",
+        f"- الدقة: **{dep.get('accuracy')}**  (أساس الأغلبية {dep.get('majority_baseline')} "
+        f"→ الرفع الحقيقي **{dep.get('lift_over_majority'):+})",
         f"- F1 ماكرو: **{dep.get('f1_macro')}**",
-        f"- AUC (OvR ماكرو): **{dep.get('roc_auc_ovr')}**",
+        f"- AUC: **{dep.get('roc_auc')}** · PR-AUC: **{dep.get('pr_auc')}**",
+        f"- استرجاع «لم تُقبل بالكامل»: **{dep.get('recall_nfa')}** "
+        f"(دقّتها {dep.get('precision_nfa')})",
+        f"- استرجاع «مقبولة بالكامل»: **{dep.get('recall_approved')}**",
+        f"- عتبة القرار: **{dep.get('threshold')}** — مختارة بتعظيم F1 الماكرو على",
+        "  شريحة تحقّق مقتطعة من نهاية فترة التدريب، لا على بيانات الاختبار.",
         "",
-        "AUC لكل فئة:",
-        "",
-    ]
-    for k, v in (dep.get("auc_per_class") or {}).items():
-        lines.append(f"- {k}: {v}")
-    lines += [
+        "استرجاع فئة «لم تُقبل بالكامل» هو المقياس التشغيلي الأهم: نسبة المطالبات",
+        "الخاسرة التي يلتقطها النموذج قبل الإرسال.",
         "",
         "### ب) التقييم بالنافذة المتوسّعة (للمقارنة مع بقية الخوارزميات)",
         "",
         f"- الدقة: {sel.get('accuracy')} · F1 ماكرو: {sel.get('f1_macro')} · "
-        f"AUC: {sel.get('roc_auc_ovr')}",
+        f"AUC: {sel.get('roc_auc')}",
         "",
         "تقارب الرقمين يؤكّد أن استبدال النافذة المتوسّعة بجدول اللقطة وقت التنبؤ",
         "لا يُفقد النموذج أداءه.",
@@ -398,14 +446,14 @@ def _write_model_card(m, art_dir, bundle):
 
     lines += [
         "",
-        "## 4. نموذج أسباب الرفض",
+        "## 5. نموذج أسباب عدم القبول الكامل",
         "",
         f"- عدد الأصناف: {rm.get('n_classes')} سبباً معيارياً",
         f"- صفوف التدريب: {rm.get('n_rows', 0):,}",
         f"- دقة Top-1: **{rm.get('top1_accuracy')}** · Top-3: **{rm.get('top3_accuracy')}** "
         f"(الأساس {rm.get('baseline')})",
         "",
-        "## 5. الخصائص وأهميتها (SHAP عالمي)",
+        "## 6. الخصائص وأهميتها (SHAP عالمي)",
         "",
         "| الخاصية | الأهمية |",
         "|---|---|",
@@ -415,7 +463,7 @@ def _write_model_card(m, art_dir, bundle):
 
     lines += [
         "",
-        "## 6. منع التسريب (Data Leakage)",
+        "## 7. منع التسريب (Data Leakage)",
         "",
         "استُبعدت الأعمدة التي لا تُعرف إلا **بعد** صدور قرار الضامن:",
         "",
@@ -424,9 +472,10 @@ def _write_model_card(m, art_dir, bundle):
         lines.append(f"- `{c}`")
     lines += [
         "",
-        "**تنبيه تشغيلي:** حقل `Bill Status` من حقول دورة الفوترة. يجب التقاطه بقيمته",
-        "**وقت تقديم المطالبة**؛ فإن كان يُحدَّث في نظامكم بعد صدور قرار الضامن، فوزنه",
-        "التنبّؤي هنا متفائل ويلزم إعادة تقييمه.",
+        "كما حُذف حقل `Bill Status` من الخصائص رغم قوّته التنبّؤية (كان يساهم بنحو",
+        "12.7% من أهمية النموذج): فهو حقل من دورة الفوترة قد يُحدَّث بعد صدور قرار",
+        "الضامن، أي أنه قد يحمل معلومة غير متاحة وقت التنبؤ. حذفه يكلّف نحو 3 نقاط",
+        "دقة، وهو ثمن مقبول مقابل رقم أداء يمكن الوثوق به.",
     ]
 
     lines += [
@@ -435,10 +484,11 @@ def _write_model_card(m, art_dir, bundle):
         "التدريب بنافذة **متوسّعة زمنياً** — أي من المطالبات السابقة فقط — لمنع تسرّب",
         "المستقبل إلى الماضي. وقت التنبؤ تُقرأ من جدول لقطة مرفق مع النموذج.",
         "",
-        "## 7. حدود الاستخدام",
+        "## 8. حدود الاستخدام",
         "",
         "- النموذج **مساعد قرار** وليس بديلاً عن المراجعة الطبية أو التأمينية.",
-        "- الفئة «موافقة جزئية» أصعب تنبّؤاً (تمثّل ~12.5% من البيانات) ودقتها أدنى.",
+        "- «الموافقة الجزئية» مدموجة في فئة «لم تُقبل بالكامل»؛ فالنموذج لا يميّز",
+        "  بين الرفض الكامل والخصم الجزئي، وإنما ينذر بأن المطالبة لن تُحصَّل كاملةً.",
         "- تدهور الأداء متوقّع عند تغيّر سياسات الضامنين؛ يُعاد التدريب كل ربع سنة.",
         "- لا يستخدم النموذج اسم المريض أو رقم الهوية أو أي معرّف شخصي.",
         "",

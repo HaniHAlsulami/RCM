@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>التنبؤ بالموافقة التأمينية — تجمع مكة الصحي</title>
+<title>التنبؤ بتحصيل المطالبة التأمينية — تجمع مكة الصحي</title>
 <meta name="description" content="نموذج تعلّم آلة للتنبؤ بنتيجة الموافقة التأمينية وأسباب الرفض المتوقّعة مع تفسير SHAP — جاهز للدمج في Power BI">
 <style>
 :root{
@@ -113,7 +113,7 @@ a{color:var(--accent)}
 .conf-label{font-size:11px;color:var(--muted);display:flex;justify-content:space-between;margin-bottom:4px}
 .bar-wrap{background:var(--border);border-radius:8px;height:8px;overflow:hidden;margin-bottom:16px}
 .bar{height:100%;border-radius:8px;transition:width .7s ease}
-.probs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px}
+.probs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
 .prob{background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:11px 6px;text-align:center}
 .prob .nm{font-size:10.5px;color:var(--muted);margin-bottom:5px}
 .prob .vl{font-size:17px;font-weight:700;font-variant-numeric:tabular-nums}
@@ -214,16 +214,16 @@ body.embed .wrap{max-width:100%}
 <div class="wrap">
 
 <div class="header">
-  <div class="badge">🏥 تجمع مكة الصحي · RCM · LightGBM + SHAP</div>
+  <div class="badge">🏥 تجمع مكة الصحي · RCM · LightGBM ثنائي + SHAP</div>
   <h1>التنبؤ بنتيجة الموافقة التأمينية</h1>
-  <p>تقدير نتيجة المطالبة والأسباب المتوقّعة للرفض قبل إرسالها للضامن</p>
+  <p>هل ستُحصَّل هذه المطالبة بالكامل؟ — تقدير الخطر وأسبابه قبل الإرسال</p>
   <div class="chips" id="headChips"></div>
 </div>
 
 <div class="tabs" id="tabs">
   <button class="tab active" data-p="predict">🔮 التنبؤ</button>
   <button class="tab" data-p="shap">📊 تفسير SHAP</button>
-  <button class="tab" data-p="reasons">⚠️ أسباب الرفض</button>
+  <button class="tab" data-p="reasons">⚠️ أسباب عدم التحصيل</button>
   <button class="tab" data-p="model">🧠 عن النموذج</button>
   <button class="tab" data-p="pbi">📈 Power BI</button>
 </div>
@@ -253,7 +253,7 @@ body.embed .wrap{max-width:100%}
       <div class="field" data-dd="visit_type"><label>نوع الزيارة</label></div>
       <div class="field" data-dd="hospital"><label>المستشفى</label></div>
       <div class="field" data-dd="clinic"><label>القسم / العيادة</label></div>
-      <div class="field" data-dd="bill_status"><label>حالة الفاتورة</label></div>
+      <div class="field" data-dd="nphies_elig"><label>فحص الأهلية — نفيس</label></div>
     </div>
 
     <div class="sec-label">🩺 التشخيص وعقد التأمين</div>
@@ -265,7 +265,6 @@ body.embed .wrap{max-width:100%}
       <div class="field" data-dd="icd_chapter"><label>فصل التشخيص</label></div>
       <div class="field" data-dd="icd_block"><label>كتلة التشخيص</label></div>
       <div class="field" data-dd="contract"><label>عقد التأمين (الضامن)</label></div>
-      <div class="field" data-dd="nphies_elig"><label>فحص الأهلية — نفيس</label></div>
     </div>
 
     <div class="sec-label">👤 بيانات المريض</div>
@@ -299,9 +298,8 @@ body.embed .wrap{max-width:100%}
     <div class="conf-label"><span>ثقة النموذج في هذا التصنيف</span><span id="rPct"></span></div>
     <div class="bar-wrap"><div class="bar" id="rBar"></div></div>
     <div class="probs">
-      <div class="prob"><div class="nm">✅ مقبولة</div><div class="vl" id="pA" style="color:var(--green)"></div><div class="bs" id="bA"></div></div>
-      <div class="prob"><div class="nm">🟡 جزئية</div><div class="vl" id="pP" style="color:var(--yellow)"></div><div class="bs" id="bP"></div></div>
-      <div class="prob"><div class="nm">❌ مرفوضة</div><div class="vl" id="pR" style="color:var(--red)"></div><div class="bs" id="bR"></div></div>
+      <div class="prob"><div class="nm">✅ مقبولة بالكامل</div><div class="vl" id="pA" style="color:var(--green)"></div><div class="bs" id="bA"></div></div>
+      <div class="prob"><div class="nm">⚠️ لم تُقبل بالكامل</div><div class="vl" id="pR" style="color:var(--red)"></div><div class="bs" id="bR"></div></div>
     </div>
     <div class="money" id="moneyBox" style="display:none">
       <div class="box"><div class="k">الإيراد المتوقّع تحصيله</div><div class="v" id="mExp" style="color:var(--green)"></div></div>

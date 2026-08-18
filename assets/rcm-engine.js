@@ -74,6 +74,21 @@
     return out;
   }
 
+  function sigmoid(z) { return 1 / (1 + Math.exp(-z)); }
+
+  /**
+   * يحوّل الدرجات الخام إلى احتمالات حسب نوع المهمّة.
+   *   binary     : مخرَج واحد → [1-p, p] عبر sigmoid بمعامل النموذج
+   *   multiclass : مخرَج لكل فئة → softmax
+   */
+  function toProba(raw, spec) {
+    if (spec && spec.task === "binary") {
+      var p = sigmoid((spec.sigmoid || 1) * raw[0]);
+      return [1 - p, p];
+    }
+    return softmax(raw);
+  }
+
   function softmax(s) {
     var mx = -Infinity, i;
     for (i = 0; i < s.length; i++) if (s[i] > mx) mx = s[i];
@@ -237,7 +252,6 @@
     setCat("visit_type", input.visitType);
     setCat("hospital", input.hospital);
     setCat("clinic", input.clinic);
-    setCat("bill_status", input.billStatus);
     setCat("nationality", input.nationality);
     setCat("contract", input.contract);
     setCat("nphies_elig", input.nphies);
@@ -247,14 +261,14 @@
     setCat("patient_class", input.patientClass);
 
     // خصائص السجل التاريخي — تُشتقّ آلياً من جداول اللقطة
-    var pairs = [["contract", "contract", input.contract],
-                 ["hosp", "hosp", input.hospital],
-                 ["clinic", "clinic", input.clinic]];
+    var pairs = [["contract", input.contract],
+                 ["hosp", input.hospital],
+                 ["clinic", input.clinic]];
     for (i = 0; i < pairs.length; i++) {
-      var v = entityLookup(B, pairs[i][0], pairs[i][2]);
-      setNum(pairs[i][1] + "_hist_rej", v[0]);
-      setNum(pairs[i][1] + "_hist_appr", v[1]);
-      setNum(pairs[i][1] + "_vol", v[2]);
+      var v = entityLookup(B, pairs[i][0], pairs[i][1]);
+      setNum(pairs[i][0] + "_hist_nfa", v[0]);
+      setNum(pairs[i][0] + "_hist_ok", v[1]);
+      setNum(pairs[i][0] + "_vol", v[2]);
     }
     return x;
   }
@@ -279,29 +293,51 @@
   // 5. الواجهة العامة
   // ────────────────────────────────────────────────────────────────
   function predict(B, input) {
-    prepare(B.approval.trees);
+    var A = B.approval;
+    prepare(A.trees);
     var x = encode(B, input);
-    var nC = B.classes.length;
-    var margin = rawScores(B.approval.trees, x, nC);
-    var proba = softmax(margin);
-    var phi = shapValues(B.approval.trees, x, nC, B.features.length);
+    var nOut = A.outputs || B.classes.length;
+    var binary = A.task === "binary";
+
+    var raw = rawScores(A.trees, x, nOut);
+    var proba = toProba(raw, A);
+    var phiRaw = shapValues(A.trees, x, nOut, B.features.length);
+
+    // التحقق من صحة التفكيك على المخرَج الخام: الأساس + Σφ = الدرجة
+    var check = 0, k, f, s;
+    for (k = 0; k < nOut; k++) {
+      s = A.base[k];
+      for (f = 0; f < phiRaw[k].length; f++) s += phiRaw[k][f];
+      check = Math.max(check, Math.abs(s - raw[k]));
+    }
+
+    // في الهدف الثنائي يوجد logit واحد يخصّ فئة «لم تُقبل بالكامل».
+    // درجة الفئة المقابلة هي نفسها بإشارة معكوسة، وكذلك قيم شابلي —
+    // فيبقى العرض لكل فئة صحيحاً ومتّسقاً.
+    var margin, phi, base;
+    if (binary) {
+      margin = [-raw[0], raw[0]];
+      base = [-A.base[0], A.base[0]];
+      var neg = new Float64Array(phiRaw[0].length);
+      for (f = 0; f < phiRaw[0].length; f++) neg[f] = -phiRaw[0][f];
+      phi = [neg, phiRaw[0]];
+    } else {
+      margin = raw; base = A.base; phi = phiRaw;
+    }
 
     var groups = [];
-    for (var c = 0; c < nC; c++) groups.push(groupShap(B, phi[c]));
-
-    // التحقق من صحة التفكيك: مجموع قيم SHAP + الأساس = الدرجة الخام
-    var check = [];
-    for (c = 0; c < nC; c++) {
-      var s = B.approval.base[c];
-      for (var f = 0; f < phi[c].length; f++) s += phi[c][f];
-      check.push(Math.abs(s - margin[c]));
-    }
+    for (k = 0; k < B.classes.length; k++) groups.push(groupShap(B, phi[k]));
 
     return {
       x: x, margin: margin, proba: proba, phi: phi, groups: groups,
-      base: B.approval.base, baseProba: softmax(B.approval.base),
-      shapError: Math.max.apply(null, check),
-      predIndex: proba.indexOf(Math.max.apply(null, proba)),
+      base: base, baseProba: toProba(A.base, A),
+      binary: binary,
+      shapError: check,
+      threshold: binary ? (A.threshold || 0.5) : null,
+      // في الهدف الثنائي يُحسم التصنيف بعتبة مُعايَرة على شريحة تحقّق،
+      // لا بمقارنة الاحتمالين — لأن تفويت مطالبة خاسرة أغلى من إنذار زائد.
+      predIndex: binary ? (proba[1] >= (A.threshold || 0.5) ? 1 : 0)
+                        : proba.indexOf(Math.max.apply(null, proba)),
     };
   }
 
@@ -310,7 +346,7 @@
     prepare(B.reason.trees);
     var x = encode(B, input);
     var L = B.reason.labels;
-    var p = softmax(rawScores(B.reason.trees, x, L.length));
+    var p = toProba(rawScores(B.reason.trees, x, L.length), B.reason);
     var phi = shapValues(B.reason.trees, x, L.length, B.features.length);
     var out = L.map(function (code, i) {
       return {
@@ -328,7 +364,8 @@
 
   root.RCMEngine = {
     predict: predict, predictReasons: predictReasons, encode: encode,
-    softmax: softmax, shapValues: shapValues, rawScores: rawScores,
+    softmax: softmax, sigmoid: sigmoid, toProba: toProba,
+    shapValues: shapValues, rawScores: rawScores,
     groupShap: groupShap, prepare: prepare,
   };
 })(typeof window !== "undefined" ? window : globalThis);

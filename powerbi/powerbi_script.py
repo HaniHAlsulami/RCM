@@ -13,8 +13,9 @@ Makkah Health Cluster · RCM & Data Analytics
     pip install pandas numpy lightgbm shap openpyxl
 
 يُخرج الجدول التالي:
-    scored     المطالبات + التنبؤ + الاحتمالات + المبلغ المعرّض للخطر
-               + أعلى ٣ عوامل SHAP + أعلى ٣ أسباب رفض متوقّعة
+    scored     المطالبات + التنبؤ الثنائي (مقبولة بالكامل / لم تُقبل بالكامل)
+               + احتمال عدم التحصيل + شريحة الخطر + المبلغ المعرّض للخطر
+               + أعلى ٣ عوامل SHAP + أعلى ٣ أسباب متوقّعة
                + أعمدة *_Key المطبَّعة لبناء روابط صفحة التنبؤ في DAX
 """
 import os
@@ -46,21 +47,16 @@ SB.ART = os.path.join(MODEL_DIR, "artifacts")
 
 # ── تحميل النموذج والبيانات ──
 model, reason_model, reason_labels, vocab, snapshot = SB.load_artifacts()
+threshold, recovery = SB.load_bundle_meta()
 
 df = P.load_raw(DATA_FILE)
 if ROW_LIMIT:
     df = df.head(ROW_LIMIT)
 
-recovery = None
-_bundle = os.path.join(SB.ART, "model_bundle.json")
-if os.path.exists(_bundle):
-    import json
-    with open(_bundle, encoding="utf-8") as _f:
-        recovery = json.load(_f).get("recovery")
-
 # ── التسجيل ──
 pred = SB.score(df, model, reason_model, reason_labels, vocab, snapshot,
-                n_shap=N_SHAP, n_reasons=N_REASONS, recovery=recovery)
+                n_shap=N_SHAP, n_reasons=N_REASONS, recovery=recovery,
+                threshold=threshold)
 
 # ── أعمدة مطبَّعة تُستخدم لبناء رابط صفحة التنبؤ في DAX ──
 #    (نفس التطبيع الذي يتوقّعه النموذج والصفحة)
@@ -70,7 +66,6 @@ keys["Clinic Key"] = df["Clinic Name"].map(P.norm_text)
 keys["Contract Key"] = df["Contract Name"].map(P.norm_contract)
 keys["Nationality Key"] = df["Nationality"].map(P.norm_text)
 keys["Visit Type Key"] = df["Visit Type"].map(P.norm_text)
-keys["Bill Status Key"] = df["Bill Status"].map(P.norm_text)
 keys["Nphies Key"] = df["Nphies Eligibility Check"].map(P.norm_nphies)
 keys["Patient Class Key"] = df["Patient Classification"].map(P.norm_patient_class)
 keys["Triage Num"] = df["Triage Category"].map(P.norm_triage)

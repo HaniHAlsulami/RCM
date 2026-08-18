@@ -26,19 +26,18 @@ import rcm_pipeline as P  # noqa: E402
 HERE = os.path.dirname(os.path.abspath(__file__))
 ART = os.path.join(HERE, "artifacts")
 
-RISK_BANDS = [(0.60, "خطر مرتفع"), (0.35, "خطر متوسّط"), (0.0, "خطر منخفض")]
+RISK_BANDS = [(0.65, "خطر مرتفع"), (0.45, "خطر متوسّط"), (0.0, "خطر منخفض")]
 
 # تجميع الخصائص التقنية تحت مفاهيم تشغيلية (نفس تجميع الصفحة)
 GROUPS = {
     "إجمالي الفاتورة": ["total", "log_total"],
-    "عقد التأمين (الضامن)": ["contract", "contract_hist_rej", "contract_hist_appr", "contract_vol"],
-    "المستشفى": ["hospital", "hosp_hist_rej", "hosp_hist_appr", "hosp_vol"],
-    "القسم / العيادة": ["clinic", "clinic_hist_rej", "clinic_hist_appr", "clinic_vol"],
+    "عقد التأمين (الضامن)": ["contract", "contract_hist_nfa", "contract_hist_ok", "contract_vol"],
+    "المستشفى": ["hospital", "hosp_hist_nfa", "hosp_hist_ok", "hosp_vol"],
+    "القسم / العيادة": ["clinic", "clinic_hist_nfa", "clinic_hist_ok", "clinic_vol"],
     "التشخيص ICD-10": ["icd_chapter", "icd_block"],
     "فحص الأهلية — نفيس": ["nphies_elig"],
     "نوع الزيارة": ["visit_type"],
     "درجة الطوارئ CTAS": ["triage"],
-    "حالة الفاتورة": ["bill_status"],
     "تصنيف المريض": ["patient_class"],
     "الجنسية": ["nationality"],
     "الجنس": ["gender"],
@@ -64,6 +63,16 @@ def load_artifacts():
     return model, reason_model, v["reason_labels"], v["vocab"], v["snapshot"]
 
 
+def load_bundle_meta():
+    """عتبة القرار ونسب التحصيل من حزمة النموذج."""
+    mb = os.path.join(ART, "model_bundle.json")
+    if not os.path.exists(mb):
+        return 0.5, None
+    with open(mb, encoding="utf-8") as f:
+        b = json.load(f)
+    return float(b["approval"].get("threshold", 0.5)), b.get("recovery")
+
+
 def build_matrix(df, vocab, snap):
     X, _ = P.build_features(df, vocab)
     X = pd.concat([X, P.apply_entity_snapshot(df, snap)], axis=1)[P.ALL_FEATURES]
@@ -71,54 +80,53 @@ def build_matrix(df, vocab, snap):
 
 
 def score(df, model, reason_model, reason_labels, vocab, snap,
-          n_shap=3, n_reasons=3, recovery=None):
+          n_shap=3, n_reasons=3, recovery=None, threshold=0.5):
     """يُرجع إطاراً بالأعمدة المسجَّلة، بنفس فهرس df."""
     import shap
 
     Xc = build_matrix(df, vocab, snap)
-    proba = model.predict(Xc)            # Booster.predict يُخرج الاحتمالات مباشرةً
-    pred = proba.argmax(1)
+    # الهدف ثنائي: Booster.predict يُرجع احتمال الفئة الموجبة كمتجه أحادي
+    p_nfa = np.asarray(model.predict(Xc)).ravel()
+    pred = (p_nfa >= threshold).astype(int)
 
     out = pd.DataFrame(index=df.index)
     out["pred_label"] = [P.CLASSES[i] for i in pred]
     out["pred_label_ar"] = [P.CLASS_AR[P.CLASSES[i]] for i in pred]
-    out["confidence"] = proba.max(1).round(4)
-    out["p_approved"] = proba[:, 0].round(4)
-    out["p_partial"] = proba[:, 1].round(4)
-    out["p_rejected"] = proba[:, 2].round(4)
-    out["p_not_fully_approved"] = (proba[:, 1] + proba[:, 2]).round(4)
-    out["risk_band"] = [next(lbl for thr, lbl in RISK_BANDS if r >= thr) for r in proba[:, 2]]
+    out["confidence"] = np.maximum(p_nfa, 1 - p_nfa).round(4)
+    out["p_approved"] = (1 - p_nfa).round(4)
+    out["p_not_fully_approved"] = p_nfa.round(4)
+    out["risk_band"] = [next(lbl for thr, lbl in RISK_BANDS if r >= thr) for r in p_nfa]
 
     # الأثر المالي المتوقّع
-    rec = recovery or {"Approved": 0.93, "Partially Approved": 0.50, "Rejected": 0.0}
+    rec = recovery or {P.CLASSES[0]: 0.93, P.CLASSES[1]: 0.25}
     total = pd.to_numeric(df.get("Total"), errors="coerce").fillna(0).clip(lower=0)
-    ratio = (proba[:, 0] * rec[P.CLASSES[0]] + proba[:, 1] * rec[P.CLASSES[1]]
-             + proba[:, 2] * rec[P.CLASSES[2]])
+    ratio = (1 - p_nfa) * rec[P.CLASSES[0]] + p_nfa * rec[P.CLASSES[1]]
     out["billed_amount"] = total.round(2)
     out["expected_revenue"] = (total * ratio).round(2)
     out["amount_at_risk"] = (total * (1 - ratio)).round(2)
 
     # أعلى عوامل SHAP للفئة المتنبَّأ بها
     if n_shap:
+        # قيم SHAP على مقياس logit الفئة الموجبة «لم تُقبل بالكامل»:
+        # الموجب يرفع خطر عدم التحصيل الكامل، والسالب يخفضه.
         sv = np.array(shap.TreeExplainer(model).shap_values(Xc))
-        if sv.ndim == 3 and sv.shape[0] != len(P.CLASSES):
-            sv = np.transpose(sv, (2, 0, 1))
+        if sv.ndim == 3:
+            sv = sv[:, :, 1]
         cols = list(Xc.columns)
         gidx = {g: [cols.index(c) for c in cs if c in cols] for g, cs in GROUPS.items()}
         gnames = list(gidx.keys())
-        gmat = np.stack([sv[:, :, gidx[g]].sum(axis=2) for g in gnames], axis=2)  # (cls,n,grp)
-        chosen = gmat[pred, np.arange(len(df)), :]                                # (n,grp)
+        chosen = np.stack([sv[:, gidx[g]].sum(axis=1) for g in gnames], axis=1)   # (n,grp)
         order = np.argsort(-np.abs(chosen), axis=1)
         for k in range(n_shap):
             j = order[:, k]
             out[f"shap_top{k + 1}"] = [gnames[t] for t in j]
             out[f"shap_top{k + 1}_value"] = chosen[np.arange(len(df)), j].round(4)
             out[f"shap_top{k + 1}_dir"] = np.where(
-                chosen[np.arange(len(df)), j] >= 0, "يرفع", "يخفض")
+                chosen[np.arange(len(df)), j] >= 0, "يرفع الخطر", "يخفض الخطر")
 
     # أسباب الرفض المتوقّعة
     if n_reasons:
-        rp = reason_model.predict(Xc)
+        rp = np.asarray(reason_model.predict(Xc))
         ro = np.argsort(-rp, axis=1)
         for k in range(n_reasons):
             j = ro[:, k]
@@ -141,18 +149,13 @@ def main():
     args = ap.parse_args()
 
     model, rmodel, rlabels, vocab, snap = load_artifacts()
-
-    recovery = None
-    mb = os.path.join(ART, "model_bundle.json")
-    if os.path.exists(mb):
-        with open(mb, encoding="utf-8") as f:
-            recovery = json.load(f).get("recovery")
+    threshold, recovery = load_bundle_meta()
 
     df = P.load_raw(args.data)
     print(f"قراءة {len(df):,} مطالبة من {args.data}")
 
     scored = score(df, model, rmodel, rlabels, vocab, snap,
-                   args.shap, args.reasons, recovery)
+                   args.shap, args.reasons, recovery, threshold)
 
     keep = [c.strip() for c in args.keep.split(",") if c.strip()]
     base_cols = [c for c in ["Mrn", "Episode No", "Visit Date", "Hospital Name",
@@ -177,7 +180,11 @@ def main():
     if P.COL_TARGET in df.columns:
         m = P.decided_mask(df)
         if m.any():
-            acc = (result.loc[m, "pred_label"] == df.loc[m, P.COL_TARGET].str.strip()).mean()
+            # المقارنة تتم بعد تحويل الحالة الخام إلى الهدف الثنائي،
+            # وإلا قورن "NotFullyApproved" بـ "Rejected" فبدا التطابق منخفضاً زوراً.
+            truth = P.to_binary(df.loc[m, P.COL_TARGET]).values
+            got = (result.loc[m, "pred_label"] == P.CLASSES[1]).astype(int).values
+            acc = float((truth == got).mean())
             print(f"\nالتطابق مع القرارات المسجَّلة في هذا الملف: {acc:.4f}  (n={int(m.sum()):,})")
             print("  ⚠ هذا رقم داخل العيّنة إن كان الملف هو نفسه ملف التدريب — ليس دقّة النموذج.")
             print("  الدقّة المُعتمدة (على بيانات لم يرها النموذج) في model/artifacts/metrics.json")
