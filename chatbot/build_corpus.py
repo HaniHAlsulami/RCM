@@ -17,6 +17,7 @@ Sadeed · Makkah Health Cluster · Revenue Development Performance
 from __future__ import annotations
 
 import argparse
+import hashlib
 import io
 import json
 import math
@@ -43,9 +44,12 @@ MIN_CHARS_PER_PAGE = 40   # أقل من ذلك → الصفحة تُعامل ك�
 # ──────────────────────────────────────────────────────────────────────
 # 1. تطبيع النص العربي للبحث
 # ──────────────────────────────────────────────────────────────────────
+_AR_NUM = str.maketrans("٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹", "01234567890123456789")
 _DIAC = re.compile(r"[ؐ-ًؚ-ٰٟۖ-ۭ]")
 _TATWEEL = re.compile(r"ـ+")
-_NONWORD = re.compile(r"[^\w؀-ۿ]+")
+# حروف وأرقام فقط: نستبعد علامات الترقيم العربية (؟ ، ؛ ٪) كي لا تلتصق
+# بالكلمات فتصنع رموزاً وهمية في الفهرس. النطاق مطابق لنظيره في rcm-chat.js.
+_NONWORD = re.compile(r"[^0-9A-Za-z_\u0621-\u063A\u0641-\u064A\u0660-\u0669\u066E-\u06D3\u06F0-\u06F9]+")
 
 def normalize(text: str) -> str:
     """
@@ -60,6 +64,7 @@ def normalize(text: str) -> str:
     s = re.sub("[أإآٱٲٳٵ]", "ا", s)
     s = s.replace("ى", "ي").replace("ئ", "ي").replace("ؤ", "و")
     s = s.replace("ة", "ه").replace("ﻻ", "لا")
+    s = s.translate(_AR_NUM)                 # ٦٠ و 60 رمز واحد
     s = _NONWORD.sub(" ", s)
     return re.sub(r"\s+", " ", s).strip().lower()
 
@@ -100,18 +105,69 @@ def tokenize(text: str) -> list:
 # ──────────────────────────────────────────────────────────────────────
 # 2. استخراج النص من الصفحات
 # ──────────────────────────────────────────────────────────────────────
+_PRESFORM = re.compile(r"[\uFB50-\uFDFF\uFE70-\uFEFF]")
+
+# أثر انعكاس روابط اللام: يُخرج بعض ملفات PDF الرباعيات (لا، لأ، لإ، لم)
+# بترتيبها البصريّ لا المنطقيّ، فتصير «الموافقة» → «املوافقة» و«حالات» → «حاالت».
+# هذه التتابعات مستحيلة في العربية السليمة، فنسبتها مقياس صادق على تلف النصّ.
+_ARTIFACT = re.compile(r"[اأإآ]{2}|اإل|األ|الئ|امل")
+
+# إصلاح ما يمكن إصلاحه يقيناً: تتابعات لا وجود لها في الإملاء الصحيح،
+# فانعكاسها هو التفسير الوحيد الممكن. ما عداها يُترك للمسح الضوئي.
+_FIX = [
+    (re.compile(r"اال"), "الا"),
+    (re.compile(r"األ"), "الأ"),
+    (re.compile(r"اإل"), "الإ"),
+    (re.compile(r"اآل"), "الآ"),
+    (re.compile(r"الئ"), "لائ"),
+]
+
+
+def repair_ligatures(t: str) -> str:
+    for rx, rep in _FIX:
+        t = rx.sub(rep, t)
+    return t
+
+
+def artifact_rate(t: str) -> float:
+    """عدد التتابعات المستحيلة لكل ألف حرف."""
+    if not t:
+        return 0.0
+    return 1000.0 * len(_ARTIFACT.findall(t)) / len(t)
+
+
+def _ocr(page) -> str:
+    import pytesseract
+    img = Image.open(io.BytesIO(page.get_pixmap(dpi=OCR_DPI).tobytes("png")))
+    return unicodedata.normalize("NFKC", pytesseract.image_to_string(img, lang="ara+eng").strip())
+
+
 def page_text(page, use_ocr: bool):
-    """نصّ الصفحة: من طبقة النص إن وُجدت، وإلا عبر OCR."""
-    t = page.get_text().strip()
-    if len(t) >= MIN_CHARS_PER_PAGE or not use_ocr:
-        return t, False
+    """
+    نصّ الصفحة. حين تكون طبقة النصّ قصيرة أو تالفة نُشغّل المسح الضوئي،
+    ثم نُفاضل بين المخرجين بمعيار واحد: أيّهما أقلّ تتابعات مستحيلة —
+    فالمسح الضوئي ليس أفضل دائماً، وإنما حين يكون النصّ الأصلي معطوباً.
+    """
+    raw = page.get_text().strip()
+    # فحص أشكال العرض قبل NFKC: التطبيع يمحوها فيُخفي تلف الصفحة
+    presform = len(_PRESFORM.findall(raw)) / max(len(raw), 1)
+    t = unicodedata.normalize("NFKC", raw)
+    suspect = (len(t) < MIN_CHARS_PER_PAGE
+               or presform > 0.08
+               or artifact_rate(t) > 3.0)
+    if not suspect or not use_ocr:
+        return repair_ligatures(t), False
+
     try:
-        import pytesseract
-        img = Image.open(io.BytesIO(page.get_pixmap(dpi=OCR_DPI).tobytes("png")))
-        return pytesseract.image_to_string(img, lang="ara+eng").strip(), True
+        o = _ocr(page)
     except Exception as e:                                   # noqa: BLE001
         print(f"    ⚠ تعذّر OCR: {e}")
-        return t, False
+        return repair_ligatures(t), False
+
+    if len(t) >= MIN_CHARS_PER_PAGE and presform <= 0.08:
+        if len(o) < len(t) * 0.55 or artifact_rate(o) >= artifact_rate(t):
+            return repair_ligatures(t), False                # النصّ الأصلي أسلم
+    return repair_ligatures(o), True
 
 
 HEAD_RE = re.compile(
@@ -188,6 +244,20 @@ def main():
     )
     if not files:
         raise SystemExit("لا توجد ملفات PDF في المجلد المحدَّد.")
+
+    # نفس الوثيقة قد تُرفع مرّتين باسمين مختلفين — نستبعدها ببصمة المحتوى
+    # حتى لا يتكرّر المرجع نفسه مرّتين في نتائج البحث.
+    seen_hash: dict[str, str] = {}
+    unique = []
+    for fn in files:
+        with open(os.path.join(args.src, fn), "rb") as fh:
+            h = hashlib.md5(fh.read()).hexdigest()
+        if h in seen_hash:
+            print(f"  ⊘ تخطّي {fn[:46]} — نسخة مطابقة من {seen_hash[h][:46]}")
+            continue
+        seen_hash[h] = fn
+        unique.append(fn)
+    files = unique
 
     docs, passages = [], []
     t0 = time.time()

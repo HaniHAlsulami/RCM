@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  شعار «سَنَد» — المساعد المرجعي في منصّة سديد
+  الفكرة: صفحة نظام مفتوحة، يخرج من سطرها المُظلَّل خيطُ إسناد ينتهي عند
+  عُقدة مرجع مُثبَّتة — تجسيداً لمعنى «سَنَد»: ما تستند إليه الدعوى.
+  اللوحة اللونية نفسها المستعملة في شعار سديد، مع انعكاس اتجاه التدرّج
+  ليُقرأ الشعاران كعائلة واحدة لا كتكرار.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120"
+     role="img" aria-label="شعار سند — المساعد المرجعي">
+  <defs>
+    <linearGradient id="snBg" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#22d3a0"/>
+      <stop offset="1" stop-color="#4f8ef7"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="2" y="2" width="116" height="116" rx="28" fill="url(#snBg)"/>
+
+  <!-- الصفحة -->
+  <path d="M30 26h44l16 16v52a6 6 0 0 1-6 6H30a6 6 0 0 1-6-6V32a6 6 0 0 1 6-6z"
+        fill="#fff" fill-opacity=".96"/>
+  <path d="M74 26v16h16" fill="none" stroke="#22d3a0" stroke-width="3.5"
+        stroke-linejoin="round" stroke-opacity=".55"/>
+
+  <!-- أسطر النظام: عاديّة، والمُستشهَد به مُظلَّل -->
+  <g stroke="#4f8ef7" stroke-width="4" stroke-linecap="round" stroke-opacity=".28">
+    <path d="M36 56h30"/>
+    <path d="M36 80h26"/>
+    <path d="M36 90h34"/>
+  </g>
+  <path d="M36 68h40" stroke="#4f8ef7" stroke-width="6.5" stroke-linecap="round"/>
+
+  <!-- خيط الإسناد إلى عُقدة المرجع -->
+  <path d="M76 68q18 0 18 18" fill="none" stroke="#fff" stroke-width="4.5"
+        stroke-linecap="round"/>
+  <circle cx="94" cy="90" r="11" fill="none" stroke="#fff" stroke-width="4"/>
+  <circle cx="94" cy="90" r="4.5" fill="#fff"/>
+</svg>

@@ -1,21 +1,28 @@
 /*!
- * rcm-chat-ui.js — واجهة المساعد المرجعي
+ * rcm-chat-ui.js — واجهة «سَنَد» المساعد المرجعي
  * منصّة سديد · تجمع مكة المكرمة الصحي · إدارة أداء تنمية الإيرادات
  */
 (function () {
   "use strict";
 
-  var C = window.CHI_CORPUS, S = window.RCMChat;
+  var C = window.CHI_CORPUS, S = window.RCMChat, R = window.RCMReason;
   var $ = function (id) { return document.getElementById(id); };
 
   var SUGGESTIONS = [
-    "الحالات الطارئة",
-    "مدة الرد على طلب الموافقة المسبقة",
-    "حقوق المستفيد من التأمين الصحي",
-    "التغطية التأمينية للحمل والولادة",
-    "مدة سداد مستحقات مقدم الخدمة",
-    "التحديدات والاستثناءات",
+    "كم مدة الرد على طلب الموافقة المسبقة؟",
+    "ماذا يجب عمله في الحالات الطارئة؟",
+    "ما نسبة التحمل التي يدفعها المستفيد؟",
+    "هل تشمل التغطية الحمل والولادة؟",
+    "ما مدة سداد مستحقات مقدم الخدمة؟",
+    "ما التزامات مقدم الخدمة في الطب الاتصالي؟",
   ];
+
+  var MOD_CLASS = {
+    obligation: "ob", prohibition: "pr", exception: "ex",
+    condition: "cn", permission: "pm", coverage: "cv", definition: "df",
+  };
+
+  var ANS = 0;                       // ترقيم الإجابات كي تبقى معرّفات المراجع فريدة
 
   function esc(s) { return S.escapeHtml(s); }
 
@@ -32,11 +39,11 @@
     return { k: "lo", t: "مطابقة ضعيفة" };
   }
 
-  function hitHtml(r, i, query) {
+  function hitHtml(r, i, query, aid) {
     var img = S.pageImage(r);
     var art = r.heading && r.heading.length > 3
       ? '<span class="art">' + esc(r.heading) + "</span>" : "";
-    return '<div class="hit">' +
+    return '<div class="hit" id="' + aid + "-src" + (i + 1) + '">' +
       '<div class="src"><span class="rank">' + (i + 1) + "</span>" +
         '<span class="meta"><span class="doct">' + esc(r.doc.title) + "</span>" +
         '<span class="pageno">صفحة ' + r.page + " من " + r.doc.pages +
@@ -49,8 +56,67 @@
       "</div>";
   }
 
+  /** شارات المعطيات الرقمية المستخلصة — أسرع ما يبحث عنه القارئ */
+  function factsHtml(facts, aid) {
+    if (!facts.length) return "";
+    var ICON = { duration: "⏱", pct: "٪", money: "﷼" };
+    return '<div class="facts">' + facts.slice(0, 6).map(function (f) {
+      return '<span class="fact ' + f.kind + '">' + (ICON[f.kind] || "•") + " " +
+        esc(f.display) + '<i>[' + f.ref + "]</i></span>";
+    }).join("") + "</div>";
+  }
+
+  function refChips(refs, aid) {
+    if (!refs || !refs.length) return "";
+    return refs.map(function (n) {
+      return '<a class="refchip" href="#' + aid + "-src" + n + '">[' + n + "]</a>";
+    }).join("");
+  }
+
+  /**
+   * لوحة التحليل: صياغة مبسّطة واستنتاج، مفصولة بصرياً عن النصّ الرسمي
+   * ومربوطة به برقم المرجع — فلا تختلط قراءةُ المحرّر بنصّ النظام.
+   */
+  function analysisHtml(a, aid) {
+    var h = '<div class="analysis">' +
+      '<div class="ahead"><span class="tag">🧠 قراءة مبسّطة واستنتاج</span>' +
+      '<span class="intent">' + esc(a.intent.label) + "</span></div>";
+
+    h += factsHtml(a.facts, aid);
+
+    if (a.statements.length) {
+      h += '<ul class="stmts">';
+      a.statements.forEach(function (st) {
+        h += '<li class="' + (MOD_CLASS[st.modality] || "nu") + '">' +
+          (st.modalityLabel ? '<span class="mod">' + esc(st.modalityLabel) + "</span>" : "") +
+          '<span class="stx">' + esc(st.text) + "</span>" +
+          '<a class="refchip" href="#' + aid + "-src" + st.ref + '">[' + st.ref + "]</a></li>";
+      });
+      h += "</ul>";
+    }
+
+    if (a.inferences.length) {
+      h += '<div class="infer"><div class="ititle">ما يُستنتج من مجموع النصوص</div><ul>';
+      a.inferences.forEach(function (it) {
+        h += "<li>" + esc(it.text) + " " + refChips(it.refs, aid) + "</li>";
+      });
+      h += "</ul></div>";
+    }
+
+    if (a.gaps.length) {
+      h += '<div class="gaps">' + a.gaps.map(function (g) {
+        return "<div>⚠ " + esc(g) + "</div>";
+      }).join("") + "</div>";
+    }
+
+    h += '<div class="disc">الصياغة أعلاه من إعداد المساعد بناءً على النصوص المرقّمة أدناه، ' +
+      "وهي للتقريب لا للاستشهاد. <b>النصّ الرسمي المنقول حرفياً هو المرجع عند أي تعارض.</b></div>";
+    return h + "</div>";
+  }
+
   function render(query) {
-    var res = S.search(C, query, 5);
+    var aid = "a" + (++ANS);
+    var res = S.search(C, query, 6);
     var chat = $("chat");
 
     var q = document.createElement("div");
@@ -60,6 +126,15 @@
 
     var a = document.createElement("div");
     a.className = "msg";
+
+    // توسيع بالمرادفات حين يعجز اللفظ المستخدَم عن ملاقاة لفظ اللائحة
+    if (!res.length || (res[0] && res[0].coverage < 0.5)) {
+      var alt = R.expansions(query);
+      for (var e = 0; e < alt.length && (!res.length || res[0].coverage < 0.5); e++) {
+        var more = S.search(C, query + " " + alt[e], 5);
+        if (more.length && (!res.length || more[0].score > res[0].score)) res = more;
+      }
+    }
 
     if (!res.length) {
       a.innerHTML = '<div class="ans"><div class="hit">' +
@@ -72,15 +147,20 @@
     }
 
     var conf = confidence(res);
-    var main = res.slice(0, 2), rest = res.slice(2);
+    // عمق التحليل = عدد المراجع المعروضة، وإلا أشار [4] إلى نصّ غير معروض
+    var DEPTH = 4;
+    var analysis = R.analyze(query, res, { depth: DEPTH });
+    var main = res.slice(0, DEPTH), rest = res.slice(DEPTH);
 
     var h = '<div class="ans">' +
       '<div class="lead"><span>عُثر على <b>' + res.length +
         "</b> مقطعاً في <b>" + new Set(res.map(function (r) { return r.doc.id; })).size +
-        ' مستنداً</b> — النصّ منقول حرفياً من المرجع</span>' +
+        " مستنداً</b></span>" +
       '<span class="conf ' + conf.k + '">' + conf.t + "</span></div>";
 
-    main.forEach(function (r, i) { h += hitHtml(r, i, query); });
+    h += analysisHtml(analysis, aid);
+    h += '<div class="srchead">النصّ الرسمي — منقول حرفياً من المصدر</div>';
+    main.forEach(function (r, i) { h += hitHtml(r, i, query, aid); });
 
     if (rest.length) {
       h += '<details class="more"><summary>مراجع إضافية (' + rest.length + ")</summary><ol>";
@@ -137,8 +217,8 @@
 
   function initEmpty() {
     $("chat").innerHTML =
-      '<div class="empty">اطرح سؤالك عن اللوائح والأنظمة، وسيعرض المساعد النصّ' +
-      " من مصدره مع صورة الصفحة." +
+      '<div class="empty">اطرح سؤالك عن اللوائح والأنظمة — يقرأ المساعد النصوص المنطبقة،' +
+      " يصوغ خلاصتها، ويستنتج منها، ثم يعرض النصّ الرسمي وصورة صفحته للتحقّق." +
       '<div class="sugg">' + SUGGESTIONS.map(function (s) {
         return "<button>" + esc(s) + "</button>";
       }).join("") + "</div></div>";

@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>مساعد سديد المرجعي — لوائح مجلس الضمان الصحي</title>
-<meta name="description" content="مساعد يجيب من لوائح وأنظمة وسياسات مجلس الضمان الصحي CHI، ويذكر المرجع ورقم الصفحة ويرفق صورتها مع كل إجابة">
+<title>سَنَد — المساعد المرجعي للوائح مجلس الضمان الصحي · منصّة سديد</title>
+<meta name="description" content="سَنَد — مساعد مرجعي يقرأ لوائح وأنظمة وسياسات مجلس الضمان الصحي CHI، يصوغ الحكم بلغة تشغيلية ويستنتج منه، ويُسنِد كل جملة إلى نصّها مع رقم الصفحة وصورتها">
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <style>
 :root{
@@ -62,6 +62,56 @@ a{color:var(--accent)}
 .conf.hi{background:rgba(11,122,94,.12);color:var(--green)}
 .conf.md{background:rgba(150,89,15,.12);color:var(--amber)}
 .conf.lo{background:rgba(196,54,47,.10);color:var(--red)}
+
+/* ── لوحة التحليل: تُميَّز بصرياً عن النصّ الرسمي كي لا يُخلط بينهما ── */
+.analysis{padding:15px 16px;background:linear-gradient(180deg,rgba(27,111,168,.055),rgba(27,111,168,.02));
+  border-bottom:1px solid var(--border)}
+.ahead{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:11px}
+.ahead .tag{font-size:12px;font-weight:700;color:var(--accent)}
+.ahead .intent{font-size:10.5px;font-weight:700;color:var(--muted2);background:var(--card);
+  border:1px solid var(--border);border-radius:11px;padding:3px 10px;white-space:nowrap}
+
+.facts{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:11px}
+.fact{display:inline-flex;align-items:center;gap:5px;background:var(--card);
+  border:1px solid var(--border-strong);border-radius:9px;padding:5px 11px;
+  font-size:13px;font-weight:700;color:var(--text)}
+.fact i{font-style:normal;font-size:10px;font-weight:700;color:var(--accent);opacity:.8}
+.fact.duration{border-inline-start:3px solid var(--accent)}
+.fact.pct{border-inline-start:3px solid var(--amber)}
+.fact.money{border-inline-start:3px solid var(--green)}
+
+.stmts{list-style:none;display:grid;gap:7px;margin-bottom:11px}
+.stmts li{background:var(--card);border:1px solid var(--border);border-inline-start:3px solid var(--muted);
+  border-radius:9px;padding:9px 12px;font-size:12.5px;line-height:1.95;color:var(--text)}
+.stmts li.ob{border-inline-start-color:var(--accent)}
+.stmts li.pr{border-inline-start-color:var(--red)}
+.stmts li.ex{border-inline-start-color:var(--amber)}
+.stmts li.cn{border-inline-start-color:#7a5cb8}
+.stmts li.pm{border-inline-start-color:var(--green)}
+.stmts li.cv{border-inline-start-color:var(--green)}
+.stmts .mod{display:inline-block;font-size:10px;font-weight:700;background:var(--accent-dim);
+  color:var(--accent);border-radius:6px;padding:1px 8px;margin-inline-end:7px;vertical-align:2px}
+.stmts li.pr .mod{background:rgba(196,54,47,.10);color:var(--red)}
+.stmts li.ex .mod{background:rgba(150,89,15,.12);color:var(--amber)}
+.stmts li.cn .mod{background:rgba(122,92,184,.12);color:#6a4ea8}
+.stmts li.pm .mod,.stmts li.cv .mod{background:rgba(11,122,94,.12);color:var(--green)}
+
+.refchip{display:inline-block;font-size:10.5px;font-weight:700;color:var(--accent);
+  text-decoration:none;background:var(--accent-dim);border-radius:5px;padding:0 5px;margin-inline-start:4px}
+.refchip:hover{background:var(--accent);color:#fff}
+
+.infer{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:11px 13px}
+.infer .ititle{font-size:11px;font-weight:700;color:var(--muted2);margin-bottom:6px}
+.infer ul{list-style:none;display:grid;gap:6px}
+.infer li{font-size:12.5px;line-height:1.95;padding-inline-start:16px;position:relative}
+.infer li::before{content:"⇐";position:absolute;inset-inline-start:0;color:var(--accent);font-size:11px}
+
+.gaps{margin-top:9px;font-size:11.5px;line-height:1.85;color:var(--amber)}
+.disc{margin-top:10px;font-size:11px;line-height:1.8;color:var(--muted)}
+.disc b{color:var(--muted2)}
+
+.srchead{padding:10px 16px;font-size:11px;font-weight:700;color:var(--muted);
+  background:var(--surface);border-bottom:1px solid var(--border);letter-spacing:.2px}
 
 .hit{padding:15px 16px;border-bottom:1px solid var(--border)}
 .hit:last-child{border-bottom:none}
@@ -149,13 +199,14 @@ a{color:var(--accent)}
   <img class="org-logo" src="assets/logo.png" alt="شعار تجمع مكة المكرمة الصحي">
   <div class="badge">إدارة أداء تنمية الإيرادات</div>
   <div class="brand">
-    <img class="brand-mark" src="assets/sadeed-logo.svg" alt="">
-    <div class="brand-text"><h1 class="ar">سديد</h1><span class="en">SADEED</span></div>
+    <img class="brand-mark" src="assets/sanad-logo.svg" alt="">
+    <div class="brand-text"><h1 class="ar">سَنَد</h1><span class="en">SANAD</span></div>
   </div>
-  <p class="tagline">المساعد المرجعي — لوائح وأنظمة وسياسات مجلس الضمان الصحي</p>
+  <p class="tagline">المساعد المرجعي في منصّة <b>سديد</b> — يقرأ لوائح مجلس الضمان الصحي،
+    ويصوغ الحكم، ويستنتج منه، ويُسنِد كل جملة إلى نصّها</p>
   <div class="navlinks">
     <a href="predict.html">🔮 منصة التنبؤ</a>
-    <a href="chatbot.html" class="on">💬 المساعد المرجعي</a>
+    <a href="chatbot.html" class="on">💬 سَنَد — المساعد المرجعي</a>
     <a href="guide.html">📘 دليل الاستخدام</a>
   </div>
 </div>
@@ -165,9 +216,11 @@ a{color:var(--accent)}
 <div id="app" style="display:none">
 
   <div class="note info">
-    <b>كيف يعمل؟</b> يبحث المساعد في نصوص اللوائح المفهرسة ويعرض المقطع <b>كما ورد حرفياً</b>
-    مع اسم المستند ورقم الصفحة وصورتها. لا يعيد صياغة النصّ النظامي ولا يستنتج منه —
-    فالإجابة عن سؤال نظامي يجب أن تكون منقولة لا مؤوَّلة.
+    <b>كيف يعمل؟</b> يقرأ المساعد النصوص المنطبقة على سؤالك، ثم يقدّم إجابته في طبقتين:
+    <b>قراءة مبسّطة واستنتاج</b> — يعيد صياغة الحكم بلغة تشغيلية، ويستخرج المدد والنسب،
+    ويستنتج ما يترتّب على مجموع النصوص — يليها <b>النصّ الرسمي منقولاً حرفياً</b> مع اسم
+    المستند ورقم الصفحة وصورتها. كل جملة في طبقة التحليل مرقومة برقم مرجعها [1] فاضغطه
+    لترى النصّ الذي بُنيت عليه، فلا استنتاج بلا أصل.
   </div>
 
   <div id="chat"></div>
@@ -175,7 +228,7 @@ a{color:var(--accent)}
   <div class="ask">
     <div class="askbox">
       <input id="q" type="text" autocomplete="off"
-             placeholder="اسأل عن مادة أو إجراء… مثال: مدة الرد على طلب الموافقة المسبقة">
+             placeholder="اسأل سَنَد عن مادة أو إجراء… مثال: كم مدة الرد على طلب الموافقة المسبقة؟">
       <button id="send">بحث</button>
     </div>
   </div>
@@ -187,14 +240,14 @@ a{color:var(--accent)}
   </div>
 
   <div class="note warn" style="margin-top:14px">
-    <b>تنبيه:</b> هذا المساعد أداة بحث مرجعي، وليس رأياً قانونياً ولا بديلاً عن النصّ الرسمي
+    <b>تنبيه:</b> «سَنَد» أداة بحث مرجعي، وليس رأياً قانونياً ولا بديلاً عن النصّ الرسمي
     المنشور من مجلس الضمان الصحي. عند أي تعارض، النصّ الرسمي هو المُعتمد. وبعض المستندات
     مقروءة ضوئياً (OCR) وقد يحمل نصّها المستخرَج أخطاء — <b>اعتمد دائماً على صورة الصفحة المرفقة</b>.
   </div>
 </div>
 
 <div class="foot">
-  <div>منصّة <b>سديد</b> · تجمع مكة المكرمة الصحي — إدارة أداء تنمية الإيرادات</div>
+  <div><b>سَنَد</b> — المساعد المرجعي في منصّة <b>سديد</b> · تجمع مكة المكرمة الصحي — إدارة أداء تنمية الإيرادات</div>
   <div style="margin-top:5px">Built and developed by: <b>Hani Alsulami</b></div>
 </div>
 
@@ -204,6 +257,7 @@ a{color:var(--accent)}
 
 <script src="chatbot/data/corpus.js"></script>
 <script src="assets/rcm-chat.js"></script>
+<script src="assets/rcm-reason.js"></script>
 <script src="assets/rcm-chat-ui.js"></script>
 </body>
 </html>
