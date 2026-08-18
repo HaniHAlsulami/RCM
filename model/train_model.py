@@ -40,8 +40,9 @@ from sklearn.ensemble import (  # noqa: E402
 )
 from sklearn.linear_model import LogisticRegression  # noqa: E402
 from sklearn.metrics import (  # noqa: E402
-    accuracy_score, classification_report, confusion_matrix, f1_score,
-    log_loss, roc_auc_score,
+    accuracy_score, average_precision_score, classification_report,
+    confusion_matrix, f1_score, log_loss, precision_score, recall_score,
+    roc_auc_score,
 )
 
 import lightgbm as lgb  # noqa: E402
@@ -53,11 +54,16 @@ os.makedirs(ART, exist_ok=True)
 
 # معاملات النموذج النهائي — مختارة من مفاضلة الحجم/الدقة في السجل أدناه
 FINAL_PARAMS = dict(
-    objective="multiclass", num_class=3, n_estimators=150, learning_rate=0.13,
+    objective="binary", n_estimators=400, learning_rate=0.05,
     num_leaves=31, min_child_samples=30, subsample=0.85, subsample_freq=1,
     colsample_bytree=0.85, reg_lambda=2.0, max_cat_to_onehot=8, cat_smooth=25,
     min_data_per_group=50, n_jobs=-1, random_state=42, verbose=-1,
 )
+
+# نسبة بيانات التدريب المحجوزة لاختيار عتبة القرار.
+# العتبة تُختار على هذه الشريحة وحدها — لا على بيانات الاختبار — وإلا صار
+# الرقم المُعلن متفائلاً لأنه ضُبط على ما يُقاس به.
+VAL_FRACTION = 0.15
 REASON_PARAMS = dict(
     objective="multiclass", n_estimators=50, learning_rate=0.25, num_leaves=16,
     min_child_samples=40, subsample=0.85, subsample_freq=1, colsample_bytree=0.85,
@@ -68,20 +74,31 @@ REASON_PARAMS = dict(
 # تجميع الخصائص التقنية تحت مفاهيم تشغيلية يفهمها فريق الدورة الإيرادية
 SHAP_GROUPS = {
     "total":         ("إجمالي الفاتورة",            ["total", "log_total"]),
-    "contract":      ("عقد التأمين (الضامن)",       ["contract", "contract_hist_rej", "contract_hist_appr", "contract_vol"]),
-    "hospital":      ("المستشفى",                   ["hospital", "hosp_hist_rej", "hosp_hist_appr", "hosp_vol"]),
-    "clinic":        ("القسم / العيادة",            ["clinic", "clinic_hist_rej", "clinic_hist_appr", "clinic_vol"]),
+    "contract":      ("عقد التأمين (الضامن)",       ["contract", "contract_hist_nfa", "contract_hist_ok", "contract_vol"]),
+    "hospital":      ("المستشفى",                   ["hospital", "hosp_hist_nfa", "hosp_hist_ok", "hosp_vol"]),
+    "clinic":        ("القسم / العيادة",            ["clinic", "clinic_hist_nfa", "clinic_hist_ok", "clinic_vol"]),
     "icd":           ("التشخيص ICD-10",             ["icd_chapter", "icd_block"]),
     "nphies_elig":   ("فحص الأهلية — نفيس",         ["nphies_elig"]),
     "visit_type":    ("نوع الزيارة",                ["visit_type"]),
     "triage":        ("درجة الطوارئ CTAS",          ["triage"]),
-    "bill_status":   ("حالة الفاتورة",              ["bill_status"]),
     "patient_class": ("تصنيف المريض",               ["patient_class"]),
     "nationality":   ("الجنسية",                    ["nationality"]),
     "gender":        ("الجنس",                      ["gender"]),
     "visit_time":    ("توقيت الزيارة",              ["visit_hour", "visit_dow", "visit_month", "is_night", "is_weekend"]),
     "history":       ("سجل المريض السابق",          ["prior_claims", "prior_reject_rate"]),
 }
+
+
+def pick_threshold(model, Xval, yval):
+    """
+    يختار عتبة القرار التي تُعظّم F1 الماكرو على شريحة تحقّق مقتطعة من
+    نهاية فترة التدريب. عتبة 0.5 ليست مثلى هنا لأن توزيع الفئتين متقارب
+    وتكلفة تفويت مطالبة خاسرة أعلى من تكلفة إنذار زائد.
+    """
+    p1 = model.predict_proba(Xval)[:, 1]
+    grid = np.arange(0.30, 0.71, 0.01)
+    scores = [f1_score(yval, (p1 >= t).astype(int), average="macro") for t in grid]
+    return float(grid[int(np.argmax(scores))]), float(max(scores))
 
 
 def log(msg):
@@ -101,7 +118,7 @@ def prepare(path):
 
     X, vocab = P.build_features(df)
     X = pd.concat([X, P.build_entity_history(df)], axis=1)[P.ALL_FEATURES]
-    y = df[P.COL_TARGET].astype(str).str.strip().map({c: i for i, c in enumerate(P.CLASSES)}).values
+    y = P.to_binary(df[P.COL_TARGET]).values
     return raw, df, X, y, vocab
 
 
@@ -123,20 +140,30 @@ def bakeoff(X, y, cut):  # noqa: C901
     cat_idx = [X.columns.get_loc(c) for c in P.CAT_FEATURES]
     rows = []
 
+    # نسبة فئة الأغلبية — سقف «التخمين الغبي». الفارق بينها وبين الدقة هو
+    # الرفع الحقيقي، وهو المقياس الوحيد القابل للمقارنة عبر صياغات مختلفة للهدف.
+    majority = float(max(np.mean(yte == 0), np.mean(yte == 1)))
+
     def ev(name, proba, note=""):
-        pred = proba.argmax(1)
+        p1 = proba[:, 1]
+        pred = (p1 >= 0.5).astype(int)
+        acc = float(accuracy_score(yte, pred))
         r = dict(
             model=name,
-            accuracy=round(float(accuracy_score(yte, pred)), 4),
+            accuracy=round(acc, 4),
+            lift_over_majority=round(acc - majority, 4),
             f1_macro=round(float(f1_score(yte, pred, average="macro")), 4),
             f1_weighted=round(float(f1_score(yte, pred, average="weighted")), 4),
-            roc_auc_ovr=round(float(roc_auc_score(yte, proba, multi_class="ovr", average="macro")), 4),
-            log_loss=round(float(log_loss(yte, proba, labels=[0, 1, 2])), 4),
+            roc_auc=round(float(roc_auc_score(yte, p1)), 4),
+            pr_auc=round(float(average_precision_score(yte, p1)), 4),
+            recall_nfa=round(float(recall_score(yte, pred, pos_label=1)), 4),
+            precision_nfa=round(float(precision_score(yte, pred, pos_label=1, zero_division=0)), 4),
+            log_loss=round(float(log_loss(yte, p1, labels=[0, 1])), 4),
             note=note,
         )
         rows.append(r)
-        log(f"  {name:26s} acc={r['accuracy']:.4f}  f1M={r['f1_macro']:.4f}  "
-            f"AUC={r['roc_auc_ovr']:.4f}  logloss={r['log_loss']:.4f}")
+        log(f"  {name:26s} acc={r['accuracy']:.4f}  رفع={r['lift_over_majority']:+.4f}  "
+            f"f1M={r['f1_macro']:.4f}  AUC={r['roc_auc']:.4f}  استرجاع={r['recall_nfa']:.4f}")
         return r
 
     ev("Baseline (نسبة أساسية)", DummyClassifier(strategy="prior").fit(Xtr, ytr).predict_proba(Xte),
@@ -161,7 +188,7 @@ def bakeoff(X, y, cut):  # noqa: C901
     ev("XGBoost",
        xgb.XGBClassifier(n_estimators=800, learning_rate=0.04, max_depth=6, subsample=0.85,
                          colsample_bytree=0.8, reg_lambda=3.0, min_child_weight=10,
-                         objective="multi:softprob", num_class=3, tree_method="hist",
+                         objective="binary:logistic", tree_method="hist",
                          n_jobs=-1, random_state=42).fit(Xtrf, ytr).predict_proba(Xtef))
 
     final = lgb.LGBMClassifier(**FINAL_PARAMS).fit(Xtrc, ytr)
@@ -170,23 +197,23 @@ def bakeoff(X, y, cut):  # noqa: C901
 
     # مقاييس تفصيلية للنموذج المعتمد
     proba = final.predict_proba(Xtec)
-    pred = proba.argmax(1)
+    pred = (proba[:, 1] >= 0.5).astype(int)
     best["confusion_matrix"] = confusion_matrix(yte, pred).tolist()
     best["per_class"] = classification_report(
         yte, pred, target_names=[P.CLASS_AR[c] for c in P.CLASSES],
         output_dict=True, zero_division=0)
-    best["auc_per_class"] = {
-        P.CLASS_AR[c]: round(float(roc_auc_score((yte == i).astype(int), proba[:, i])), 4)
-        for i, c in enumerate(P.CLASSES)}
-    best["top2_accuracy"] = round(float(np.mean([
-        yt in np.argsort(-p)[:2] for yt, p in zip(yte, proba)])), 4)
+    best["majority_baseline"] = round(majority, 4)
     return rows, best
 
 
 # ──────────────────────────────────────────────────────────────────────
 def train_reason_model(raw, vocab, snap):
-    """نموذج التنبؤ بسبب الرفض المتوقّع — يُدرَّب على المطالبات غير المقبولة كلياً."""
-    log("── نموذج أسباب الرفض ──")
+    """
+    نموذج التنبؤ بسبب عدم القبول الكامل.
+    يُدرَّب على المطالبات المرفوضة والمقبولة جزئياً — وهي بالضبط الفئة
+    الموجبة في نموذج الموافقة، فيصبح النموذجان متّسقين تماماً.
+    """
+    log("── نموذج أسباب عدم القبول الكامل ──")
     st = raw[P.COL_TARGET].astype(str).str.strip()
     d = raw[st.isin(["Rejected", "Partially Approved"])].copy()
     d["_code"] = d[P.COL_REASON].map(P.classify_reason)
@@ -243,25 +270,40 @@ def main():
     # فعلاً: نموذج مُدرَّب على النافذة المتوسّعة، ومُقيَّم بلقطة مبنيّة من فترة
     # التدريب وحدها. هذا هو الرقم المُعتمد والمعروض في الصفحة.
     if not args.skip_bakeoff:
-        log("── التقييم بوضع النشر (جدول لقطة) ──")
+        log("── اختيار عتبة القرار على شريحة تحقّق داخل فترة التدريب ──")
+        vcut = int(cut * (1 - VAL_FRACTION))
+        inner = lgb.LGBMClassifier(**FINAL_PARAMS).fit(as_cat(X.iloc[:vcut]), y[:vcut])
+        thr, vf1 = pick_threshold(inner, as_cat(X.iloc[vcut:cut]), y[vcut:cut])
+        log(f"  العتبة المختارة={thr:.2f}  (F1 ماكرو على التحقّق={vf1:.4f}، "
+            f"{cut - vcut:,} صفاً)")
+        best["threshold"] = round(thr, 3)
+
+        log("── التقييم بوضع النشر (جدول لقطة + العتبة المختارة) ──")
         snap_tr = P.build_entity_snapshot(df.iloc[:cut])
         Xs = pd.concat([X[P.FEATURES], P.apply_entity_snapshot(df, snap_tr)], axis=1)[P.ALL_FEATURES]
-        ps = best["_model"].predict_proba(as_cat(Xs.iloc[cut:]))
+        ps = best["_model"].predict_proba(as_cat(Xs.iloc[cut:]))[:, 1]
         yte = y[cut:]
-        pred_s = ps.argmax(1)
+        pred_s = (ps >= thr).astype(int)
+        acc_s = float(accuracy_score(yte, pred_s))
+        maj = float(max(np.mean(yte == 0), np.mean(yte == 1)))
         best["deployment"] = dict(
-            accuracy=round(float(accuracy_score(yte, pred_s)), 4),
+            accuracy=round(acc_s, 4),
+            threshold=round(thr, 3),
+            majority_baseline=round(maj, 4),
+            lift_over_majority=round(acc_s - maj, 4),
             f1_macro=round(float(f1_score(yte, pred_s, average="macro")), 4),
-            roc_auc_ovr=round(float(roc_auc_score(yte, ps, multi_class="ovr", average="macro")), 4),
-            log_loss=round(float(log_loss(yte, ps, labels=[0, 1, 2])), 4),
-            top2_accuracy=round(float(np.mean([t in np.argsort(-p)[:2] for t, p in zip(yte, ps)])), 4),
+            roc_auc=round(float(roc_auc_score(yte, ps)), 4),
+            pr_auc=round(float(average_precision_score(yte, ps)), 4),
+            log_loss=round(float(log_loss(yte, ps, labels=[0, 1])), 4),
+            recall_nfa=round(float(recall_score(yte, pred_s, pos_label=1)), 4),
+            precision_nfa=round(float(precision_score(yte, pred_s, pos_label=1, zero_division=0)), 4),
+            recall_approved=round(float(recall_score(yte, pred_s, pos_label=0)), 4),
             confusion_matrix=confusion_matrix(yte, pred_s).tolist(),
-            auc_per_class={P.CLASS_AR[c]: round(float(roc_auc_score((yte == i).astype(int), ps[:, i])), 4)
-                           for i, c in enumerate(P.CLASSES)},
         )
         d = best["deployment"]
-        log(f"  الدقّة={d['accuracy']:.4f}  أعلى تنبّؤين={d['top2_accuracy']:.4f}  "
-            f"F1={d['f1_macro']:.4f}  AUC={d['roc_auc_ovr']:.4f}")
+        log(f"  الدقّة={d['accuracy']:.4f}  أساس={d['majority_baseline']:.4f}  "
+            f"رفع={d['lift_over_majority']:+.4f}  AUC={d['roc_auc']:.4f}  "
+            f"استرجاع «لم تُقبل»={d['recall_nfa']:.4f}  دقّتها={d['precision_nfa']:.4f}")
         best.pop("_model", None)
 
     # ── النموذج النهائي: يُعاد تدريبه على كامل البيانات ذات القرار ──
@@ -276,16 +318,14 @@ def main():
     import shap
     expl = shap.TreeExplainer(model)
     sample = as_cat(X.sample(min(4000, len(X)), random_state=42))
-    sv = expl.shap_values(sample)
-    sv = np.array(sv)
-    if sv.ndim == 3 and sv.shape[0] != len(P.CLASSES):   # (n, f, c) → (c, n, f)
-        sv = np.transpose(sv, (2, 0, 1))
-    mean_abs = np.abs(sv).mean(axis=1)                    # (classes, features)
+    sv = np.array(expl.shap_values(sample))
+    if sv.ndim == 3:                                       # (n, f, 2) → الفئة الموجبة
+        sv = sv[:, :, 1]
+    mean_abs = np.abs(sv).mean(axis=0)                    # (features,)
     glob = {}
-    for gi, (gk, (gar, cols)) in enumerate(SHAP_GROUPS.items()):
+    for gk, (gar, cols) in SHAP_GROUPS.items():
         idx = [X.columns.get_loc(c) for c in cols if c in X.columns]
-        glob[gk] = dict(label=gar,
-                        value=round(float(mean_abs[:, idx].sum(axis=1).mean()), 5))
+        glob[gk] = dict(label=gar, value=round(float(mean_abs[idx].sum()), 5))
     tot = sum(v["value"] for v in glob.values()) or 1.0
     for v in glob.values():
         v["pct"] = round(100 * v["value"] / tot, 2)
@@ -306,7 +346,10 @@ def main():
                      date_from=str(df["_vd"].min())[:10], date_to=str(df["_vd"].max())[:10],
                      split_date=split_date,
                      class_distribution={P.CLASS_AR[c]: int((y == i).sum())
-                                         for i, c in enumerate(P.CLASSES)}),
+                                         for i, c in enumerate(P.CLASSES)},
+                     raw_distribution={k: int(v) for k, v in
+                                       df[P.COL_TARGET].astype(str).str.strip()
+                                       .value_counts().items()}),
         comparison=rows, selected=best, reason_model=reason_metrics,
         global_shap=glob, features=P.ALL_FEATURES,
     )

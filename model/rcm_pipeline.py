@@ -32,13 +32,24 @@ LEAKAGE_COLS = [
     "Discharge Date",
 ]
 
-# الفئات الثلاث المستهدفة
-CLASSES = ["Approved", "Partially Approved", "Rejected"]
+# ــ الهدف ــ
+# حالات القرار النهائي كما تَرِد في البيانات الخام
+RAW_DECIDED = ["Approved", "Partially Approved", "Rejected"]
+
+# الهدف ثنائي: «مقبولة بالكامل» مقابل «لم تُقبل بالكامل».
+# الموافقة الجزئية تُضمّ إلى الفئة الثانية لأنها خسارة إيراد فعلية —
+# نسبة التحصيل الوسيطة فيها ~50% مقابل ~93% للمقبولة بالكامل.
+CLASSES = ["Approved", "NotFullyApproved"]
 CLASS_AR = {
-    "Approved": "مقبولة",
-    "Partially Approved": "موافقة جزئية",
-    "Rejected": "مرفوضة",
+    "Approved": "مقبولة بالكامل",
+    "NotFullyApproved": "لم تُقبل بالكامل",
 }
+CLASS_ICON = {"Approved": "✅", "NotFullyApproved": "⚠️"}
+
+
+def to_binary(status) -> pd.Series:
+    """Approved → 0  |  Partially Approved / Rejected → 1"""
+    return (pd.Series(status).astype(str).str.strip() != "Approved").astype(int)
 
 # ──────────────────────────────────────────────────────────────────────
 # 1. أدوات تطبيع النصوص
@@ -293,8 +304,11 @@ NUM_FEATURES = [
     "total", "log_total", "triage", "visit_hour", "visit_dow",
     "visit_month", "is_night", "is_weekend", "prior_claims", "prior_reject_rate",
 ]
+# ملاحظة: حُذف حقل «حالة الفاتورة» (Bill Status) عمداً — فهو حقل من دورة
+# الفوترة قد يُحدَّث بعد صدور قرار الضامن، فيمنح النموذج معلومة لا تتوفّر
+# فعلياً وقت التنبؤ. حذفه يكلّف ~3 نقاط دقة لكنه يجعل الرقم صادقاً.
 CAT_FEATURES = [
-    "visit_type", "hospital", "clinic", "bill_status", "nationality",
+    "visit_type", "hospital", "clinic", "nationality",
     "contract", "nphies_elig", "gender", "icd_chapter", "icd_block",
     "patient_class",
 ]
@@ -310,11 +324,10 @@ FEATURE_AR = {
     "is_night": "زيارة ليلية",
     "is_weekend": "نهاية الأسبوع",
     "prior_claims": "عدد مطالبات المريض السابقة",
-    "prior_reject_rate": "نسبة رفض المريض التاريخية",
+    "prior_reject_rate": "نسبة عدم القبول الكامل للمريض تاريخياً",
     "visit_type": "نوع الزيارة",
     "hospital": "المستشفى",
     "clinic": "القسم / العيادة",
-    "bill_status": "حالة الفاتورة",
     "nationality": "الجنسية",
     "contract": "عقد التأمين (الضامن)",
     "nphies_elig": "فحص الأهلية — نفيس",
@@ -354,7 +367,6 @@ def build_features(df: pd.DataFrame, vocab: dict | None = None) -> tuple[pd.Data
     out["visit_type"] = df.get("Visit Type").map(norm_text).replace("", "unknown")
     out["hospital"] = df.get("Hospital Name").map(norm_text).replace("", "unknown")
     out["clinic"] = df.get("Clinic Name").map(norm_text).replace("", "unknown")
-    out["bill_status"] = df.get("Bill Status").map(norm_text).replace("", "unknown")
     out["nationality"] = df.get("Nationality").map(norm_text).replace("", "unknown")
     out["contract"] = df.get("Contract Name").map(norm_contract)
     out["nphies_elig"] = df.get("Nphies Eligibility Check").map(norm_nphies)
@@ -398,8 +410,8 @@ def _patient_history(df: pd.DataFrame):
     }, index=df.index)
 
     if COL_TARGET in df.columns:
-        tmp["rej"] = (df[COL_TARGET].astype(str).str.strip() == "Rejected").astype(float)
-        tmp["decided"] = df[COL_TARGET].isin(CLASSES).astype(float)
+        tmp["rej"] = to_binary(df[COL_TARGET]).astype(float).values
+        tmp["decided"] = df[COL_TARGET].isin(RAW_DECIDED).astype(float)
     else:
         tmp["rej"] = 0.0
         tmp["decided"] = 0.0
@@ -410,7 +422,7 @@ def _patient_history(df: pd.DataFrame):
     prior_dec = g["decided"].cumsum() - tmp["decided"]
     prior_rej = g["rej"].cumsum() - tmp["rej"]
     # تنعيم بايزي نحو المعدل العام (k=5) لتجنّب ضجيج العيّنات الصغيرة
-    k, prior_mean = 5.0, 0.44
+    k, prior_mean = 5.0, PRIOR_NFA
     rate = (prior_rej + k * prior_mean) / (prior_dec + k)
     rate = rate.where(prior_dec > 0, np.nan)
 
@@ -426,7 +438,7 @@ def load_raw(path: str) -> pd.DataFrame:
 
 def decided_mask(df: pd.DataFrame) -> pd.Series:
     """المطالبات التي صدر فيها قرار نهائي فقط (تُستخدم للتدريب والتقييم)."""
-    return df[COL_TARGET].astype(str).str.strip().isin(CLASSES)
+    return df[COL_TARGET].astype(str).str.strip().isin(RAW_DECIDED)
 
 # ──────────────────────────────────────────────────────────────────────
 # 5. خصائص السجل التاريخي للجهات (عقد / مستشفى / عيادة)
@@ -435,19 +447,20 @@ def decided_mask(df: pd.DataFrame) -> pd.Series:
 #    أثناء التنبؤ: تُقرأ من جداول لقطة (snapshot) مرفقة مع النموذج.
 # ──────────────────────────────────────────────────────────────────────
 ENTITY_COLS = {"contract": "Contract Name", "hosp": "Hospital Name", "clinic": "Clinic Name"}
-ENTITY_FEATURES = [f"{n}_{s}" for n in ENTITY_COLS for s in ("hist_rej", "hist_appr", "vol")]
-ENTITY_K = 25.0          # قوة التنعيم البايزي
-PRIOR_REJ, PRIOR_APPR = 0.44, 0.43
+ENTITY_SUFFIXES = ("hist_nfa", "hist_ok", "vol")   # nfa = not fully approved
+ENTITY_FEATURES = [f"{n}_{s}" for n in ENTITY_COLS for s in ENTITY_SUFFIXES]
+ENTITY_K = 25.0                        # قوة التنعيم البايزي
+PRIOR_NFA, PRIOR_OK = 0.5674, 0.4326   # المعدّل العام في بيانات التدريب
 
 FEATURE_AR.update({
-    "contract_hist_rej": "معدل الرفض التاريخي للضامن",
-    "contract_hist_appr": "معدل القبول التاريخي للضامن",
+    "contract_hist_nfa": "معدل عدم القبول الكامل للضامن",
+    "contract_hist_ok": "معدل القبول الكامل للضامن",
     "contract_vol": "حجم مطالبات الضامن",
-    "hosp_hist_rej": "معدل الرفض التاريخي للمستشفى",
-    "hosp_hist_appr": "معدل القبول التاريخي للمستشفى",
+    "hosp_hist_nfa": "معدل عدم القبول الكامل للمستشفى",
+    "hosp_hist_ok": "معدل القبول الكامل للمستشفى",
     "hosp_vol": "حجم مطالبات المستشفى",
-    "clinic_hist_rej": "معدل الرفض التاريخي للعيادة",
-    "clinic_hist_appr": "معدل القبول التاريخي للعيادة",
+    "clinic_hist_nfa": "معدل عدم القبول الكامل للعيادة",
+    "clinic_hist_ok": "معدل القبول الكامل للعيادة",
     "clinic_vol": "حجم مطالبات العيادة",
 })
 
@@ -456,13 +469,12 @@ ALL_FEATURES = FEATURES + ENTITY_FEATURES
 
 def build_entity_history(df: pd.DataFrame) -> pd.DataFrame:
     """نافذة متوسّعة زمنياً — تُستخدم في التدريب فقط. يفترض df مُرتّباً بتاريخ الزيارة."""
-    st = df[COL_TARGET].astype(str).str.strip()
-    rej = (st == "Rejected").astype(float)
-    appr = (st == "Approved").astype(float)
+    nfa = pd.Series(to_binary(df[COL_TARGET]).values, index=df.index, dtype=float)
+    ok = 1.0 - nfa
     out = pd.DataFrame(index=df.index)
     for name, col in ENTITY_COLS.items():
         key = df[col].astype(str).map(norm_text)
-        for suf, val, prior in (("hist_rej", rej, PRIOR_REJ), ("hist_appr", appr, PRIOR_APPR)):
+        for suf, val, prior in (("hist_nfa", nfa, PRIOR_NFA), ("hist_ok", ok, PRIOR_OK)):
             g = val.groupby(key)
             cum = g.cumsum() - val
             cnt = g.cumcount()
@@ -474,25 +486,24 @@ def build_entity_history(df: pd.DataFrame) -> pd.DataFrame:
 def build_entity_snapshot(df: pd.DataFrame) -> dict:
     """جداول اللقطة النهائية التي تُشحن مع النموذج وتُستخدم وقت التنبؤ."""
     d = df[decided_mask(df)]
-    st = d[COL_TARGET].astype(str).str.strip()
-    rej = (st == "Rejected").astype(float)
-    appr = (st == "Approved").astype(float)
+    nfa = pd.Series(to_binary(d[COL_TARGET]).values, index=d.index, dtype=float)
+    ok = 1.0 - nfa
     snap = {}
     for name, col in ENTITY_COLS.items():
         key = d[col].astype(str).map(norm_text)
-        g_r = rej.groupby(key).agg(["sum", "size"])
-        g_a = appr.groupby(key).agg(["sum", "size"])
+        g_r = nfa.groupby(key).agg(["sum", "size"])
+        g_a = ok.groupby(key).agg(["sum", "size"])
         tbl = {}
         for k in g_r.index:
             n = float(g_r.loc[k, "size"])
             tbl[k] = [
-                round(float((g_r.loc[k, "sum"] + ENTITY_K * PRIOR_REJ) / (n + ENTITY_K)), 5),
-                round(float((g_a.loc[k, "sum"] + ENTITY_K * PRIOR_APPR) / (n + ENTITY_K)), 5),
+                round(float((g_r.loc[k, "sum"] + ENTITY_K * PRIOR_NFA) / (n + ENTITY_K)), 5),
+                round(float((g_a.loc[k, "sum"] + ENTITY_K * PRIOR_OK) / (n + ENTITY_K)), 5),
                 round(float(np.log1p(n)), 4),
             ]
         snap[name] = {
             "table": tbl,
-            "default": [PRIOR_REJ, PRIOR_APPR, 0.0],   # جهة غير معروفة → المعدل العام
+            "default": [PRIOR_NFA, PRIOR_OK, 0.0],   # جهة غير معروفة → المعدل العام
         }
     return snap
 
@@ -504,7 +515,7 @@ def apply_entity_snapshot(df: pd.DataFrame, snap: dict) -> pd.DataFrame:
         key = df[col].astype(str).map(norm_text)
         tbl, dflt = snap[name]["table"], snap[name]["default"]
         vals = key.map(lambda k: tbl.get(k, dflt))
-        for i, suf in enumerate(("hist_rej", "hist_appr", "vol")):
+        for i, suf in enumerate(ENTITY_SUFFIXES):
             out[f"{name}_{suf}"] = [v[i] for v in vals]
     return out
 

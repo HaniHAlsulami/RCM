@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-18 14:00",
+  "generated_at": "2026-08-18 15:51",
   "dataset": {
     "rows_total": 98181,
     "rows_decided": 41042,
@@ -7,258 +7,248 @@
     "date_to": "2026-07-18",
     "split_date": "2026-06-03",
     "class_distribution": {
-      "مقبولة": 17754,
-      "موافقة جزئية": 5145,
-      "مرفوضة": 18143
+      "مقبولة بالكامل": 17754,
+      "لم تُقبل بالكامل": 23288
+    },
+    "raw_distribution": {
+      "Rejected": 18143,
+      "Approved": 17754,
+      "Partially Approved": 5145
     }
   },
   "comparison": [
     {
       "model": "Baseline (نسبة أساسية)",
-      "accuracy": 0.3743,
-      "f1_macro": 0.1816,
-      "f1_weighted": 0.2039,
-      "roc_auc_ovr": 0.5,
-      "log_loss": 0.9842,
+      "accuracy": 0.4936,
+      "lift_over_majority": -0.0128,
+      "f1_macro": 0.3305,
+      "f1_weighted": 0.3263,
+      "roc_auc": 0.5,
+      "pr_auc": 0.4936,
+      "recall_nfa": 1.0,
+      "precision_nfa": 0.4936,
+      "log_loss": 0.7103,
       "note": "توقّع الفئة الأكثر شيوعاً"
     },
     {
       "model": "Logistic Regression",
-      "accuracy": 0.6219,
-      "f1_macro": 0.476,
-      "f1_weighted": 0.5926,
-      "roc_auc_ovr": 0.7453,
-      "log_loss": 0.8616,
+      "accuracy": 0.6587,
+      "lift_over_majority": 0.1523,
+      "f1_macro": 0.6477,
+      "f1_weighted": 0.6485,
+      "roc_auc": 0.734,
+      "pr_auc": 0.6982,
+      "recall_nfa": 0.4882,
+      "precision_nfa": 0.731,
+      "log_loss": 0.6509,
       "note": "نموذج خطي مرجعي"
     },
     {
       "model": "Random Forest",
-      "accuracy": 0.6732,
-      "f1_macro": 0.5332,
-      "f1_weighted": 0.6488,
-      "roc_auc_ovr": 0.8003,
-      "log_loss": 0.7491,
+      "accuracy": 0.7219,
+      "lift_over_majority": 0.2155,
+      "f1_macro": 0.7219,
+      "f1_weighted": 0.7219,
+      "roc_auc": 0.8019,
+      "pr_auc": 0.7829,
+      "recall_nfa": 0.7216,
+      "precision_nfa": 0.7168,
+      "log_loss": 0.5476,
       "note": "النموذج المستخدم سابقاً"
     },
     {
       "model": "Extra Trees",
-      "accuracy": 0.67,
-      "f1_macro": 0.4957,
-      "f1_weighted": 0.6346,
-      "roc_auc_ovr": 0.7973,
-      "log_loss": 0.7494,
+      "accuracy": 0.7197,
+      "lift_over_majority": 0.2133,
+      "f1_macro": 0.719,
+      "f1_weighted": 0.7192,
+      "roc_auc": 0.8,
+      "pr_auc": 0.7792,
+      "recall_nfa": 0.6787,
+      "precision_nfa": 0.7335,
+      "log_loss": 0.5462,
       "note": ""
     },
     {
       "model": "HistGradientBoosting",
-      "accuracy": 0.6892,
-      "f1_macro": 0.5651,
-      "f1_weighted": 0.6724,
-      "roc_auc_ovr": 0.8033,
-      "log_loss": 0.8003,
+      "accuracy": 0.7163,
+      "lift_over_majority": 0.2099,
+      "f1_macro": 0.7161,
+      "f1_weighted": 0.7162,
+      "roc_auc": 0.7995,
+      "pr_auc": 0.7948,
+      "recall_nfa": 0.6977,
+      "precision_nfa": 0.7192,
+      "log_loss": 0.5529,
       "note": ""
     },
     {
       "model": "XGBoost",
-      "accuracy": 0.6939,
-      "f1_macro": 0.5588,
-      "f1_weighted": 0.672,
-      "roc_auc_ovr": 0.8176,
-      "log_loss": 0.7367,
+      "accuracy": 0.7193,
+      "lift_over_majority": 0.2129,
+      "f1_macro": 0.7187,
+      "f1_weighted": 0.7189,
+      "roc_auc": 0.8018,
+      "pr_auc": 0.7915,
+      "recall_nfa": 0.6807,
+      "precision_nfa": 0.732,
+      "log_loss": 0.5491,
       "note": ""
     },
     {
       "model": "LightGBM (المُعتمد)",
-      "accuracy": 0.693,
-      "f1_macro": 0.5697,
-      "f1_weighted": 0.6751,
-      "roc_auc_ovr": 0.813,
-      "log_loss": 0.7378,
+      "accuracy": 0.7207,
+      "lift_over_majority": 0.2143,
+      "f1_macro": 0.7203,
+      "f1_weighted": 0.7204,
+      "roc_auc": 0.8081,
+      "pr_auc": 0.8002,
+      "recall_nfa": 0.6915,
+      "precision_nfa": 0.7287,
+      "log_loss": 0.5378,
       "note": "أشجار معزَّزة + دعم أصلي للفئات",
       "confusion_matrix": [
         [
-          3274,
-          119,
-          764
+          3114,
+          1043
         ],
         [
-          476,
-          170,
-          333
-        ],
-        [
-          752,
-          76,
-          2245
+          1250,
+          2802
         ]
       ],
       "per_class": {
-        "مقبولة": {
-          "precision": 0.727232341181697,
-          "recall": 0.7875872023093577,
-          "f1-score": 0.7562074142510683,
+        "مقبولة بالكامل": {
+          "precision": 0.7135655362053163,
+          "recall": 0.7490979071445755,
+          "f1-score": 0.7309001290928295,
           "support": 4157.0
         },
-        "موافقة جزئية": {
-          "precision": 0.4657534246575342,
-          "recall": 0.17364657814096016,
-          "f1-score": 0.25297619047619047,
-          "support": 979.0
+        "لم تُقبل بالكامل": {
+          "precision": 0.728738621586476,
+          "recall": 0.6915103652517275,
+          "f1-score": 0.7096365708496898,
+          "support": 4052.0
         },
-        "مرفوضة": {
-          "precision": 0.6717534410532615,
-          "recall": 0.7305564594858445,
-          "f1-score": 0.6999220576773187,
-          "support": 3073.0
-        },
-        "accuracy": 0.6930198562553295,
+        "accuracy": 0.7206724326958217,
         "macro avg": {
-          "precision": 0.6215797356308309,
-          "recall": 0.5639300799787208,
-          "f1-score": 0.5697018874681925,
+          "precision": 0.721152078895896,
+          "recall": 0.7203041361981515,
+          "f1-score": 0.7202683499712597,
           "support": 8209.0
         },
         "weighted avg": {
-          "precision": 0.6752802740149486,
-          "recall": 0.6930198562553295,
-          "f1-score": 0.6751222310586285,
+          "precision": 0.7210550406473262,
+          "recall": 0.7206724326958217,
+          "f1-score": 0.7204043393497181,
           "support": 8209.0
         }
       },
-      "auc_per_class": {
-        "مقبولة": 0.8205,
-        "موافقة جزئية": 0.7835,
-        "مرفوضة": 0.835
-      },
-      "top2_accuracy": 0.9055,
+      "majority_baseline": 0.5064,
+      "threshold": 0.45,
       "deployment": {
-        "accuracy": 0.6919,
-        "f1_macro": 0.5746,
-        "roc_auc_ovr": 0.8156,
-        "log_loss": 0.7238,
-        "top2_accuracy": 0.9134,
+        "accuracy": 0.7244,
+        "threshold": 0.45,
+        "majority_baseline": 0.5064,
+        "lift_over_majority": 0.2181,
+        "f1_macro": 0.7244,
+        "roc_auc": 0.8098,
+        "pr_auc": 0.8019,
+        "log_loss": 0.533,
+        "recall_nfa": 0.7438,
+        "precision_nfa": 0.7112,
+        "recall_approved": 0.7056,
         "confusion_matrix": [
           [
-            3257,
-            132,
-            768
+            2933,
+            1224
           ],
           [
-            457,
-            188,
-            334
-          ],
-          [
-            748,
-            90,
-            2235
+            1038,
+            3014
           ]
-        ],
-        "auc_per_class": {
-          "مقبولة": 0.8251,
-          "موافقة جزئية": 0.7787,
-          "مرفوضة": 0.8428
-        }
+        ]
       }
     }
   ],
   "selected": {
     "model": "LightGBM (المُعتمد)",
-    "accuracy": 0.693,
-    "f1_macro": 0.5697,
-    "f1_weighted": 0.6751,
-    "roc_auc_ovr": 0.813,
-    "log_loss": 0.7378,
+    "accuracy": 0.7207,
+    "lift_over_majority": 0.2143,
+    "f1_macro": 0.7203,
+    "f1_weighted": 0.7204,
+    "roc_auc": 0.8081,
+    "pr_auc": 0.8002,
+    "recall_nfa": 0.6915,
+    "precision_nfa": 0.7287,
+    "log_loss": 0.5378,
     "note": "أشجار معزَّزة + دعم أصلي للفئات",
     "confusion_matrix": [
       [
-        3274,
-        119,
-        764
+        3114,
+        1043
       ],
       [
-        476,
-        170,
-        333
-      ],
-      [
-        752,
-        76,
-        2245
+        1250,
+        2802
       ]
     ],
     "per_class": {
-      "مقبولة": {
-        "precision": 0.727232341181697,
-        "recall": 0.7875872023093577,
-        "f1-score": 0.7562074142510683,
+      "مقبولة بالكامل": {
+        "precision": 0.7135655362053163,
+        "recall": 0.7490979071445755,
+        "f1-score": 0.7309001290928295,
         "support": 4157.0
       },
-      "موافقة جزئية": {
-        "precision": 0.4657534246575342,
-        "recall": 0.17364657814096016,
-        "f1-score": 0.25297619047619047,
-        "support": 979.0
+      "لم تُقبل بالكامل": {
+        "precision": 0.728738621586476,
+        "recall": 0.6915103652517275,
+        "f1-score": 0.7096365708496898,
+        "support": 4052.0
       },
-      "مرفوضة": {
-        "precision": 0.6717534410532615,
-        "recall": 0.7305564594858445,
-        "f1-score": 0.6999220576773187,
-        "support": 3073.0
-      },
-      "accuracy": 0.6930198562553295,
+      "accuracy": 0.7206724326958217,
       "macro avg": {
-        "precision": 0.6215797356308309,
-        "recall": 0.5639300799787208,
-        "f1-score": 0.5697018874681925,
+        "precision": 0.721152078895896,
+        "recall": 0.7203041361981515,
+        "f1-score": 0.7202683499712597,
         "support": 8209.0
       },
       "weighted avg": {
-        "precision": 0.6752802740149486,
-        "recall": 0.6930198562553295,
-        "f1-score": 0.6751222310586285,
+        "precision": 0.7210550406473262,
+        "recall": 0.7206724326958217,
+        "f1-score": 0.7204043393497181,
         "support": 8209.0
       }
     },
-    "auc_per_class": {
-      "مقبولة": 0.8205,
-      "موافقة جزئية": 0.7835,
-      "مرفوضة": 0.835
-    },
-    "top2_accuracy": 0.9055,
+    "majority_baseline": 0.5064,
+    "threshold": 0.45,
     "deployment": {
-      "accuracy": 0.6919,
-      "f1_macro": 0.5746,
-      "roc_auc_ovr": 0.8156,
-      "log_loss": 0.7238,
-      "top2_accuracy": 0.9134,
+      "accuracy": 0.7244,
+      "threshold": 0.45,
+      "majority_baseline": 0.5064,
+      "lift_over_majority": 0.2181,
+      "f1_macro": 0.7244,
+      "roc_auc": 0.8098,
+      "pr_auc": 0.8019,
+      "log_loss": 0.533,
+      "recall_nfa": 0.7438,
+      "precision_nfa": 0.7112,
+      "recall_approved": 0.7056,
       "confusion_matrix": [
         [
-          3257,
-          132,
-          768
+          2933,
+          1224
         ],
         [
-          457,
-          188,
-          334
-        ],
-        [
-          748,
-          90,
-          2235
+          1038,
+          3014
         ]
-      ],
-      "auc_per_class": {
-        "مقبولة": 0.8251,
-        "موافقة جزئية": 0.7787,
-        "مرفوضة": 0.8428
-      }
+      ]
     }
   },
   "reason_model": {
-    "top1_accuracy": 0.3345,
-    "top3_accuracy": 0.6799,
+    "top1_accuracy": 0.3186,
+    "top3_accuracy": 0.6802,
     "baseline": 0.1765,
     "n_rows": 19741,
     "n_classes": 14,
@@ -280,75 +270,70 @@
     }
   },
   "global_shap": {
-    "hospital": {
-      "label": "المستشفى",
-      "value": 0.43137,
-      "pct": 16.95
-    },
     "contract": {
       "label": "عقد التأمين (الضامن)",
-      "value": 0.40106,
-      "pct": 15.76
+      "value": 0.65049,
+      "pct": 19.68
     },
-    "clinic": {
-      "label": "القسم / العيادة",
-      "value": 0.3227,
-      "pct": 12.68
-    },
-    "bill_status": {
-      "label": "حالة الفاتورة",
-      "value": 0.32261,
-      "pct": 12.68
+    "hospital": {
+      "label": "المستشفى",
+      "value": 0.57496,
+      "pct": 17.4
     },
     "total": {
       "label": "إجمالي الفاتورة",
-      "value": 0.28321,
-      "pct": 11.13
+      "value": 0.45284,
+      "pct": 13.7
+    },
+    "clinic": {
+      "label": "القسم / العيادة",
+      "value": 0.36973,
+      "pct": 11.19
     },
     "icd": {
       "label": "التشخيص ICD-10",
-      "value": 0.21103,
-      "pct": 8.29
-    },
-    "visit_time": {
-      "label": "توقيت الزيارة",
-      "value": 0.12759,
-      "pct": 5.01
+      "value": 0.30088,
+      "pct": 9.1
     },
     "nationality": {
       "label": "الجنسية",
-      "value": 0.12476,
-      "pct": 4.9
+      "value": 0.20726,
+      "pct": 6.27
+    },
+    "visit_time": {
+      "label": "توقيت الزيارة",
+      "value": 0.20651,
+      "pct": 6.25
     },
     "visit_type": {
       "label": "نوع الزيارة",
-      "value": 0.08547,
-      "pct": 3.36
+      "value": 0.14595,
+      "pct": 4.42
     },
     "triage": {
       "label": "درجة الطوارئ CTAS",
-      "value": 0.08457,
-      "pct": 3.32
+      "value": 0.12258,
+      "pct": 3.71
     },
     "nphies_elig": {
       "label": "فحص الأهلية — نفيس",
-      "value": 0.0587,
-      "pct": 2.31
-    },
-    "patient_class": {
-      "label": "تصنيف المريض",
-      "value": 0.04544,
-      "pct": 1.79
+      "value": 0.11691,
+      "pct": 3.54
     },
     "history": {
       "label": "سجل المريض السابق",
-      "value": 0.03791,
-      "pct": 1.49
+      "value": 0.07588,
+      "pct": 2.3
+    },
+    "patient_class": {
+      "label": "تصنيف المريض",
+      "value": 0.07527,
+      "pct": 2.28
     },
     "gender": {
       "label": "الجنس",
-      "value": 0.00794,
-      "pct": 0.31
+      "value": 0.00604,
+      "pct": 0.18
     }
   },
   "features": [
@@ -365,7 +350,6 @@
     "visit_type",
     "hospital",
     "clinic",
-    "bill_status",
     "nationality",
     "contract",
     "nphies_elig",
@@ -373,14 +357,14 @@
     "icd_chapter",
     "icd_block",
     "patient_class",
-    "contract_hist_rej",
-    "contract_hist_appr",
+    "contract_hist_nfa",
+    "contract_hist_ok",
     "contract_vol",
-    "hosp_hist_rej",
-    "hosp_hist_appr",
+    "hosp_hist_nfa",
+    "hosp_hist_ok",
     "hosp_vol",
-    "clinic_hist_rej",
-    "clinic_hist_appr",
+    "clinic_hist_nfa",
+    "clinic_hist_ok",
     "clinic_vol"
   ]
 }

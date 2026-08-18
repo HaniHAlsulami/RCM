@@ -3,8 +3,9 @@
  * تجمع مكة الصحي · إدارة الدورة الإيرادية وتحليل البيانات
  *
  * يقارن نتائج assets/rcm-engine.js بنتائج LightGBM ومكتبة shap في بايثون.
- * شغّل tests/dump_reference.py أولاً لتوليد tests/reference.json.
+ * يعمل مع الهدف الثنائي ومتعدّد الفئات على السواء.
  *
+ *     python3 tests/dump_reference.py --data <ملف البيانات>
  *     node tests/verify_engine.js
  *
  * ينتهي برمز خروج 1 إذا تجاوز أي فارق العتبة المسموحة.
@@ -30,34 +31,41 @@ if (JSON.stringify(B.features) !== JSON.stringify(R.features)) {
   console.error("✗ ترتيب الخصائص في الحزمة يخالف ترتيبها في المرجع.");
   process.exit(1);
 }
+if (B.approval.task !== R.task) {
+  console.error(`✗ نوع المهمّة مختلف: الحزمة ${B.approval.task} والمرجع ${R.task}.`);
+  process.exit(1);
+}
 
 E.prepare(B.approval.trees);
 E.prepare(B.reason.trees);
 
-const nC = B.classes.length;
-const nR = B.reason.labels.length;
+const nOut = B.approval.outputs;           // 1 للثنائي، عدد الفئات لغيره
+const nR = B.reason.outputs;
+const nF = B.features.length;
 let maxMargin = 0, maxProba = 0, maxShap = 0, maxAdd = 0, maxReason = 0, maxBase = 0;
 
-for (let c = 0; c < nC; c++) {
-  maxBase = Math.max(maxBase, Math.abs(B.approval.base[c] - R.expected[c]));
+for (let k = 0; k < nOut; k++) {
+  maxBase = Math.max(maxBase, Math.abs(B.approval.base[k] - R.expected[k]));
 }
 
 for (let i = 0; i < R.X.length; i++) {
   const x = Float64Array.from(R.X[i].map((v) => (v === null ? NaN : v)));
-  const m = E.rawScores(B.approval.trees, x, nC);
-  const p = E.softmax(m);
-  const phi = E.shapValues(B.approval.trees, x, nC, B.features.length);
+  const m = E.rawScores(B.approval.trees, x, nOut);
+  const p = E.toProba(m, B.approval);
+  const phi = E.shapValues(B.approval.trees, x, nOut, nF);
   const rm = E.rawScores(B.reason.trees, x, nR);
 
-  for (let c = 0; c < nC; c++) {
-    maxMargin = Math.max(maxMargin, Math.abs(m[c] - R.margin[i][c]));
-    maxProba = Math.max(maxProba, Math.abs(p[c] - R.proba[i][c]));
-    let sum = B.approval.base[c];
-    for (let f = 0; f < phi[c].length; f++) {
-      sum += phi[c][f];
-      maxShap = Math.max(maxShap, Math.abs(phi[c][f] - R.shap[c][i][f]));
+  for (let k = 0; k < nOut; k++) {
+    maxMargin = Math.max(maxMargin, Math.abs(m[k] - R.margin[i][k]));
+    let sum = B.approval.base[k];
+    for (let f = 0; f < nF; f++) {
+      sum += phi[k][f];
+      maxShap = Math.max(maxShap, Math.abs(phi[k][f] - R.shap[k][i][f]));
     }
-    maxAdd = Math.max(maxAdd, Math.abs(sum - m[c]));
+    maxAdd = Math.max(maxAdd, Math.abs(sum - m[k]));
+  }
+  for (let c = 0; c < p.length; c++) {
+    maxProba = Math.max(maxProba, Math.abs(p[c] - R.proba[i][c]));
   }
   for (let c = 0; c < nR; c++) {
     maxReason = Math.max(maxReason, Math.abs(rm[c] - R.reason_margin[i][c]));
@@ -73,7 +81,7 @@ const rows = [
   ["الدرجة الخام (نموذج الأسباب)", maxReason, TOL.margin],
 ];
 
-console.log(`\nمقارنة محرّك JavaScript بمخرجات بايثون — ${R.X.length} صفاً\n`);
+console.log(`\nمقارنة محرّك JavaScript بمخرجات بايثون — ${R.X.length} صفاً · مهمّة ${R.task}\n`);
 let ok = true;
 for (const [name, val, tol] of rows) {
   const pass = val <= tol;
@@ -85,7 +93,7 @@ const t0 = Date.now();
 const N = 20;
 for (let k = 0; k < N; k++) {
   const x = Float64Array.from(R.X[k % R.X.length].map((v) => (v === null ? NaN : v)));
-  E.shapValues(B.approval.trees, x, nC, B.features.length);
+  E.shapValues(B.approval.trees, x, nOut, nF);
 }
 console.log(`\n  زمن حساب SHAP للتنبّؤ الواحد: ${((Date.now() - t0) / N).toFixed(1)} مللي ثانية`);
 console.log(ok ? "\n✓ اجتاز التحقّق\n" : "\n✗ فشل التحقّق\n");

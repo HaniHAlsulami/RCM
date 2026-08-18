@@ -9,12 +9,14 @@
   var LAST = null, LAST_INPUT = null, ACTIVE_CLASS = 2;   // 2 = مرفوضة
   var $ = function (id) { return document.getElementById(id); };
 
-  var COLORS = ["#22d3a0", "#fbbf24", "#f87171"];
-  var CLS_KEY = ["approved", "partial", "rejected"];
-  var CLS_ICON = ["✅", "🟡", "❌"];
+  // فئتان: 0 = مقبولة بالكامل، 1 = لم تُقبل بالكامل
+  var COLORS = ["#22d3a0", "#f87171"];
+  var CLS_KEY = ["approved", "rejected"];
+  var CLS_ICON = ["✅", "⚠️"];
+  var NFA = 1;                       // فهرس فئة «لم تُقبل بالكامل»
 
   // الحقول الفئوية المعروضة كقوائم منسدلة
-  var DD = ["visit_type", "hospital", "clinic", "bill_status", "nationality",
+  var DD = ["visit_type", "hospital", "clinic", "nationality",
             "contract", "nphies_elig", "gender", "icd_chapter", "icd_block",
             "patient_class", "triage"];
 
@@ -23,7 +25,7 @@
     total: "in_total", visitDate: "in_visitDate", icd: "in_icdCode",
     priorClaims: "in_priorClaims", priorRejectRate: "in_priorRejectRate",
     visitType: "visit_type", hospital: "hospital", clinic: "clinic",
-    billStatus: "bill_status", nationality: "nationality", contract: "contract",
+    nationality: "nationality", contract: "contract",
     nphies: "nphies_elig", gender: "gender", icdChapter: "icd_chapter",
     icdBlock: "icd_block", patientClass: "patient_class", triage: "triage",
   };
@@ -128,7 +130,7 @@
       visitDate: $("in_visitDate").value,
       triage: STATE.triage ? +STATE.triage : null,
       visitType: STATE.visit_type, hospital: STATE.hospital, clinic: STATE.clinic,
-      billStatus: STATE.bill_status, nationality: STATE.nationality,
+      nationality: STATE.nationality,
       contract: STATE.contract, nphies: STATE.nphies_elig, gender: STATE.gender,
       icdChapter: STATE.icd_chapter, icdBlock: STATE.icd_block,
       patientClass: STATE.patient_class,
@@ -309,8 +311,7 @@
   function runPredict() {
     var input = readInput();
     var out = E.predict(B, input);
-    var rej = out.proba[2] + out.proba[1] * 0.5;
-    var reasons = E.predictReasons(B, input, out.proba[1] + out.proba[2]);
+    var reasons = E.predictReasons(B, input, out.proba[NFA]);
     LAST = out; LAST_INPUT = input; LAST.reasons = reasons;
     ACTIVE_CLASS = out.predIndex;
 
@@ -331,18 +332,19 @@
     $("rPct").textContent = pct(p[i]);
     $("rBar").style.width = (p[i] * 100) + "%";
     $("rBar").style.background = COLORS[i];
-    ["pA", "pP", "pR"].forEach(function (id, k) { $(id).textContent = pct(p[k]); });
-    ["bA", "bP", "bR"].forEach(function (id, k) {
+    ["pA", "pR"].forEach(function (id, k) { $(id).textContent = pct(p[k]); });
+    ["bA", "bR"].forEach(function (id, k) {
       var diff = p[k] - B.prior[k];
       $(id).textContent = (diff >= 0 ? "▲ " : "▼ ") + pct(Math.abs(diff), 0) + " عن المتوسّط";
-      $(id).style.color = (k === 2 ? (diff > 0) : (diff < 0)) ? "var(--red)" : "var(--green)";
+      // ارتفاع خطر عدم التحصيل سيّئ، وارتفاع القبول جيّد
+      $(id).style.color = (k === NFA ? diff > 0 : diff < 0) ? "var(--red)" : "var(--green)";
     });
 
     // الأثر المالي المتوقّع
     var total = parseFloat(input.total);
     if (isFinite(total) && total > 0) {
       var rec = B.recovery, keys = B.classes;
-      var expv = total * (p[0] * rec[keys[0]] + p[1] * rec[keys[1]] + p[2] * rec[keys[2]]);
+      var expv = total * (p[0] * rec[keys[0]] + p[1] * rec[keys[1]]);
       $("mExp").textContent = fmt(expv, 0) + " ﷼";
       $("mRisk").textContent = fmt(total - expv, 0) + " ﷼";
       $("moneyBox").style.display = "grid";
@@ -350,26 +352,22 @@
       $("moneyBox").style.display = "none";
     }
 
-    // التوصية مبنيّة على احتمال عدم القبول الكامل (رفض + جزئي)، لا على الرفض وحده.
     // في وضع التضمين لا توجد تبويبات، فتُذكر الأسباب بموضعها الفعلي أدناه.
     var where = document.body.classList.contains("embed")
-      ? "القائمة أدناه" : "تبويب «أسباب الرفض»";
-    var nonApprove = p[1] + p[2], tip, cls;
-    if (p[2] >= 0.5) {
+      ? "القائمة أدناه" : "تبويب «أسباب عدم التحصيل»";
+    var risk = p[NFA], tip, cls;
+    if (risk >= 0.65) {
       cls = "warn";
-      tip = "<strong>خطر رفض مرتفع.</strong> راجع الأسباب المتوقّعة في " + where +
-            " وعالجها قبل الإرسال — التصحيح المسبق أرخص بكثير من الاستئناف.";
-    } else if (i === 1 || nonApprove >= 0.5) {
+      tip = "<strong>خطر مرتفع لعدم التحصيل الكامل.</strong> راجع الأسباب المرجّحة في " +
+            where + " وعالجها قبل الإرسال — التصحيح المسبق أرخص بكثير من الاستئناف.";
+    } else if (risk >= 0.45) {
       cls = "";
-      tip = "<strong>الأرجح موافقة جزئية أو خصم.</strong> راجع حدود التغطية في العقد ومطابقة " +
-            "الأسعار، وتحقّق من اكتمال المستندات — الأسباب المرجّحة في " + where + ".";
-    } else if (nonApprove >= 0.35) {
-      cls = "";
-      tip = "<strong>خطر متوسّط.</strong> تحقّق من اكتمال المستندات ومطابقة الترميز قبل الإرسال.";
+      tip = "<strong>خطر متوسّط.</strong> تحقّق من اكتمال المستندات ومطابقة الترميز وحدود " +
+            "التغطية في العقد قبل الإرسال — الأسباب المرجّحة في " + where + ".";
     } else {
       cls = "ok";
-      tip = "<strong>مؤشّرات إيجابية.</strong> احتمال القبول الكامل مرتفع؛ تأكّد فقط من اكتمال " +
-            "البيانات الأساسية.";
+      tip = "<strong>مؤشّرات إيجابية.</strong> احتمال التحصيل الكامل مرتفع؛ تأكّد فقط من " +
+            "اكتمال البيانات الأساسية.";
     }
     $("rTip").className = "tip " + cls;
     $("rTip").innerHTML = tip;
@@ -392,9 +390,9 @@
     if (!rs.length) { host.style.display = "none"; return; }
     host.style.display = "block";
     host.innerHTML =
-      '<div class="chart-title">أرجح أسباب عدم القبول الكامل</div>' +
-      '<div class="chart-sub">احتمال عدم القبول الكامل ' +
-        pct(LAST.proba[1] + LAST.proba[2]) + "</div>" +
+      '<div class="chart-title">أرجح أسباب عدم التحصيل الكامل</div>' +
+      '<div class="chart-sub">احتمال عدم التحصيل الكامل ' +
+        pct(LAST.proba[NFA]) + "</div>" +
       rs.slice(0, 3).map(function (r, i) {
         return '<div class="reason" style="border-inline-start-color:' +
           (i === 0 ? "#f87171" : "#fb923c") + '">' +
@@ -443,9 +441,8 @@
   function renderReasons(out, reasons) {
     $("reasonEmpty").style.display = "none";
     $("reasonBody").style.display = "block";
-    var nonApprove = out.proba[1] + out.proba[2];
     $("reasonSub").innerHTML =
-      "احتمال عدم القبول الكامل لهذه المطالبة <b>" + pct(nonApprove) + "</b>. " +
+      "احتمال عدم التحصيل الكامل لهذه المطالبة <b>" + pct(out.proba[NFA]) + "</b>. " +
       "النسب أدناه مشروطة بحدوث ذلك، ومرتّبة من الأرجح. " +
       "دقّة النموذج في وضع السبب الصحيح ضمن أعلى ثلاثة: <b>" +
       pct(B.metrics.reason_model.top3_accuracy) + "</b>.";
@@ -482,15 +479,20 @@
     var h = [];
     h.push('<div class="card"><div class="sec-label">📈 أداء النموذج</div><div class="kv">');
     h.push(kv("الدقة الإجمالية", pct(m.accuracy), "على بيانات لم يرها النموذج"));
-    h.push(kv("دقة أعلى تنبّؤين", pct(m.top2_accuracy), "النتيجة الصحيحة ضمن أعلى احتمالين"));
-    h.push(kv("F1 (ماكرو)", m.f1_macro.toFixed(3), "متوسّط متوازن على الفئات الثلاث"));
-    h.push(kv("AUC (OvR)", m.roc_auc.toFixed(3), "قدرة الفصل بين الفئات"));
+    h.push(kv("الرفع فوق الأساس", "+" + pct(m.lift_over_majority),
+              "أساس التخمين " + pct(m.majority_baseline)));
+    h.push(kv("AUC", m.roc_auc.toFixed(3), "قدرة الفصل — لا تتأثر بتوزيع الفئات"));
+    h.push(kv("F1 (ماكرو)", m.f1_macro.toFixed(3), "متوسّط متوازن على الفئتين"));
     h.push("</div>");
 
-    h.push('<div class="chart-sub">AUC لكل فئة على حدة:</div><div class="tbl-wrap"><table><tr><th>الفئة</th><th>AUC</th></tr>');
-    Object.keys(m.auc_per_class || {}).forEach(function (k) {
-      h.push("<tr><td>" + esc(k) + "</td><td>" + m.auc_per_class[k] + "</td></tr>"); });
-    h.push("</table></div></div>");
+    h.push('<div class="chart-sub">أداء الفئة الحرجة «لم تُقبل بالكامل» — وهي ما يهمّ ' +
+      "الدورة الإيرادية فعلاً:</div><div class=\"kv\">");
+    h.push(kv("الاسترجاع", pct(m.recall_nfa), "نسبة المطالبات الخاسرة التي يلتقطها"));
+    h.push(kv("الدقة", pct(m.precision_nfa), "نسبة الإنذارات الصحيحة"));
+    h.push("</div>");
+    h.push('<div class="note"><b>عتبة القرار ' + m.threshold + "</b> — اختيرت بتعظيم F1 " +
+      "الماكرو على شريحة تحقّق مقتطعة من نهاية فترة التدريب، لا على بيانات الاختبار. " +
+      "خُفِّضت دون 0.5 عمداً: تفويت مطالبة خاسرة أغلى من إنذار زائد يُراجَع في دقيقة.</div></div>");
 
     // مصفوفة الالتباس
     if (cm.length) {
@@ -513,23 +515,30 @@
 
     // مقارنة الخوارزميات
     if (m.comparison && m.comparison.length) {
-      var best = m.comparison.reduce(function (a, b) { return b.f1_macro > a.f1_macro ? b : a; });
+      // يُميَّز النموذج المُعتمد فعلاً، لا صاحب أعلى رقم — فقد تتفوّق خوارزمية
+      // أخرى بفارق ضمن هامش الخطأ بينما يُختار المعتمد لاعتبارات أخرى.
+      var best = m.comparison.filter(function (r) { return r.model.indexOf("المُعتمد") >= 0; })[0];
       h.push('<div class="card"><div class="sec-label">🔬 مقارنة الخوارزميات</div>');
       h.push('<div class="chart-sub">دُرِّبت كل الخوارزميات على نفس الخصائص وقُيِّمت بتقسيم ' +
         "<b>زمني</b> — التدريب على الفترة الأقدم والاختبار على الأحدث، وهو التقييم الأمين " +
         "لنموذج سيعمل على مطالبات مستقبلية. الصف المميّز هو النموذج المُعتمد.</div>");
-      h.push('<div class="tbl-wrap"><table><tr><th>الخوارزمية</th><th>الدقة</th><th>F1</th><th>AUC</th><th>Log-loss</th></tr>');
+      h.push('<div class="tbl-wrap"><table><tr><th>الخوارزمية</th><th>الدقة</th>' +
+        "<th>الرفع</th><th>AUC</th><th>استرجاع الخطر</th></tr>");
       m.comparison.forEach(function (r) {
         h.push('<tr class="' + (r === best ? "best" : "") + '"><td>' + esc(r.model) + "</td><td>" +
-          r.accuracy.toFixed(4) + "</td><td>" + r.f1_macro.toFixed(4) + "</td><td>" +
-          r.roc_auc_ovr.toFixed(4) + "</td><td>" + r.log_loss.toFixed(4) + "</td></tr>");
+          r.accuracy.toFixed(4) + "</td><td>" + (r.lift_over_majority >= 0 ? "+" : "") +
+          r.lift_over_majority.toFixed(4) + "</td><td>" + r.roc_auc.toFixed(4) + "</td><td>" +
+          r.recall_nfa.toFixed(4) + "</td></tr>");
       });
       h.push("</table></div>");
-      h.push('<div class="note"><b>لماذا LightGBM؟</b> تعادل عملياً مع XGBoost في الدقة ' +
-        "(الفارق ضمن هامش الخطأ الإحصائي)، وتفوّق عليه في F1 الماكرو — أي في التعامل مع فئة " +
-        "«الموافقة الجزئية» النادرة. كما يدعم الخصائص الفئوية عالية التعدّد (7,354 عقداً و659 " +
-        "عيادة) بشكل أصلي دون توسيع one-hot، ويُصدَّر إلى المتصفح بحجم صغير مع إمكانية حساب " +
-        "SHAP بدقّة تامة.</div></div>");
+      h.push('<div class="note"><b>«الرفع» = الدقة ناقص نسبة فئة الأغلبية.</b> وهو المقياس ' +
+        "الوحيد القابل للمقارنة بين صياغات مختلفة للهدف: دمج فئتين يرفع سقف «التخمين الغبي» " +
+        "فترتفع الدقة الظاهرية دون تحسّن حقيقي.<br><br>" +
+        "<b>لماذا LightGBM؟</b> أعلى AUC بين كل الخوارزميات المجرَّبة (0.808 مقابل 0.802 " +
+        "للغابة العشوائية)، ودقّة تعادلها عملياً — الفارق 0.001 على 8,209 صفوف اختبار، " +
+        "أي ضمن هامش الخطأ الإحصائي. كما يدعم الخصائص الفئوية عالية التعدّد (7,354 عقداً و659 عيادة) " +
+        "بشكل أصلي دون توسيع one-hot، ويُصدَّر إلى المتصفح بحجم صغير مع إمكانية حساب SHAP " +
+        "بدقّة تامة.</div></div>");
     }
 
     // الخصائص
@@ -557,7 +566,7 @@
 
     // أسباب الرفض
     var rm = m.reason_model || {};
-    h.push('<div class="card"><div class="sec-label">⚠️ نموذج أسباب الرفض</div><div class="kv">');
+    h.push('<div class="card"><div class="sec-label">⚠️ نموذج أسباب عدم التحصيل</div><div class="kv">');
     h.push(kv("دقّة أعلى ٣ أسباب", pct(rm.top3_accuracy), "السبب الصحيح ضمن أعلى ثلاثة"));
     h.push(kv("دقّة السبب الأول", pct(rm.top1_accuracy), "مقابل أساس " + pct(rm.baseline)));
     h.push("</div>");
@@ -640,7 +649,6 @@
 '    & "&hospital="   & SELECTEDVALUE(Claims[Hospital Key])\n' +
 '    & "&clinic="     & SELECTEDVALUE(Claims[Clinic Key])\n' +
 '    & "&contract="   & SELECTEDVALUE(Claims[Contract Key])\n' +
-'    & "&billStatus=" & SELECTEDVALUE(Claims[Bill Status])\n' +
 '    & "&nphies="     & SELECTEDVALUE(Claims[Nphies Key])\n' +
 '    & "&icd="        & SELECTEDVALUE(Claims[Icd 10])\n' +
 '    & "&triage="     & SELECTEDVALUE(Claims[Triage Num])\n' +
@@ -658,11 +666,11 @@
     h.push('<ol class="steps">' +
       "<li><b>Home ← Get Data ← More… ← Other ← Python script</b>.</li>" +
       "<li>ألصق محتوى <code>powerbi/powerbi_script.py</code> بعد تعديل مسار ملف البيانات.</li>" +
-      "<li>اختر جدول <b>scored</b> — يحتوي على احتمالات الفئات الثلاث، التنبؤ، المبلغ المعرّض " +
-      "للخطر، أعلى ٣ عوامل SHAP، وأعلى ٣ أسباب رفض متوقّعة لكل مطالبة.</li>" +
+      "<li>اختر جدول <b>scored</b> — يحتوي على احتمال عدم التحصيل الكامل، التنبؤ، شريحة " +
+      "الخطر، المبلغ المعرّض للخطر، أعلى ٣ عوامل SHAP، وأعلى ٣ أسباب متوقّعة لكل مطالبة.</li>" +
       "<li>حدّث البيانات دورياً عبر <b>Personal Gateway</b>.</li></ol>");
     h.push('<div class="note"><b>الأعمدة الناتجة:</b> <code>pred_label</code>، <code>p_approved</code>، ' +
-      "<code>p_partial</code>، <code>p_rejected</code>، <code>risk_band</code>، " +
+      "<code>p_not_fully_approved</code>، <code>risk_band</code>، " +
       "<code>expected_revenue</code>، <code>amount_at_risk</code>، <code>shap_top1..3</code>، " +
       "<code>reason_top1..3</code>. هذه الأعمدة كافية لبناء لوحة كاملة: تصفية حسب شريحة الخطر، " +
       "تجميع المبلغ المعرّض للخطر حسب الضامن أو المستشفى، وترتيب أسباب الرفض المتوقّعة.</div>");
@@ -696,7 +704,6 @@
       "<tr><td><code>hospital</code></td><td>اسم المستشفى المطبَّع</td><td>al noor specialist hospital</td></tr>" +
       "<tr><td><code>clinic</code></td><td>اسم العيادة المطبَّع</td><td>emergency</td></tr>" +
       "<tr><td><code>contract</code></td><td>اسم العقد المطبَّع</td><td>hajj1447</td></tr>" +
-      "<tr><td><code>billStatus</code></td><td>حالة الفاتورة</td><td>issued</td></tr>" +
       "<tr><td><code>nphies</code></td><td>نتيجة فحص الأهلية</td><td>eligible</td></tr>" +
       "<tr><td><code>icd</code></td><td>رمز ICD-10 كاملاً</td><td>J06.9</td></tr>" +
       "<tr><td><code>triage</code></td><td>CTAS من 1 إلى 5</td><td>3</td></tr>" +
@@ -729,8 +736,9 @@
       prediction: B.classes[out.predIndex],
       prediction_ar: B.classes_ar[out.predIndex],
       confidence: out.proba[out.predIndex],
-      probabilities: { approved: out.proba[0], partial: out.proba[1], rejected: out.proba[2] },
-      riskBand: out.proba[2] >= 0.6 ? "high" : out.proba[2] >= 0.35 ? "medium" : "low",
+      probabilities: { approved: out.proba[0], notFullyApproved: out.proba[NFA] },
+      riskBand: out.proba[NFA] >= 0.65 ? "high" : out.proba[NFA] >= 0.45 ? "medium" : "low",
+      threshold: out.threshold,
       shap: out.groups[out.predIndex].slice(0, 8).map(function (g) {
         return { feature: g.key, label: g.label, value: +g.value.toFixed(5) }; }),
       shapBase: out.base[out.predIndex],
@@ -784,7 +792,7 @@
     $("in_visitDate").value = d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) +
       "T" + p(d.getHours()) + ":" + p(d.getMinutes());
     // القيم الأكثر شيوعاً في البيانات كنقطة انطلاق
-    ["visit_type", "hospital", "clinic", "bill_status", "nationality", "contract",
+    ["visit_type", "hospital", "clinic", "nationality", "contract",
      "nphies_elig", "gender", "icd_chapter", "icd_block", "patient_class"].forEach(function (c) {
       var o = optionsFor(c)[0];
       if (o) select(c, o.v, o.l);
@@ -797,7 +805,6 @@
     $("in_icdCode").value = "J06.9";
     syncIcd();
     selectByValue("visit_type", "er");
-    selectByValue("bill_status", "issued");
     selectByValue("nphies_elig", "eligible");
     selectByValue("triage", "4");
     runPredict();
@@ -817,8 +824,9 @@
     var m = B.metrics;
     $("headChips").innerHTML =
       '<span class="chip">دقّة النموذج <b>' + pct(m.accuracy) + "</b></span>" +
-      '<span class="chip">أعلى تنبّؤين <b>' + pct(m.top2_accuracy) + "</b></span>" +
+      '<span class="chip">رفع فوق الأساس <b>+' + pct(m.lift_over_majority) + "</b></span>" +
       '<span class="chip">AUC <b>' + m.roc_auc.toFixed(3) + "</b></span>" +
+      '<span class="chip">التقاط الخطر <b>' + pct(m.recall_nfa) + "</b></span>" +
       '<span class="chip">مُدرَّب على <b>' + fmt(m.dataset.rows_decided) + "</b> مطالبة</span>";
   }
 
