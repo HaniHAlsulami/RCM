@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 train_model.py — تدريب واختيار أفضل نموذج للتنبؤ بنتيجة الموافقة التأمينية
-Makkah Health Cluster · RCM & Data Analytics
+Makkah Health Cluster · Revenue Development Performance
 
 المخرجات (في model/artifacts/):
   model_bundle.json   حزمة النموذج المضغوطة (أشجار + قواميس + جداول اللقطة) للمتصفح
@@ -71,7 +71,7 @@ REASON_PARAMS = dict(
     n_jobs=-1, random_state=42, verbose=-1,
 )
 
-# تجميع الخصائص التقنية تحت مفاهيم تشغيلية يفهمها فريق الدورة الإيرادية
+# تجميع الخصائص التقنية تحت مفاهيم تشغيلية يفهمها فريق تنمية الإيرادات
 SHAP_GROUPS = {
     "total":         ("إجمالي الفاتورة",            ["total", "log_total"]),
     "contract":      ("عقد التأمين (الضامن)",       ["contract", "contract_hist_nfa", "contract_hist_ok", "contract_vol"]),
