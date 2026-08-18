@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>مساعد سديد المرجعي — لوائح مجلس الضمان الصحي</title>
+<meta name="description" content="مساعد يجيب من لوائح وأنظمة وسياسات مجلس الضمان الصحي CHI، ويذكر المرجع ورقم الصفحة ويرفق صورتها مع كل إجابة">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<style>
+:root{
+  --bg:#eff4f9; --surface:#f6f9fc; --card:#ffffff; --border:#d6e2ed; --border-strong:#c3d4e2;
+  --accent:#1b6fa8; --accent-dim:rgba(27,111,168,.09);
+  --green:#0b7a5e; --red:#c4362f; --amber:#96590f;
+  --text:#12384f; --muted:#5a7085; --muted2:#456076;
+  --shadow:0 1px 3px rgba(18,56,79,.07), 0 8px 24px rgba(18,56,79,.06);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:"IBM Plex Sans Arabic","Segoe UI",Tahoma,"Noto Sans Arabic",Arial,sans-serif;
+  background:var(--bg);color:var(--text);line-height:1.85;padding:22px 16px 30px;
+  -webkit-font-smoothing:antialiased}
+.wrap{max-width:900px;margin:0 auto}
+a{color:var(--accent)}
+
+.head{text-align:center;margin-bottom:16px}
+.org-logo{height:64px;width:auto;display:block;margin:0 auto 12px}
+.badge{display:inline-flex;gap:6px;background:var(--accent-dim);border:1px solid rgba(27,111,168,.22);
+  color:var(--accent);font-size:11px;font-weight:600;padding:4px 14px;border-radius:20px;margin-bottom:10px}
+.brand{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:5px}
+.brand-mark{width:46px;height:46px;flex-shrink:0}
+.brand-text{text-align:right;line-height:1}
+.brand-text .ar{font-size:26px;font-weight:700;color:var(--text);margin:0}
+.brand-text .en{display:block;font-size:10px;font-weight:600;letter-spacing:3px;color:var(--accent);margin-top:4px}
+.tagline{font-size:13.5px;color:var(--muted2)}
+.navlinks{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:12px}
+.navlinks a{font-size:12px;font-weight:600;background:var(--card);border:1px solid var(--border);
+  border-radius:20px;padding:6px 15px;text-decoration:none;color:var(--muted2)}
+.navlinks a:hover{border-color:var(--accent);color:var(--accent)}
+.navlinks a.on{background:var(--accent);border-color:var(--accent);color:#fff}
+
+.note{border-radius:11px;padding:12px 15px;font-size:12.5px;line-height:1.85;margin-bottom:14px;
+  border:1px solid;background:var(--surface)}
+.note.info{background:var(--accent-dim);border-color:rgba(27,111,168,.2)}
+.note.info b{color:var(--accent)}
+.note.warn{background:rgba(196,54,47,.06);border-color:rgba(196,54,47,.22)}
+.note.warn b{color:var(--red)}
+
+/* ── المحادثة ── */
+#chat{min-height:180px;margin-bottom:14px}
+.msg{margin-bottom:14px;animation:in .22s ease}
+@keyframes in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.msg.q{display:flex;justify-content:flex-start}
+.msg.q .bubble{background:var(--accent);color:#fff;border-radius:14px 14px 14px 4px;
+  padding:10px 16px;font-size:13.5px;font-weight:600;max-width:82%;box-shadow:var(--shadow)}
+.ans{background:var(--card);border:1px solid var(--border);border-radius:14px;
+  box-shadow:var(--shadow);overflow:hidden}
+.ans .lead{padding:13px 16px;font-size:12.5px;color:var(--muted2);
+  border-bottom:1px solid var(--border);background:var(--surface);
+  display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.ans .lead b{color:var(--text)}
+.conf{font-size:10.5px;font-weight:700;padding:3px 10px;border-radius:11px;white-space:nowrap}
+.conf.hi{background:rgba(11,122,94,.12);color:var(--green)}
+.conf.md{background:rgba(150,89,15,.12);color:var(--amber)}
+.conf.lo{background:rgba(196,54,47,.10);color:var(--red)}
+
+.hit{padding:15px 16px;border-bottom:1px solid var(--border)}
+.hit:last-child{border-bottom:none}
+.hit .src{display:flex;align-items:flex-start;gap:9px;margin-bottom:9px;flex-wrap:wrap}
+.hit .rank{background:var(--accent-dim);border:1px solid rgba(27,111,168,.22);color:var(--accent);
+  width:22px;height:22px;border-radius:7px;display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:700;flex-shrink:0}
+.hit .meta{flex:1;min-width:0}
+.hit .doct{display:block;font-size:12.5px;font-weight:700;color:var(--text);line-height:1.6}
+.hit .pageno{display:block;font-size:11px;color:var(--muted);margin-top:1px}
+.hit .art{display:inline-block;font-size:11px;font-weight:700;color:var(--accent);
+  background:var(--accent-dim);border-radius:6px;padding:2px 9px;margin-bottom:7px}
+.hit .quote{font-size:13px;line-height:2;color:var(--text);background:var(--surface);
+  border:1px solid var(--border);border-inline-start:3px solid var(--accent);
+  border-radius:9px;padding:12px 14px;margin-bottom:11px}
+.hit .quote mark{background:rgba(150,89,15,.22);color:inherit;border-radius:3px;padding:0 2px}
+/* الصفحة كاملةً كمصغّرة — دليل بصري على المصدر، والضغط يفتحها بحجم مقروء */
+.shot{display:block;border:1px solid var(--border-strong);border-radius:9px;overflow:hidden;
+  background:var(--surface);cursor:zoom-in;position:relative;padding:6px}
+.shot img{width:100%;height:auto;max-height:420px;object-fit:contain;object-position:top;display:block}
+.shot .cap{position:absolute;inset-inline-start:6px;inset-block-end:6px;background:rgba(18,56,79,.88);
+  color:#fff;font-size:10.5px;padding:4px 11px;border-radius:7px}
+.shot:hover{border-color:var(--accent)}
+
+.more{padding:11px 16px;background:var(--surface);font-size:12px;color:var(--muted)}
+.more summary{cursor:pointer;font-weight:600;color:var(--accent);list-style:none}
+.more summary::-webkit-details-marker{display:none}
+.more summary::before{content:"▾ "}
+.more[open] summary::before{content:"▴ "}
+.more ol{margin:9px 20px 0 0}
+.more li{margin-bottom:6px;line-height:1.8}
+.more a{text-decoration:none;font-weight:600}
+
+.empty{background:var(--card);border:1px dashed var(--border-strong);border-radius:13px;
+  padding:20px;text-align:center;color:var(--muted);font-size:13px}
+.sugg{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:14px}
+.sugg button{background:var(--surface);border:1px solid var(--border);color:var(--muted2);
+  font-family:inherit;font-size:12px;padding:7px 14px;border-radius:20px;cursor:pointer}
+.sugg button:hover{border-color:var(--accent);color:var(--accent)}
+
+/* ── صندوق السؤال ── */
+.ask{position:sticky;bottom:0;background:var(--bg);padding:12px 0 4px;z-index:20}
+.askbox{display:flex;gap:9px;background:var(--card);border:1px solid var(--border-strong);
+  border-radius:13px;padding:8px;box-shadow:var(--shadow)}
+.askbox input{flex:1;border:none;outline:none;background:none;font-family:inherit;font-size:14px;
+  color:var(--text);padding:8px 10px;min-width:0}
+.askbox input::placeholder{color:var(--muted)}
+.askbox button{background:var(--accent);border:none;color:#fff;font-family:inherit;font-size:13.5px;
+  font-weight:700;padding:9px 22px;border-radius:9px;cursor:pointer;white-space:nowrap}
+.askbox button:hover{background:#15597f}
+.askbox button:disabled{opacity:.5;cursor:default}
+
+/* ── قائمة المراجع ── */
+.refs{background:var(--card);border:1px solid var(--border);border-radius:13px;padding:16px;margin-top:16px}
+.refs h2{font-size:13.5px;margin-bottom:4px}
+.refs .sub{font-size:12px;color:var(--muted);margin-bottom:12px}
+.refs ul{list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:7px}
+@media(max-width:680px){.refs ul{grid-template-columns:1fr}}
+.refs li{background:var(--surface);border:1px solid var(--border);border-radius:9px;
+  padding:9px 12px;font-size:12px;line-height:1.7}
+.refs li .n{font-size:10.5px;color:var(--muted);display:block;margin-top:2px}
+
+/* ── معاينة الصورة ── */
+#lb{position:fixed;inset:0;background:rgba(18,56,79,.93);display:none;z-index:100;
+  align-items:center;justify-content:center;padding:22px;cursor:zoom-out}
+#lb.on{display:flex}
+#lb img{max-width:100%;max-height:100%;border-radius:9px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+#lb .x{position:absolute;top:16px;inset-inline-end:20px;color:#fff;font-size:26px;
+  background:none;border:none;cursor:pointer;line-height:1}
+#lb .lbcap{position:absolute;bottom:14px;inset-inline:0;text-align:center;color:#fff;font-size:12.5px}
+
+.foot{text-align:center;margin-top:26px;padding-top:18px;border-top:1px solid var(--border);
+  font-size:11.5px;color:var(--muted)}
+.foot b{color:var(--accent)}
+.boot{text-align:center;padding:44px 20px;color:var(--muted);font-size:13px}
+.spin{width:24px;height:24px;border:2.5px solid var(--border);border-top-color:var(--accent);
+  border-radius:50%;animation:sp .8s linear infinite;margin:0 auto 12px}
+@keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="head">
+  <img class="org-logo" src="assets/logo.png" alt="شعار تجمع مكة المكرمة الصحي">
+  <div class="badge">إدارة أداء تنمية الإيرادات</div>
+  <div class="brand">
+    <img class="brand-mark" src="assets/sadeed-logo.svg" alt="">
+    <div class="brand-text"><h1 class="ar">سديد</h1><span class="en">SADEED</span></div>
+  </div>
+  <p class="tagline">المساعد المرجعي — لوائح وأنظمة وسياسات مجلس الضمان الصحي</p>
+  <div class="navlinks">
+    <a href="predict.html">🔮 منصة التنبؤ</a>
+    <a href="chatbot.html" class="on">💬 المساعد المرجعي</a>
+    <a href="guide.html">📘 دليل الاستخدام</a>
+  </div>
+</div>
+
+<div id="boot" class="boot"><div class="spin"></div>جارٍ تحميل المراجع…</div>
+
+<div id="app" style="display:none">
+
+  <div class="note info">
+    <b>كيف يعمل؟</b> يبحث المساعد في نصوص اللوائح المفهرسة ويعرض المقطع <b>كما ورد حرفياً</b>
+    مع اسم المستند ورقم الصفحة وصورتها. لا يعيد صياغة النصّ النظامي ولا يستنتج منه —
+    فالإجابة عن سؤال نظامي يجب أن تكون منقولة لا مؤوَّلة.
+  </div>
+
+  <div id="chat"></div>
+
+  <div class="ask">
+    <div class="askbox">
+      <input id="q" type="text" autocomplete="off"
+             placeholder="اسأل عن مادة أو إجراء… مثال: مدة الرد على طلب الموافقة المسبقة">
+      <button id="send">بحث</button>
+    </div>
+  </div>
+
+  <div class="refs">
+    <h2>📚 المراجع المفهرسة</h2>
+    <div class="sub" id="refsSub"></div>
+    <ul id="refsList"></ul>
+  </div>
+
+  <div class="note warn" style="margin-top:14px">
+    <b>تنبيه:</b> هذا المساعد أداة بحث مرجعي، وليس رأياً قانونياً ولا بديلاً عن النصّ الرسمي
+    المنشور من مجلس الضمان الصحي. عند أي تعارض، النصّ الرسمي هو المُعتمد. وبعض المستندات
+    مقروءة ضوئياً (OCR) وقد يحمل نصّها المستخرَج أخطاء — <b>اعتمد دائماً على صورة الصفحة المرفقة</b>.
+  </div>
+</div>
+
+<div class="foot">
+  <div>منصّة <b>سديد</b> · تجمع مكة المكرمة الصحي — إدارة أداء تنمية الإيرادات</div>
+  <div style="margin-top:5px">Built and developed by: <b>Hani Alsulami</b></div>
+</div>
+
+</div>
+
+<div id="lb"><button class="x" aria-label="إغلاق">✕</button><img alt=""><div class="lbcap"></div></div>
+
+<script src="chatbot/data/corpus.js"></script>
+<script src="assets/rcm-chat.js"></script>
+<script src="assets/rcm-chat-ui.js"></script>
+</body>
+</html>

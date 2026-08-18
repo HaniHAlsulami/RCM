@@ -107,8 +107,8 @@ def score(df, model, reason_model, reason_labels, vocab, snap,
 
     # أعلى عوامل SHAP للفئة المتنبَّأ بها
     if n_shap:
-        # قيم SHAP على مقياس logit الفئة الموجبة «لم تُقبل بالكامل»:
-        # الموجب يرفع خطر عدم التحصيل الكامل، والسالب يخفضه.
+        # قيم SHAP على مقياس logit الفئة الموجبة «موافقة غير كاملة»:
+        # الموجب يرفع خطر عدم الموافقة الكاملة، والسالب يخفضه.
         sv = np.array(shap.TreeExplainer(model).shap_values(Xc))
         if sv.ndim == 3:
             sv = sv[:, :, 1]

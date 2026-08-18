@@ -13,7 +13,7 @@ Sadeed · Makkah Health Cluster · Revenue Development Performance
     pip install pandas numpy lightgbm shap openpyxl
 
 يُخرج الجدول التالي:
-    scored     المطالبات + التنبؤ الثنائي (مقبولة بالكامل / لم تُقبل بالكامل)
+    scored     المطالبات + التنبؤ الثنائي (موافقة كاملة / موافقة غير كاملة)
                + احتمال عدم التحصيل + شريحة الخطر + المبلغ المعرّض للخطر
                + أعلى ٣ عوامل SHAP + أعلى ٣ أسباب متوقّعة
                + أعمدة *_Key المطبَّعة لبناء روابط صفحة التنبؤ في DAX
