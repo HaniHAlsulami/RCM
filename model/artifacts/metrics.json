@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-18 20:38",
+  "generated_at": "2026-08-19 01:15",
   "dataset": {
     "rows_total": 98181,
     "rows_decided": 41042,
@@ -271,7 +271,7 @@
   },
   "global_shap": {
     "contract": {
-      "label": "عقد التأمين (الضامن)",
+      "label": "عقد التأمين (شركة التأمين — Payer)",
       "value": 0.65049,
       "pct": 19.68
     },
