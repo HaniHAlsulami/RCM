@@ -116,6 +116,7 @@ assets/
   rcm-case.js                 جسر الحالة من منصّة التنبؤ ← خطة تحسين الطلب
   rcm-llm.js                  الطبقة التوليدية (اختيارية) — حوار مقيَّد بالفهرس
   rcm-chat-ui.js              واجهة «سَنَد»
+  site-config.js              إعدادات المنصّة المشتركة (رابط البوّابة)
 chatbot/
   build_corpus.py             استخراج نصوص PDF وبناء الفهرس وصور الصفحات
   titles.json                 عناوين المستندات العربية (تُحرَّر يدوياً)
@@ -131,6 +132,11 @@ model/
     model_bundle.js/.json     الحزمة التي تقرأها الصفحة
     metrics.json              مقاييس الأداء ومقارنة الخوارزميات
     model_card.md             بطاقة النموذج
+gateway/
+  worker.js                   بوّابة المفتاح (تعمل لصقاً على Deno Deploy وCloudflare)
+  README.md                   دليل النشر بثلاث طرق مجانية
+  wrangler.toml               نشر بديل عبر wrangler
+api/gemini/[...path].js       البوّابة نفسها بصيغة Vercel (تُنشر بربط المستودع)
 tools/
   shoot_docs.py               إعادة توليد لقطات الدليل من الصفحة الحيّة
 tests/
@@ -138,6 +144,7 @@ tests/
   verify_engine.js            مقارنة محرّك المتصفح بمخرجات بايثون
   dump_chat_reference.py      توليد مرجع المعالجة العربية من بايثون
   verify_chat.js              تطابق المعالجة + سلامة طبقة الاستنتاج
+  verify_gateway.mjs          منطق بوّابة المفتاح: القفل والحصر والحقن
 powerbi/
   powerbi_script.py           مصدر بيانات Python لـ Power BI
   measures.dax                مقاييس جاهزة
@@ -193,7 +200,7 @@ rcm-clean-app-v3.html         النسخة السابقة (محفوظة للمر
 | المزوّد | النقل | ملاحظات |
 |---|---|---|
 | **Anthropic — Claude** (الافتراضي) | Messages API — `claude-opus-5` بتفكير متكيّف وبثّ SSE و`tool_use`/`tool_result` | مباشر بمفتاح المستخدم، أو عبر بوّابة منشأة (`endpoint`) |
-| **Google — Gemini** | Generative Language API — `streamGenerateContent?alt=sse` و`functionCall`/`functionResponse` | النموذج مفكّر: أدواره تُعاد بتوقيعها (`thoughtSignature`) حرفياً؛ `geminiBase` يوجّه الطلبات لبوّابة منشأة عند الحاجة |
+| **Google — Gemini** | Generative Language API — `streamGenerateContent?alt=sse` و`functionCall`/`functionResponse` | النموذج مفكّر: أدواره تُعاد بتوقيعها (`thoughtSignature`) حرفياً؛ `geminiBase` يوجّه الطلبات لبوّابة المنصّة |
 
 أوضاع اتصال Anthropic:
 
@@ -201,6 +208,28 @@ rcm-clean-app-v3.html         النسخة السابقة (محفوظة للمر
 |---|---|---|
 | **مباشر** | المتصفّح ← `api.anthropic.com` بمفتاح المستخدم | استعمال فرديّ |
 | **بوّابة المنشأة** | المتصفّح ← بوّابة داخلية تحمل المفتاح | **التعميم على فريق** |
+
+**تفعيل التوليد لكل زوّار المنصّة بلا مفاتيح في متصفّحاتهم** — بوّابة خادمية تحمل
+مفتاح Gemini في مخزن أسرار مشفَّر وتحقنه خادمياً، مع قفل المصدر وحصر النماذج
+والمسارات وسقف حجم الطلب — **بثلاث طرق نشر مجانية** (دليلها في
+[`gateway/README.md`](gateway/README.md)):
+
+| المنصّة | الملف | النشر |
+|---|---|---|
+| **Deno Deploy** | [`gateway/worker.js`](gateway/worker.js) | لصق في المتصفّح — الأسهل |
+| **Vercel** | [`api/gemini/[...path].js`](api/gemini/) | ربط هذا المستودع بحساب GitHub — بلا لصق |
+| **Cloudflare** | [`gateway/worker.js`](gateway/worker.js) | لصق في المحرّر أو `wrangler` |
+
+بعد النشر يوضع رابط البوّابة في [`assets/site-config.js`](assets/site-config.js)
+فيجد كل زائر التوليد مفعّلاً تلقائياً — وتفضيلات المستخدم المحلية تغلب إعداد
+المنصّة. **المفتاح لا يوضع في هذا المستودع أبداً** — المستودع علنيّ، وأي «تشفير»
+داخل موقع ثابت يفكّه زائره. منطق البوّابة بصيغتيها مُختبَر في `tests/verify_gateway.mjs`.
+
+**النموذج الموصى به Flash Lite، مع تحويل تلقائي إليه**: `gemini-flash-lite-latest`
+هو الافتراضي (الأخفّ والأكثر توفّراً)، ومن اختار Flash أو Pro فتعذّر نموذجه بعد
+إعادات المحاولة — أو أنهى دورته بلا أي نصّ — أُعيد سؤاله تلقائياً على Flash Lite
+مع إبلاغه، وتُظهر شارة الإجابة النموذج الذي أجاب فعلاً (وعلامة «احتياط» عند التحويل).
+لا تحويل عند اعتذار النموذج (فذاك قرار لا عطل)، ولا إن كان قد بثّ نصاً فعلاً.
 
 > **ما الذي يُرسَل؟** سؤال المستخدم، ومقاطع اللائحة المسترجَعة، وملخّص الحالة إن أُرفقت.
 > المفتاح في الوضع المباشر يُحفَظ في `localStorage` على جهاز المستخدم ولا يمرّ بموقع سديد —

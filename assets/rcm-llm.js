@@ -33,10 +33,13 @@
   ];
 
   var GEMINI_MODELS = [
-    { id: "gemini-flash-latest", label: "Gemini Flash — سريع (الافتراضي)" },
-    { id: "gemini-pro-latest", label: "Gemini Pro — أدقّ" },
-    { id: "gemini-flash-lite-latest", label: "Gemini Flash Lite — الأخفّ" },
+    { id: "gemini-flash-lite-latest", label: "Gemini Flash Lite — الموصى به (الأخفّ والأكثر توفّراً)" },
+    { id: "gemini-flash-latest", label: "Gemini Flash — أقوى، ويتحوّل لـ Lite تلقائياً عند التعذّر" },
+    { id: "gemini-pro-latest", label: "Gemini Pro — الأدقّ، ويتحوّل لـ Lite تلقائياً عند التعذّر" },
   ];
+  // نموذج الاحتياط: الأخفّ حملاً والأقل ازدحاماً — إليه يُتحوَّل تلقائياً
+  // حين يفشل النموذج المختار أو لا يولّد إجابة.
+  var GEMINI_FALLBACK = "gemini-flash-lite-latest";
   var GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/models/";
 
   var DEFAULTS = {
@@ -48,16 +51,22 @@
     model: "claude-opus-5",
     effort: "high",
     geminiKey: "",
-    geminiModel: "gemini-flash-latest",
+    geminiModel: "gemini-flash-lite-latest",
     geminiBase: "",                 // فارغ = خدمة Google؛ يُوجَّه لبوّابة منشأة عند الحاجة
   };
 
   function loadCfg() {
     var c = {};
     try { c = JSON.parse(localStorage.getItem(CFG_KEY) || "{}"); } catch (e) { c = {}; }
+    // إعدادات المنصّة (site-config.js) افتراضٌ مشترك لكل الزوّار،
+    // وتفضيلات المستخدم المحفوظة محلياً تغلبها.
+    var site = (root.SADEED_SITE_LLM && typeof root.SADEED_SITE_LLM === "object")
+      ? root.SADEED_SITE_LLM : {};
     var out = {};
     Object.keys(DEFAULTS).forEach(function (k) {
-      out[k] = c[k] === undefined ? DEFAULTS[k] : c[k];
+      out[k] = c[k] !== undefined ? c[k]
+             : site[k] !== undefined ? site[k]
+             : DEFAULTS[k];
     });
     return out;
   }
@@ -73,7 +82,7 @@
   function ready(c) {
     c = c || loadCfg();
     if (!c.enabled) return false;
-    if (c.provider === "gemini") return !!c.geminiKey;
+    if (c.provider === "gemini") return !!(c.geminiKey || c.geminiBase);
     return c.mode === "proxy" ? !!c.endpoint : !!c.apiKey;
   }
 
@@ -403,9 +412,11 @@
     // تحمل المفتاح، أو لاختبار المسار على محاكٍ محليّ.
     var url = (cfg.geminiBase || GEMINI_BASE) + encodeURIComponent(cfg.geminiModel) +
               ":streamGenerateContent?alt=sse";
+    var gheaders = { "content-type": "application/json" };
+    if (cfg.geminiKey) gheaders["x-goog-api-key"] = cfg.geminiKey;   // البوّابة تحقنه بنفسها
     return fetch(url, {
       method: "POST",
-      headers: { "content-type": "application/json", "x-goog-api-key": cfg.geminiKey },
+      headers: gheaders,
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: SYSTEM }] },
         tools: GEMINI_TOOLS,
@@ -450,6 +461,54 @@
         return { rawParts: rawParts, calls: calls, text: text,
                  finishReason: finishReason, blocked: blocked };
       });
+    });
+  }
+
+  /**
+   * غلاف الاحتياط: إن اختير نموذج غير Flash Lite ثم فشل (بعد إعادات
+   * المحاولة) أو أنهى دورته بلا أي نصّ، يُعاد السؤال كاملاً على Flash Lite.
+   * لا يُتحوَّل عند اعتذار النموذج (فذاك قرار لا عطل)، ولا إن كان قد بثّ
+   * نصاً فعلاً (فالإعادة تكرّر المعروض أمام المستخدم).
+   */
+  function askGeminiWithFallback(cfg, history, ctx, hooks) {
+    var streamed = 0;
+    var innerHooks = {
+      onText: function (t) { streamed += t.length; hooks.onText && hooks.onText(t); },
+      onTool: hooks.onTool,
+      onStatus: hooks.onStatus,
+    };
+
+    function liteCfg() {
+      var c = {};
+      Object.keys(cfg).forEach(function (k) { c[k] = cfg[k]; });
+      c.geminiModel = GEMINI_FALLBACK;
+      return c;
+    }
+
+    function fallback(reasonMsg, originalErr) {
+      hooks.onStatus && hooks.onStatus(reasonMsg);
+      return askGemini(liteCfg(), history, ctx, hooks).then(function (r2) {
+        r2.modelUsed = GEMINI_FALLBACK;
+        r2.fellBack = true;
+        return r2;
+      }).catch(function () {
+        // فشل الاحتياط أيضاً: الخطأ الأصلي هو الأصدق للعرض
+        if (originalErr) throw originalErr;
+        return { messages: history, text: "",
+                 refused: true, modelUsed: GEMINI_FALLBACK };
+      });
+    }
+
+    return askGemini(cfg, history, ctx, innerHooks).then(function (res) {
+      res.modelUsed = cfg.geminiModel;
+      var empty = !res.refused && !(res.text && res.text.trim());
+      if (empty && cfg.geminiModel !== GEMINI_FALLBACK && !streamed) {
+        return fallback("النموذج المختار لم يولّد إجابة — التحويل إلى Flash Lite…", null);
+      }
+      return res;
+    }).catch(function (e) {
+      if (cfg.geminiModel === GEMINI_FALLBACK || streamed) throw e;
+      return fallback("تعذّر نموذج «" + cfg.geminiModel + "» — التحويل إلى Flash Lite…", e);
     });
   }
 
@@ -564,7 +623,7 @@
   /** الموزّع: يختار المزوّد المفعَّل بالقيود نفسها */
   function ask(cfg, history, ctx, hooks) {
     hooks = hooks || {};
-    if (cfg.provider === "gemini") return askGemini(cfg, history, ctx, hooks);
+    if (cfg.provider === "gemini") return askGeminiWithFallback(cfg, history, ctx, hooks);
     return askAnthropic(cfg, history, ctx, hooks);
   }
 
