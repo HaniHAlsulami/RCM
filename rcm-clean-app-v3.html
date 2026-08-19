@@ -81,7 +81,7 @@ body{font-family:'IBM Plex Sans Arabic',sans-serif;background:var(--bg);color:va
 <div class="header">
   <div class="badge">🏥 تجمع مكة المكرمة الصحي · RCM · نموذج Random Forest</div>
   <h1>التنبؤ بنتيجة الموافقة التأمينية</h1>
-  <p>أدخل بيانات المطالبة المتاحة قبل قرار التأمين</p>
+  <p>أدخل بيانات طلب الموافقة المتاحة قبل قرار شركة التأمين</p>
   <div class="accuracy-note">✅ دقة النموذج 70.5%</div>
 </div>
 
@@ -198,7 +198,7 @@ body{font-family:'IBM Plex Sans Arabic',sans-serif;background:var(--bg);color:va
     </div>
 
     <div class="field">
-      <label>عقد التأمين (الضامن)</label>
+      <label>عقد التأمين (شركة التأمين — Payer)</label>
       <div class="search-wrap" id="sw_contract">
         <input class="search-input" id="disp_contract" readonly placeholder="اختر..." onclick="toggleDD('contract')">
         <span class="search-arrow">▼</span>
@@ -257,13 +257,13 @@ body{font-family:'IBM Plex Sans Arabic',sans-serif;background:var(--bg);color:va
 
   </div>
 
-  <button class="predict-btn" onclick="predict()">🔮 تنبأ بنتيجة المطالبة</button>
+  <button class="predict-btn" onclick="predict()">🔮 تنبأ بنتيجة الطلب</button>
 </div>
 
 <!-- Result -->
 <div class="result-card" id="resultCard">
   <div class="result-icon" id="rIcon"></div>
-  <div class="result-label">التنبؤ بنتيجة المطالبة</div>
+  <div class="result-label">التنبؤ بنتيجة طلب الموافقة</div>
   <div class="result-value" id="rValue"></div>
   <div class="conf-label"><span>نسبة الثقة</span><span id="rPct"></span></div>
   <div class="bar-wrap"><div class="bar" id="rBar"></div></div>
@@ -633,7 +633,7 @@ function predict(){
   if(pP<0){pR+=pP;pP=0;}
   let result,icon,cls,conf,barColor,tip;
   if(pA>=pR&&pA>=pP){result='مقبولة';icon='✅';cls='approved';conf=pA;barColor='#22d3a0';tip='<strong>✅ مؤشرات إيجابية:</strong> البيانات تشير إلى احتمال موافقة. تأكد من اكتمال الوثائق وصحة البيانات.';}
-  else if(pR>=pA&&pR>=pP){result='مرفوضة';icon='❌';cls='rejected';conf=pR;barColor='#f87171';tip='<strong>❌ مؤشرات سلبية:</strong> راجع أهلية المريض وبنود العقد قبل إرسال المطالبة.';}
+  else if(pR>=pA&&pR>=pP){result='مرفوضة';icon='❌';cls='rejected';conf=pR;barColor='#f87171';tip='<strong>❌ مؤشرات سلبية:</strong> راجع أهلية المريض وبنود العقد قبل إرسال الطلب.';}
   else{result='موافقة جزئية';icon='🟡';cls='partial';conf=pP;barColor='#fbbf24';tip='<strong>🟡 موافقة جزئية محتملة:</strong> راجع حدود التغطية في العقد.';}
   const card=document.getElementById('resultCard');
   card.className=`result-card ${cls}`;card.style.display='block';

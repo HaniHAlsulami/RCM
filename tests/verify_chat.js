@@ -148,7 +148,7 @@ const CASE = require(path.join(__dirname, "..", "assets", "rcm-case.js"));
         { code: "DOCUMENTATION", label: "نقص في المستندات", probability: 0.4, action: "أرفق التقرير" },
         { code: "LATE_SUBMISSION", label: "تأخر التقديم", probability: 0.2, action: "أرسل خلال المهلة" },
       ],
-      shap: [{ feature: "guarantor", label: "الضامن", value: 0.42 }],
+      shap: [{ feature: "contract", label: "عقد التأمين (شركة التأمين — Payer)", value: 0.42 }],
       input: { guarantor: "X", total: "1200", visitDate: "2025-03-01" },
     },
   };
@@ -156,7 +156,7 @@ const CASE = require(path.join(__dirname, "..", "assets", "rcm-case.js"));
   ok("الملخّص يذكر النتيجة", /موافقة غير كاملة/.test(sum), sum.slice(0, 80));
   ok("الملخّص يذكر الاحتمال", /91\.0٪/.test(sum));
   ok("الملخّص يذكر الأسباب والإجراء", /نقص في المستندات/.test(sum) && /أرفق التقرير/.test(sum));
-  ok("الملخّص يذكر عوامل SHAP", /الضامن/.test(sum));
+  ok("الملخّص يذكر عوامل SHAP", /شركة التأمين/.test(sum));
 
   if (fs.existsSync(corpusPath)) {
     const C2 = global.window.CHI_CORPUS;

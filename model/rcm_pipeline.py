@@ -151,7 +151,7 @@ def icd_block(x) -> str:
 
 
 def norm_contract(x) -> str:
-    """تطبيع اسم العقد/الضامن: إزالة الفروع والسنوات للتجميع الصحيح."""
+    """تطبيع اسم العقد/شركة التأمين: إزالة الفروع والسنوات للتجميع الصحيح."""
     s = norm_text(x)
     if not s:
         return "unknown"
@@ -166,7 +166,7 @@ def norm_contract(x) -> str:
 #    مرتّبة من الأكثر تحديداً إلى الأعم؛ أول نمط يطابق هو الفائز.
 # ──────────────────────────────────────────────────────────────────────
 REASON_TAXONOMY = [
-    ("DUPLICATE", "مطالبة مكررة / تمت الموافقة عليها مسبقاً", [
+    ("DUPLICATE", "طلب موافقة مكرر / صدرت الموافقة عليه مسبقاً", [
         r"duplicate", r"already been approved", r"already approved",
     ]),
     ("ELIGIBILITY", "عدم أهلية المؤمَّن عليه أو بطاقة غير سارية", [
@@ -186,7 +186,7 @@ REASON_TAXONOMY = [
         r"late submission", r"late notification", r"not within validity",
         r"time limit", r"exceeded the submission",
     ]),
-    ("PRICING_CODING", "خطأ في التسعير أو الترميز أو بيانات المطالبة", [
+    ("PRICING_CODING", "خطأ في التسعير أو الترميز أو بيانات الطلب", [
         r"price not specif", r"not mapped with provider price",
         r"item not correct", r"validation error", r"payer id",
         r"license number must", r"cannot exceed maximum", r"sequence \d",
@@ -252,11 +252,11 @@ REASON_CODES = [c for c, _, _ in REASON_TAXONOMY] + ["OTHER"]
 
 # إجراء تصحيحي مقترح لكل سبب — يُعرض في الواجهة
 REASON_ACTION = {
-    "DUPLICATE": "تحقّق من عدم وجود مطالبة سابقة بنفس رمز الخدمة والتاريخ قبل الإرسال.",
+    "DUPLICATE": "تحقّق من عدم وجود طلب موافقة سابق بنفس رمز الخدمة والتاريخ قبل الإرسال.",
     "ELIGIBILITY": "أعد فحص الأهلية في نفيس وتأكد من سريان البوليصة ورقم العضوية.",
-    "NETWORK": "تأكد من أن المنشأة ضمن شبكة الضامن، أو احصل على موافقة استثنائية مسبقة.",
-    "LATE_SUBMISSION": "أرسل المطالبة خلال المهلة النظامية (30 يوماً) ووثّق تاريخ الإشعار.",
-    "PRICING_CODING": "راجع التسعير ومطابقة رموز الخدمات مع قائمة أسعار الضامن قبل الإرسال.",
+    "NETWORK": "تأكد من أن المنشأة ضمن شبكة شركة التأمين، أو احصل على موافقة استثنائية مسبقة.",
+    "LATE_SUBMISSION": "أرسل طلب الموافقة خلال المهلة النظامية ووثّق تاريخ الإرسال والإشعار.",
+    "PRICING_CODING": "راجع التسعير ومطابقة رموز الخدمات مع قائمة أسعار شركة التأمين قبل الإرسال.",
     "REFERRAL_REQUIRED": "احصل على إحالة من مركز الرعاية الأولية أو وجّه المريض لمنشأة ضمن الشبكة.",
     "DOCUMENTATION": "أرفق تقرير الطوارئ والتاريخ المرضي والفحص السريري ونتائج التحاليل.",
     "URGENCY": "وثّق مؤشرات الحالة الحرجة (العلامات الحيوية وتصنيف CTAS) لإثبات صفة الطوارئ.",
@@ -267,14 +267,14 @@ REASON_ACTION = {
     "POLICY_EXCLUSION": "راجع بنود الاستثناءات في العقد قبل الإرسال، وأبلغ المريض بالتحمّل.",
     "NO_PRIOR_AUTH_REQUIRED": "قدّم الخدمة مباشرة — لا حاجة لموافقة مسبقة لهذا المبلغ.",
     "APPROVED_WITH_TERMS": "التزم بالأسعار المتعاقد عليها وحدود الوثيقة عند الفوترة.",
-    "OTHER": "راجع نص رد الضامن يدوياً وصنّفه ضمن أسباب الرفض المعتمدة.",
+    "OTHER": "راجع نص رد شركة التأمين يدوياً وصنّفه ضمن أسباب عدم الموافقة المعتمدة.",
 }
 
 _COMPILED = [(code, [re.compile(p) for p in pats]) for code, _, pats in REASON_TAXONOMY]
 
 
 def classify_reason(text) -> str:
-    """يحوّل نص رد الضامن الحر إلى رمز سبب معياري واحد."""
+    """يحوّل نص رد شركة التأمين الحر إلى رمز سبب معياري واحد."""
     s = norm_text(text)
     if not s:
         return "NONE"
@@ -286,7 +286,7 @@ def classify_reason(text) -> str:
 
 
 def classify_reasons_multi(text) -> list:
-    """نفس الشيء لكن يعيد كل الأسباب المطابقة (رد الضامن قد يحمل أكثر من سبب)."""
+    """نفس الشيء لكن يعيد كل الأسباب المطابقة (رد شركة التأمين قد يحمل أكثر من سبب)."""
     s = norm_text(text)
     if not s:
         return []
@@ -305,7 +305,7 @@ NUM_FEATURES = [
     "visit_month", "is_night", "is_weekend", "prior_claims", "prior_reject_rate",
 ]
 # ملاحظة: حُذف حقل «حالة الفاتورة» (Bill Status) عمداً — فهو حقل من دورة
-# الفوترة قد يُحدَّث بعد صدور قرار الضامن، فيمنح النموذج معلومة لا تتوفّر
+# الفوترة قد يُحدَّث بعد صدور قرار شركة التأمين، فيمنح النموذج معلومة لا تتوفّر
 # فعلياً وقت التنبؤ. حذفه يكلّف ~3 نقاط دقة لكنه يجعل الرقم صادقاً.
 CAT_FEATURES = [
     "visit_type", "hospital", "clinic", "nationality",
@@ -323,13 +323,13 @@ FEATURE_AR = {
     "visit_month": "الشهر",
     "is_night": "زيارة ليلية",
     "is_weekend": "نهاية الأسبوع",
-    "prior_claims": "عدد مطالبات المريض السابقة",
+    "prior_claims": "عدد طلبات الموافقة السابقة للمريض",
     "prior_reject_rate": "نسبة عدم القبول الكامل للمريض تاريخياً",
     "visit_type": "نوع الزيارة",
     "hospital": "المستشفى",
     "clinic": "القسم / العيادة",
     "nationality": "الجنسية",
-    "contract": "عقد التأمين (الضامن)",
+    "contract": "عقد التأمين (شركة التأمين — Payer)",
     "nphies_elig": "فحص الأهلية — نفيس",
     "gender": "الجنس",
     "icd_chapter": "فصل التشخيص ICD-10",
@@ -399,7 +399,7 @@ def build_features(df: pd.DataFrame, vocab: dict | None = None) -> tuple[pd.Data
 
 
 def _patient_history(df: pd.DataFrame):
-    """عدد المطالبات السابقة ونسبة الرفض التاريخية للمريض — بدون تسريب."""
+    """عدد طلبات الموافقة السابقة ونسبة عدم القبول التاريخية للمريض — بدون تسريب."""
     n = len(df)
     if "Mrn" not in df.columns or "Visit Date" not in df.columns:
         return pd.Series(0.0, index=df.index), pd.Series(np.nan, index=df.index)
@@ -437,7 +437,7 @@ def load_raw(path: str) -> pd.DataFrame:
 
 
 def decided_mask(df: pd.DataFrame) -> pd.Series:
-    """المطالبات التي صدر فيها قرار نهائي فقط (تُستخدم للتدريب والتقييم)."""
+    """الطلبات التي صدر فيها قرار نهائي فقط (تُستخدم للتدريب والتقييم)."""
     return df[COL_TARGET].astype(str).str.strip().isin(RAW_DECIDED)
 
 # ──────────────────────────────────────────────────────────────────────
@@ -453,15 +453,15 @@ ENTITY_K = 25.0                        # قوة التنعيم البايزي
 PRIOR_NFA, PRIOR_OK = 0.5674, 0.4326   # المعدّل العام في بيانات التدريب
 
 FEATURE_AR.update({
-    "contract_hist_nfa": "معدل عدم القبول الكامل للضامن",
-    "contract_hist_ok": "معدل القبول الكامل للضامن",
-    "contract_vol": "حجم مطالبات الضامن",
+    "contract_hist_nfa": "معدل عدم القبول الكامل لشركة التأمين",
+    "contract_hist_ok": "معدل القبول الكامل لشركة التأمين",
+    "contract_vol": "حجم طلبات شركة التأمين",
     "hosp_hist_nfa": "معدل عدم القبول الكامل للمستشفى",
     "hosp_hist_ok": "معدل القبول الكامل للمستشفى",
-    "hosp_vol": "حجم مطالبات المستشفى",
+    "hosp_vol": "حجم طلبات المستشفى",
     "clinic_hist_nfa": "معدل عدم القبول الكامل للعيادة",
     "clinic_hist_ok": "معدل القبول الكامل للعيادة",
-    "clinic_vol": "حجم مطالبات العيادة",
+    "clinic_vol": "حجم طلبات العيادة",
 })
 
 ALL_FEATURES = FEATURES + ENTITY_FEATURES

@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>سديد — منصة التنبؤ بالموافقة التأمينية</title>
-<meta name="description" content="سديد — منصة تعلّم آلة تتنبأ بالموافقة على المطالبة التأمينية قبل إرسالها، وترتّب أسباب عدم الموافقة مع تفسير SHAP. جاهزة للدمج في Power BI">
+<meta name="description" content="سديد — منصة تعلّم آلة تتنبأ بنتيجة طلب الموافقة التأمينية (Pre-Authorization) قبل إرساله، وترتّب أسباب عدم الموافقة مع تفسير SHAP. جاهزة للدمج في Power BI">
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <style>
 :root{
@@ -241,7 +241,7 @@ body.embed .wrap{max-width:100%}
     <div class="brand-text"><h1 class="ar">سديد</h1><span class="en">SADEED</span></div>
   </div>
   <p class="tagline">منصة التنبؤ بالموافقة التأمينية</p>
-  <p>هل ستصدر الموافقة على هذه المطالبة كاملةً؟ — تقدير الخطر وأسبابه قبل الإرسال</p>
+  <p>هل ستصدر الموافقة على هذا الطلب كاملةً؟ — تقدير الخطر وأسبابه قبل الإرسال</p>
   <div class="chips" id="headChips"></div>
   <div class="chips"><a class="chip guide-link" href="chatbot.html">💬 سَنَد — المساعد المرجعي</a><a class="chip guide-link" href="guide.html">📘 دليل الاستخدام</a></div>
 </div>
@@ -261,7 +261,7 @@ body.embed .wrap{max-width:100%}
 <!-- ═══ تبويب التنبؤ ═══ -->
 <div class="panel active" id="p-predict">
   <div class="card" id="embedHide">
-    <div class="sec-label">💰 قيمة المطالبة والتوقيت</div>
+    <div class="sec-label">💰 قيمة الطلب والتوقيت</div>
     <div class="grid3">
       <div class="field">
         <label>إجمالي الفاتورة <span class="hint">ريال</span></label>
@@ -290,7 +290,7 @@ body.embed .wrap{max-width:100%}
       </div>
       <div class="field" data-dd="icd_chapter"><label>فصل التشخيص</label></div>
       <div class="field" data-dd="icd_block"><label>كتلة التشخيص</label></div>
-      <div class="field" data-dd="contract"><label>عقد التأمين (الضامن)</label></div>
+      <div class="field" data-dd="contract"><label>عقد التأمين (شركة التأمين — Payer)</label></div>
     </div>
 
     <div class="sec-label">👤 بيانات المريض</div>
@@ -301,7 +301,7 @@ body.embed .wrap{max-width:100%}
     </div>
     <div class="grid2">
       <div class="field">
-        <label>عدد مطالبات المريض السابقة <span class="hint">اختياري</span></label>
+        <label>عدد طلبات الموافقة السابقة للمريض <span class="hint">اختياري</span></label>
         <input type="number" id="in_priorClaims" placeholder="اتركه فارغاً إن لم يُعرف" min="0" step="1">
       </div>
       <div class="field">
@@ -349,14 +349,14 @@ body.embed .wrap{max-width:100%}
 <!-- ═══ تبويب SHAP ═══ -->
 <div class="panel" id="p-shap">
   <div class="card" id="shapEmpty">
-    <div class="tip">شغّل تنبّؤاً أولاً من تبويب <strong>التنبؤ</strong> لعرض تفسير SHAP الخاص بالمطالبة.</div>
+    <div class="tip">شغّل تنبّؤاً أولاً من تبويب <strong>التنبؤ</strong> لعرض تفسير SHAP الخاص بالطلب.</div>
   </div>
   <div id="shapBody" style="display:none">
     <div class="card">
       <div class="chart-title">مخطط الشلال — Waterfall</div>
       <div class="chart-sub">
-        يبدأ من <b>القيمة الأساسية</b> (متوسّط سلوك النموذج على كل المطالبات التاريخية)
-        وينتهي عند درجة هذه المطالبة. كل شريط يمثّل قيمة شابلي (SHAP) لعامل واحد على
+        يبدأ من <b>القيمة الأساسية</b> (متوسّط سلوك النموذج على كل الطلبات التاريخية)
+        وينتهي عند درجة هذا الطلب. كل شريط يمثّل قيمة شابلي (SHAP) لعامل واحد على
         مقياس اللوغاريتم الاحتمالي: الأحمر يرفع احتمال الفئة المختارة، والأزرق يخفضه.
       </div>
       <div class="cls-switch" id="clsSwitch"></div>
@@ -369,7 +369,7 @@ body.embed .wrap{max-width:100%}
     </div>
     <div class="card">
       <div class="chart-title">الأهمية العالمية للخصائص</div>
-      <div class="chart-sub">متوسّط القيمة المطلقة لـ SHAP على عيّنة من 4,000 مطالبة — يوضّح ما يعتمد عليه النموذج إجمالاً، لا في هذه المطالبة وحدها.</div>
+      <div class="chart-sub">متوسّط القيمة المطلقة لـ SHAP على عيّنة من 4,000 طلب — يوضّح ما يعتمد عليه النموذج إجمالاً، لا في هذا الطلب وحده.</div>
       <div class="chart" id="globalChart"></div>
     </div>
     <div class="card">
@@ -393,7 +393,7 @@ body.embed .wrap{max-width:100%}
     </div>
     <div class="card">
       <div class="chart-title">توزيع احتمالات الأسباب</div>
-      <div class="chart-sub">مشروطة بعدم قبول المطالبة كاملةً.</div>
+      <div class="chart-sub">مشروطة بعدم قبول الطلب كاملاً.</div>
       <div class="chart" id="reasonChart"></div>
     </div>
   </div>
