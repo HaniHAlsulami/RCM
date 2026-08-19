@@ -65,6 +65,39 @@ check("مطابقة العدد لمعدوده (جمع)",
 check("مطابقة العدد لمعدوده (مثنّى)",
   R.extractFacts("مدة 2 شهر").map(f => f.display), ["شهران"]);
 
+// سياق المدد — المدة العارية بلا نطاقها تُقرأ خطأً
+check("سياق: مهلة الردّ",
+  R.extractFacts("تلتزم الشركات بالإجابة خلال 60 دقيقة كحد أقصى من وقت استلام الطلب")[0].ctx,
+  "مهلة الردّ");
+{
+  const fs2 = R.extractFacts(
+    "تلتزم شركة التأمين بالرد على طلبات إعادة التقييم خلال مدة لا تتجاوز 24 ساعة " +
+    "للحالات المستعجلة و3 أيام عمل للحالات غير المستعجلة");
+  ok("سياق: الحالات المستعجلة", /المستعجلة/.test(fs2[0].ctx));
+  ok("سياق: غير المستعجلة", /غير المستعجلة/.test(fs2[1].ctx));
+}
+check("سياق: مهلة الإبلاغ في الطوارئ",
+  R.extractFacts("يجب إبلاغ الشركة خلال 24 ساعة من وقت استقبال الحالة")[0].ctx,
+  "مهلة الإبلاغ، للحالات الطارئة");
+check("سياق: مهلة السداد",
+  R.extractFacts("تسوية وسداد المستحقات خلال مدة لا تزيد عن 30 يوم")[0].ctx,
+  "مهلة السداد");
+
+// الإحالات بين المواد
+check("إحالة: رقم المادة والمُحال إليه",
+  R.crossRefs("وذلك وفقاً للمادة (96) من اللائحة التنفيذية لنظام الضمان الصحي التعاوني"),
+  [{ num: "96", target: "اللائحة التنفيذية لنظام الضمان الصحي التعاوني" }]);
+check("إحالة: قصّ ذيل الجملة",
+  R.crossRefs("كما نصت المادة ٤٥ من نظام الضمان الصحي على ذلك")[0].target,
+  "نظام الضمان الصحي");
+check("إحالة ذاتية مبهمة تُهمل", R.crossRefs("راجع المادة (7) من هذه اللائحة"), []);
+
+// تقسيم البنود المرقّمة
+ok("البنود المرقّمة تنفصل جُملاً",
+   R.sentences("تلتزم شركة التأمين بالتالي: 1. عمل سياسة داخلية للتعامل مع الاعتراض " +
+               "على قرارات رفض التغطية 2. مواصلة علاج المستفيد في الحالات الطارئة لدى " +
+               "مقدم الخدمة الحالي 3. الالتزام بدليل الأدوية التأمينية المعتمد").length >= 3);
+
 check("حكم: حظر", R.modality("لا يجوز لشركة التأمين رفض الطلب").k, "prohibition");
 check("حكم: إلزام", R.modality("يجب على مقدم الخدمة تقديم العلاج").k, "obligation");
 check("حكم: استثناء", R.modality("يستثنى من ذلك الحالات الطارئة").k, "exception");
@@ -94,6 +127,17 @@ if (!fs.existsSync(corpusPath)) {
     "ما مدة سداد مستحقات مقدم الخدمة؟",
     "ما التزامات مقدم الخدمة في الطب الاتصالي؟",
   ];
+  {
+    const res = S.search(C, "كم مدة الرد على طلب الموافقة المسبقة؟", 6);
+    const a = R.analyze("كم مدة الرد على طلب الموافقة المسبقة؟", res, { depth: 4 });
+    ok("الجواب المباشر يتصدّر الاستنتاجات",
+       a.inferences.length > 0 && a.inferences[0].text.indexOf("الجواب المباشر") === 0,
+       a.inferences.length ? a.inferences[0].text.slice(0, 60) : "لا استنتاجات");
+    ok("توجد أسئلة متابعة", (a.followups || []).length > 0);
+    a.followups.forEach((f) =>
+      ok(`المتابعة «${f.label.slice(0, 24)}» تسترجع نتائج`, S.search(C, f.q, 3).length > 0));
+  }
+
   QUERIES.forEach((q) => {
     const res = S.search(C, q, 6);
     ok(`استرجاع «${q.slice(0, 26)}»`, res.length > 0);
@@ -116,6 +160,30 @@ if (!fs.existsSync(corpusPath)) {
   });
   ok("لا مقاطع مكرّرة حرفياً في الفهرس",
      new Set(C.passages.map((p) => p.d + "|" + p.p + "|" + p.t)).size === C.passages.length);
+  // رموز لاتينية دخيلة: الكلمة المشوّهة («Led» «Sale» «ALY») تأتي معزولةً بين
+  // كلمتين عربيتين، أمّا الإنجليزية الحقيقية (العمود الموازي) فتأتي متتابعة.
+  // نحصي المحاصَر وحده — فيصطاد المقياس التلف ولا يعاقب الترجمة.
+  {
+    const KEEP = new Set(["HIV","AIDS","CHI","CCHI","CTAS","ICD","ACHI","AM","MDS",
+      "DRG","NPHIES","SFDA","IBAN","VAT","MRI","CT","ER","ICU","NICU","TPA","CPT",
+      "SBS","GTIN","DRGs","Pre","Page","BMI","SHIB","DHS"]);
+    const isAr = (t) => /^[ء-ي]/.test(t);
+    const isLat = (t) => {
+      const core = t.replace(/^[^A-Za-z]+|[^A-Za-z]+$/g, "");
+      return /^[A-Za-z]+$/.test(core) && core.length <= 12 && !KEEP.has(core);
+    };
+    let junk = 0, words = 0;
+    C.passages.forEach((p) => {
+      const toks = p.t.split(/\s+/);
+      words += toks.length;
+      for (let i = 1; i < toks.length - 1; i++) {
+        if (isLat(toks[i]) && isAr(toks[i - 1]) && isAr(toks[i + 1])) junk++;
+      }
+    });
+    const jr = 1000 * junk / Math.max(words, 1);
+    ok(`رموز لاتينية محاصَرة بالعربية (${jr.toFixed(2)}/١٠٠٠ كلمة ≤ 1.5)`, jr <= 1.5);
+  }
+
   const art = C.passages.reduce((a, p) => a + (p.t.match(/[اأإآ]{2}|اإل|األ|الئ|امل/g) || []).length, 0);
   const chars = C.passages.reduce((a, p) => a + p.t.length, 0);
   const rate = 1000 * art / chars;
@@ -179,6 +247,13 @@ ok("جاهزية: مباشر بلا مفتاح ⇒ لا", !LLM.ready({ enabled: 
 ok("جاهزية: مباشر بمفتاح ⇒ نعم", LLM.ready({ enabled: true, mode: "direct", apiKey: "k" }));
 ok("جاهزية: وسيط بعنوان ⇒ نعم", LLM.ready({ enabled: true, mode: "proxy", endpoint: "https://x/y" }));
 ok("جاهزية: وسيط بلا عنوان ⇒ لا", !LLM.ready({ enabled: true, mode: "proxy", endpoint: "" }));
+ok("جاهزية: Gemini بمفتاح ⇒ نعم",
+   LLM.ready({ enabled: true, provider: "gemini", geminiKey: "k" }));
+ok("جاهزية: Gemini بلا مفتاح ⇒ لا",
+   !LLM.ready({ enabled: true, provider: "gemini", geminiKey: "" }));
+check("النموذج الفعّال يتبع المزوّد",
+  LLM.activeModel({ provider: "gemini", geminiModel: "gemini-flash-latest", model: "claude-opus-5" }),
+  "gemini-flash-latest");
 
 ok("التعليمات تُلزم بالاسترجاع قبل الحكم", /search_regulations/.test(LLM.SYSTEM));
 ok("التعليمات تُلزم بذكر المرجع", /\[n\]/.test(LLM.SYSTEM));
@@ -304,8 +379,83 @@ console.log("\n٦. شكل الطلب وحلقة الأداة");
       check("النصّ النهائي", res.text, "يجب الإبلاغ خلال ٢٤ ساعة [1].");
       ok("التاريخ يحمل الأدوار كلّها", res.messages.length === 4, String(res.messages.length));
       delete global.fetch;
+    })
+    .then(() => {
+      // ── مزوّد Gemini: الحلقة نفسها بالشكل السلكي المختلف ──
+      console.log("\n٧. مزوّد Gemini — الشكل السلكي وحلقة الأداة");
+      const gsse = (chunks) => chunks.map((c) => `data: ${JSON.stringify(c)}\n\n`).join("");
+      const SIG = "sig-echo-me";
+      const gTool = gsse([{ candidates: [{ content: { role: "model", parts: [
+        { functionCall: { name: "search_regulations",
+                          args: { query: "الحالات الطارئة" }, id: "call_1" },
+          thoughtSignature: SIG }] }, index: 0 }] }]);
+      const gText = gsse([
+        { candidates: [{ content: { role: "model", parts: [{ text: "يجب الإبلاغ " }] } }] },
+        { candidates: [{ content: { role: "model",
+            parts: [{ text: "خلال ٢٤ ساعة [1].", thoughtSignature: "sig2" }] },
+          finishReason: "STOP" }] },
+      ]);
+      const gcalls = [];
+      const bodyOf2 = (text) => ({
+        ok: true,
+        body: { getReader() {
+          let done = false;
+          return { read() {
+            if (done) return Promise.resolve({ done: true });
+            done = true;
+            return Promise.resolve({ done: false, value: new TextEncoder().encode(text) });
+          } };
+        } },
+      });
+      global.fetch = (url, init) => {
+        gcalls.push({ url, init, body: JSON.parse(init.body) });
+        return Promise.resolve(bodyOf2(gcalls.length === 1 ? gTool : gText));
+      };
+      const C5 = fs.existsSync(corpusPath) ? global.window.CHI_CORPUS : null;
+      const gsrc = [];
+      const gctx = {
+        search: (q, n) => (C5 ? S.search(C5, q, n) : []),
+        addSource: (h) => { gsrc.push(h); return gsrc.length; },
+      };
+      const gstream = [];
+      const gcfg = { enabled: true, provider: "gemini",
+                     geminiKey: "test-key", geminiModel: "gemini-flash-latest" };
+      return LLM.ask(gcfg, [{ role: "user", content: "ماذا أفعل في الحالة الطارئة؟" }],
+                     gctx, { onText: (t) => gstream.push(t) })
+        .then((res) => {
+          check("دورتان: أداة ثم إجابة", gcalls.length, 2);
+          const u0 = gcalls[0].url, b0 = gcalls[0].body, h0 = gcalls[0].init.headers;
+          ok("المسار: streamGenerateContent?alt=sse",
+             u0.indexOf("gemini-flash-latest:streamGenerateContent?alt=sse") > 0, u0);
+          check("المفتاح في x-goog-api-key", h0["x-goog-api-key"], "test-key");
+          ok("التعليمات في systemInstruction",
+             /search_regulations/.test(b0.systemInstruction.parts[0].text));
+          check("إعلان الأداة", b0.tools[0].functionDeclarations[0].name, "search_regulations");
 
-      console.log(`\n${fail === 0 ? "✔" : "✗"} ${pass} ناجحاً · ${fail} فاشلاً`);
-      process.exit(fail === 0 ? 0 : 1);
+          const b1 = gcalls[1].body;
+          const modelTurn = b1.contents[1];
+          check("دور النموذج يُعاد بدوره", modelTurn.role, "model");
+          check("توقيع التفكير يُعاد حرفياً",
+                modelTurn.parts[0].thoughtSignature, SIG);
+          const respTurn = b1.contents[2];
+          check("نتيجة الأداة في دور مستخدم", respTurn.role, "user");
+          check("functionResponse يحمل معرّف الاستدعاء",
+                respTurn.parts[0].functionResponse.id, "call_1");
+          check("functionResponse يحمل اسم الأداة",
+                respTurn.parts[0].functionResponse.name, "search_regulations");
+          ok("نتيجة البحث المحلّي وصلت للنموذج",
+             !C5 || /\[1\]/.test(respTurn.parts[0].functionResponse.response.result));
+          check("النصّ وصل مبثوثاً", gstream.join(""), "يجب الإبلاغ خلال ٢٤ ساعة [1].");
+          check("النصّ النهائي", res.text, "يجب الإبلاغ خلال ٢٤ ساعة [1].");
+          ok("التاريخ قياسيّ: tool_use ثم tool_result ثم نصّ",
+             res.messages.length === 4 &&
+             res.messages[1].content[0].type === "tool_use" &&
+             res.messages[2].content[0].type === "tool_result",
+             String(res.messages.length));
+          delete global.fetch;
+
+          console.log(`\n${fail === 0 ? "✔" : "✗"} ${pass} ناجحاً · ${fail} فاشلاً`);
+          process.exit(fail === 0 ? 0 : 1);
+        });
     });
 }

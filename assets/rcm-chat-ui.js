@@ -66,7 +66,9 @@
     var ICON = { duration: "⏱", pct: "٪", money: "﷼" };
     return '<div class="facts">' + facts.slice(0, 6).map(function (f) {
       return '<span class="fact ' + f.kind + '">' + (ICON[f.kind] || "•") + " " +
-        esc(f.display) + '<i>[' + f.ref + "]</i></span>";
+        esc(f.display) +
+        (f.ctx ? '<em>' + esc(f.ctx) + "</em>" : "") +
+        '<i>[' + f.ref + "]</i></span>";
     }).join("") + "</div>";
   }
 
@@ -102,7 +104,9 @@
     if (a.inferences.length) {
       h += '<div class="infer"><div class="ititle">ما يُستنتج من مجموع النصوص</div><ul>';
       a.inferences.forEach(function (it) {
-        h += "<li>" + esc(it.text) + " " + refChips(it.refs, aid) + "</li>";
+        var direct = it.text.indexOf("الجواب المباشر") === 0;
+        h += '<li class="' + (direct ? "direct" : "") + '">' +
+          esc(it.text) + " " + refChips(it.refs, aid) + "</li>";
       });
       h += "</ul></div>";
     }
@@ -111,6 +115,13 @@
       h += '<div class="gaps">' + a.gaps.map(function (g) {
         return "<div>⚠ " + esc(g) + "</div>";
       }).join("") + "</div>";
+    }
+
+    if (a.followups && a.followups.length) {
+      h += '<div class="fups"><span class="ft">أسئلة تُكمل الصورة:</span>' +
+        a.followups.map(function (f) {
+          return '<button class="fup" data-q="' + esc(f.q) + '">' + esc(f.label) + "</button>";
+        }).join("") + "</div>";
     }
 
     h += '<div class="disc">الصياغة أعلاه من إعداد المساعد بناءً على النصوص المرقّمة أدناه، ' +
@@ -253,7 +264,7 @@
     a.className = "msg";
     a.innerHTML = '<div class="ans"><div class="llmhead">' +
       '<span class="tag">✨ إجابة مولَّدة ومقيَّدة بنصّ اللائحة</span>' +
-      '<span class="intent">' + esc(cfg.model) + '</span></div>' +
+      '<span class="intent">' + esc(LLM.activeModel(cfg)) + '</span></div>' +
       '<div class="llmbody"><div class="typing"><i></i><i></i><i></i></div></div>' +
       '<div class="llmsrc"></div></div>';
     chat.appendChild(a);
@@ -299,7 +310,7 @@
       scrollTo(a);
     }).catch(function (e) {
       bodyEl.innerHTML = '<p class="warnline">تعذّر توليد الإجابة: ' +
-        esc(LLM.explain(e)) + "</p>" +
+        esc(LLM.explain(e, cfg.provider)) + "</p>" +
         '<p class="disc">النتائج المرجعية من الفهرس المحلّي ما زالت تعمل — ' +
         "أطفئ الطبقة التوليدية من ⚙ الإعدادات للعودة إليها.</p>";
       setBusy(false);
@@ -425,21 +436,35 @@
 
     function paint() {
       $("llmEnabled").checked = cfg.enabled;
+      $("llmProvider").value = cfg.provider;
       $("llmMode").value = cfg.mode;
       $("llmKey").value = cfg.apiKey;
       $("llmEndpoint").value = cfg.endpoint;
       $("llmModel").value = cfg.model;
       $("llmEffort").value = cfg.effort;
-      $("rowKey").style.display = cfg.mode === "direct" ? "" : "none";
-      $("rowEndpoint").style.display = cfg.mode === "proxy" ? "" : "none";
+      $("llmGeminiKey").value = cfg.geminiKey;
+      $("llmGeminiModel").value = cfg.geminiModel;
+
+      var gem = cfg.provider === "gemini";
+      $("rowMode").style.display = gem ? "none" : "";
+      $("rowKey").style.display = !gem && cfg.mode === "direct" ? "" : "none";
+      $("rowEndpoint").style.display = !gem && cfg.mode === "proxy" ? "" : "none";
+      $("rowModel").style.display = gem ? "none" : "";
+      $("rowEffort").style.display = gem ? "none" : "";
+      $("rowGeminiKey").style.display = gem ? "" : "none";
+      $("rowGeminiModel").style.display = gem ? "" : "none";
+
       $("llmState").textContent = !cfg.enabled ? "مُطفأة — الإجابات من الفهرس المحلّي"
-        : LLM.ready(cfg) ? "مفعّلة" : "مفعّلة لكن الإعداد ناقص";
+        : LLM.ready(cfg) ? "مفعّلة — " + LLM.activeModel(cfg) : "مفعّلة لكن الإعداد ناقص";
       $("llmState").className = "llmstate " + (!cfg.enabled ? "off"
         : LLM.ready(cfg) ? "on" : "warn");
       setBusy(false);
     }
 
     $("llmModel").innerHTML = LLM.MODELS.map(function (m) {
+      return '<option value="' + m.id + '">' + esc(m.label) + "</option>";
+    }).join("");
+    $("llmGeminiModel").innerHTML = LLM.GEMINI_MODELS.map(function (m) {
       return '<option value="' + m.id + '">' + esc(m.label) + "</option>";
     }).join("");
 
@@ -449,8 +474,9 @@
         LLM.saveCfg(cfg); paint();
       };
     }
-    ["llmEnabled|enabled", "llmMode|mode", "llmKey|apiKey",
-     "llmEndpoint|endpoint", "llmModel|model", "llmEffort|effort"]
+    ["llmEnabled|enabled", "llmProvider|provider", "llmMode|mode", "llmKey|apiKey",
+     "llmEndpoint|endpoint", "llmModel|model", "llmEffort|effort",
+     "llmGeminiKey|geminiKey", "llmGeminiModel|geminiModel"]
       .forEach(function (pair) { var p = pair.split("|"); bind(p[0], p[1]); });
 
     $("llmForget").onclick = function () {
@@ -548,6 +574,10 @@
     if (LLM) initSettings();
     initCase();
     $("send").onclick = function () { ask(); };
+    $("chat").addEventListener("click", function (e) {
+      var b = e.target.closest(".fup");
+      if (b) ask(b.getAttribute("data-q"));
+    });
     $("q").addEventListener("keydown", function (e) {
       if (e.key === "Enter") ask();
     });

@@ -38,6 +38,8 @@
     s = s.replace(/[A-Za-z][A-Za-z.'|)(\-]{0,2}(?=\s|$)/g, " ");   // شظايا قصيرة
     s = s.replace(/\s[^؀-ۿ\w\s]{2,}\s/g, " ");           // رموز متتابعة
     s = s.replace(/[!¡]/g, " ");                        // أثر مسح لا علامة تعجّب
+    // المسح يقرأ الفاصلة العربية همزةً؛ الهمزة بعد هذه الحروف مستحيلة إملائياً
+    s = s.replace(/([تةنمرسقكهحجخصضعغثذ])ء(?=\s|$)/g, "$1،");
     s = s.replace(/\)([0-9]{1,3})\(/g, "($1)");          // أقواس معكوسة الاتجاه
     s = s.replace(/\s{2,}/g, " ").replace(/\s+([،.؛:])/g, "$1");
     return s.trim();
@@ -48,6 +50,8 @@
     var s = clean(text);
     // نحمي الفاصلة العشرية قبل التقطيع بدل استعمال lookbehind — فهو غير مدعوم
     // في متصفّحات قديمة، وخطؤه خطأ تحليل يُسقط الملف كلّه لا مجرّد الدالة.
+    // البند المرقّم («1. عمل سياسة…») جملة قائمة بذاتها وإن لم تسبقه نقطة
+    s = s.replace(/\s(?=[0-9\u0660-\u0669]{1,2}[.)]\s+[ء-ي])/g, "\n");
     var parts = s.replace(/([0-9])\.([0-9])/g, "$1\u0000$2")
                  .split(/[.؟]\s+|\s*[؛\n]+\s*/)
                  .map(function (x) { return x.replace(/\u0000/g, "."); });
@@ -134,6 +138,43 @@
   };
   var UNIT_RE = Object.keys(UNIT_AR).join("|");
 
+  // دور المهلة وصنف الحالة — يُستخرجان من جوار الرقم، فالمدة العارية بلا
+  // سياقها تُقرأ خطأً: «٦٠ دقيقة» للردّ غير «٢٤ ساعة» للإبلاغ في الطوارئ.
+  var DUR_ROLES = [
+    { re: /إعادة التقييم/, label: "مهلة الردّ على إعادة التقييم" },
+    { re: /بالإجابة|بالرد|الرد على|للرد|الردّ/, label: "مهلة الردّ" },
+    // «خلال س من وقت استلام الطلب» = مهلة للردّ تبدأ من الاستلام
+    { re: /استلام الطلب|تلقي الطلب|إستلام الطلب/, label: "مهلة الردّ من وقت استلام الطلب" },
+    { re: /إرسال طلب|بإرسال|تقديم طلب|رفع (?:طلب|الحالة|المطالب)/, label: "مهلة الإرسال" },
+    { re: /إبلاغ|إشعار|إخطار/, label: "مهلة الإبلاغ" },
+    { re: /سداد|تسوية|تسديد/, label: "مهلة السداد" },
+    { re: /شكوى|تظلم|اعتراض/, label: "مهلة الاعتراض" },
+  ];
+  var DUR_CASES = [
+    { re: /غير المستعجلة/, label: "للحالات غير المستعجلة" },
+    { re: /المستعجلة/, label: "للحالات المستعجلة" },
+    { re: /الطارئة|الطوارئ|الإسعافية|استقبال الحالة/, label: "للحالات الطارئة" },
+  ];
+
+  function durationCtx(text, idx, len) {
+    // ما بعد الرقم أدلّ من ما قبله («٢٤ ساعة للحالات المستعجلة»)،
+    // ويُقصّ عند أول رقم تالٍ حتى لا يتسرّب سياق مدّة أخرى.
+    var after = text.slice(idx + len, idx + len + 60).split(/[0-9٠-٩]/)[0];
+    var before = text.slice(Math.max(0, idx - 130), idx);
+    var parts = [];
+    for (var i = 0; i < DUR_ROLES.length; i++) {
+      if (DUR_ROLES[i].re.test(after) || DUR_ROLES[i].re.test(before)) {
+        parts.push(DUR_ROLES[i].label); break;
+      }
+    }
+    for (var j = 0; j < DUR_CASES.length; j++) {
+      if (DUR_CASES[j].re.test(after) || DUR_CASES[j].re.test(before)) {
+        parts.push(DUR_CASES[j].label); break;
+      }
+    }
+    return parts.join("، ");
+  }
+
   var RE_DURATION = new RegExp(
     "(?:خلال|مدة|مدته|مدتها|لمدة|بحد أقصى|كحد أقصى|لا تتجاوز|لا يتجاوز|أقصاها|اقصاها|في مدة|بعد|قبل|كل)\\s*" +
     "([0-9]{1,4}(?:[.,][0-9]+)?)\\s*(" + UNIT_RE + ")", "g");
@@ -179,18 +220,14 @@
 
   function extractFacts(text) {
     var t = digits(clean(text)), facts = [];
-    collect(RE_DURATION, t, function (m) {
+    function durFact(m) {
       return { kind: "duration", value: m[1], unit: UNIT_AR[m[2]] || m[2],
-               display: countPhrase(m[1], UNIT_AR[m[2]] || m[2]), raw: m[0] };
-    }).forEach(function (f) { facts.push(f); });
-    collect(RE_DURATION_POST, t, function (m) {
-      return { kind: "duration", value: m[1], unit: UNIT_AR[m[2]] || m[2],
-               display: countPhrase(m[1], UNIT_AR[m[2]] || m[2]), raw: m[0] };
-    }).forEach(function (f) { facts.push(f); });
-    collect(RE_BARE_DURATION, t, function (m) {
-      return { kind: "duration", value: m[1], unit: UNIT_AR[m[2]] || m[2],
-               display: countPhrase(m[1], UNIT_AR[m[2]] || m[2]), raw: m[0] };
-    }).forEach(function (f) { facts.push(f); });
+               display: countPhrase(m[1], UNIT_AR[m[2]] || m[2]),
+               ctx: durationCtx(t, m.index, m[0].length), raw: m[0] };
+    }
+    collect(RE_DURATION, t, durFact).forEach(function (f) { facts.push(f); });
+    collect(RE_DURATION_POST, t, durFact).forEach(function (f) { facts.push(f); });
+    collect(RE_BARE_DURATION, t, durFact).forEach(function (f) { facts.push(f); });
     collect(RE_PCT, t, function (m) {
       return { kind: "pct", value: m[1], display: m[1] + "٪", raw: m[0] };
     }).forEach(function (f) { facts.push(f); });
@@ -201,7 +238,7 @@
     var seen = {};
     return facts.filter(function (f) {
       if (!plausible(f)) return false;
-      var k = f.kind + ":" + f.display;
+      var k = f.kind + ":" + f.display + ":" + (f.ctx || "");
       if (seen[k]) return false; seen[k] = 1; return true;
     });
   }
@@ -260,6 +297,12 @@
       var from = m.index + m[0].length;
       var who = earliest(sentence.slice(from, from + 60));
       if (who) return who;
+    }
+    var byCue = /(?:من قبل|بواسطة)\s+/.exec(sentence);
+    if (byCue) {
+      var from2 = byCue.index + byCue[0].length;
+      var who2 = earliest(sentence.slice(from2, from2 + 45));
+      if (who2) return who2;
     }
     return earliest(sentence);
   }
@@ -393,6 +436,22 @@
     var out = [];
     var all = picked.map(function (p) { return p.raw; }).join(" ");
 
+    // (٠) الجواب المباشر — للقارئ المستعجل، من أوثق جملة تحمل المعطى المطلوب
+    if (intent.k === "duration" || intent.k === "amount") {
+      var want = intent.k === "duration"
+        ? function (f) { return f.kind === "duration"; }
+        : function (f) { return f.kind === "pct" || f.kind === "money"; };
+      for (var di = 0; di < picked.length; di++) {
+        var hitf = (picked[di].facts || []).filter(want)[0];
+        if (!hitf) continue;
+        var line = "الجواب المباشر: " + hitf.display +
+          (hitf.ctx ? " — " + hitf.ctx : "") +
+          (picked[di].actor ? "، والالتزام على " + picked[di].actor : "") + ".";
+        out.push({ text: line, refs: [picked[di].ref] });
+        break;
+      }
+    }
+
     // (١) تباين المدد بين المراجع — إشارة عملية مهمّة قبل الاحتجاج بنصّ
     if (intent.k === "duration") {
       var durs = {};
@@ -405,9 +464,20 @@
         out.push({ text: "المدة النظامية المنطبقة هي " + keys[0] +
           "، ولم يرد في المراجع المسترجَعة مدة مخالفة لها.", refs: uniq(durs[keys[0]]) });
       } else if (keys.length > 1) {
-        out.push({ text: "وردت مدد مختلفة (" + keys.join(" / ") +
-          ") لأن كل مرجع يحكم نطاقاً مختلفاً — مهلة إرسال الطلب غير مهلة الردّ عليه، " +
-          "ومهلة الحالات الطارئة غير مهلة الحالات الاعتيادية. اعتمد المرجع المنطبق على حالتك.",
+        // لكل مدّة نطاقها المستخرَج من جوارها — فلا تُقرأ المدد كأنها بدائل
+        var ctxOf = {};
+        facts.forEach(function (f) {
+          if (f.kind === "duration" && f.ctx && !ctxOf[f.display]) ctxOf[f.display] = f.ctx;
+        });
+        var lines = keys.map(function (k) {
+          return k + (ctxOf[k] ? " (" + ctxOf[k] + ")" : "");
+        });
+        var known = keys.filter(function (k) { return ctxOf[k]; }).length;
+        var tail = known < keys.length
+          ? " — وما لم يُذكر نطاقه فارجع إلى نصّه المرقوم لتحديد ما ينطبق على حالتك."
+          : " — اعتمد المدّة التي يطابق نطاقُها حالتك.";
+        out.push({ text: "المدد الواردة ليست بدائل بل لكلٍّ نطاقه: " +
+          lines.join("؛ ") + tail,
           refs: uniq([].concat.apply([], keys.map(function (k) { return durs[k]; }))) });
       }
     }
@@ -462,6 +532,19 @@
         refs: refsMatching(picked, /(?:إخلال|إلغاء|فسخ|إنهاء|عقوبة|غرامة|مساءلة)/) });
     }
 
+    // (٧ب) الإحالة إلى مادة أخرى: الحكم المُحال إليه جزء من الحكم
+    var xrefSeen = {};
+    picked.forEach(function (p) {
+      crossRefs(p.raw).forEach(function (x) {
+        var k = x.num + "|" + x.target;
+        if (xrefSeen[k]) return;
+        xrefSeen[k] = 1;
+        out.push({ text: "النصّ يحيل إلى المادة (" + x.num + ") من " + x.target +
+          " — والحكم لا يكتمل دون قراءتها؛ اسأل عنها من زرّ المتابعة أدناه.",
+          refs: [p.ref], xref: x });
+      });
+    });
+
     // (٨) ربط تشغيليّ بنموذج التنبّؤ في المنصّة
     if (/موافق|رفض|طلب|تصريح/.test(query)) {
       out.push({ text: "تشغيلياً: هذه الاشتراطات النظامية هي ذاتها التي يقيس نموذج «سديد» " +
@@ -469,6 +552,22 @@
         "هو الإجراء التصحيحي الأرخص.", refs: [] });
     }
 
+    return out;
+  }
+
+  // «وفقاً للمادة (96) من اللائحة التنفيذية…» — الحكم لا يكتمل دون المُحال إليه
+  var RE_XREF = /لل?ماد[ةه]\s*\(?\s*([0-9\u0660-\u0669]{1,3})\s*\)?\s*من\s+([^،.؛:()\n]{3,45})/g;
+
+  function crossRefs(text) {
+    var out = [], m;
+    RE_XREF.lastIndex = 0;
+    while ((m = RE_XREF.exec(text)) !== null) {
+      var target = clean(m[2]).replace(/^(هذه|هذا)\s+/, "").trim();
+      // قصّ ذيل الجملة الملتصق باسم المُحال إليه («…نظام الضمان الصحي على ذلك»)
+      target = target.split(/\s+(?:على|وذلك|بما|حيث|فإن|إذا|وفي|ويكون|وعلى)\s+/)[0].trim();
+      if (/^(اللائحة|النظام|القسم|الفصل|الملحق)$/.test(target)) continue;  // إحالة ذاتية مبهمة
+      out.push({ num: digits(m[1]), target: target });
+    }
     return out;
   }
 
@@ -528,13 +627,19 @@
 
     var facts = [];
     picked.forEach(function (p) {
-      p.facts.forEach(function (f) { facts.push({ kind: f.kind, display: f.display, ref: p.ref }); });
+      p.facts.forEach(function (f) {
+        facts.push({ kind: f.kind, display: f.display, ctx: f.ctx, ref: p.ref });
+      });
     });
     var fseen = {};
     facts = facts.filter(function (f) {
-      var k = f.kind + f.display;
+      var k = f.kind + f.display + (f.ctx || "");
       if (fseen[k]) return false; fseen[k] = 1; return true;
     });
+    // النسخة عديمة السياق من معطى له نسخة بسياق لا تضيف شيئاً
+    var hasCtx = {};
+    facts.forEach(function (f) { if (f.ctx) hasCtx[f.kind + f.display] = 1; });
+    facts = facts.filter(function (f) { return f.ctx || !hasCtx[f.kind + f.display]; });
 
     var gaps = [];
     var top = results[0];
@@ -553,13 +658,39 @@
       gaps.push("النصوص المسترجَعة ذات صلة بالموضوع لكنها لا تحمل حكماً صريحاً يجيب عن السؤال مباشرة.");
     }
 
+    var inferences = infer(query, intent, picked, facts);
+
+    // أسئلة متابعة: من الإحالات المكتشفة أولاً، ثم سؤال منطقي يلي هذا الصنف
+    // من الأسئلة عادةً. تُعرض أزراراً فيُستكمل الحكم بضغطة.
+    var followups = [];
+    inferences.forEach(function (inf) {
+      if (inf.xref && followups.length < 2) {
+        followups.push({ label: "اقرأ المادة (" + inf.xref.num + ") من " + inf.xref.target,
+                         q: "المادة " + inf.xref.num + " " + inf.xref.target });
+      }
+    });
+    var NEXT_Q = {
+      duration: { label: "ماذا لو انقضت المهلة دون ردّ؟",
+                  q: "عدم الرد على طلب الموافقة خلال المدة المحددة" },
+      coverage: { label: "ما التحديدات والاستثناءات؟",
+                  q: "التحديدات والاستثناءات المنافع غير المغطاة" },
+      amount:   { label: "متى يُستثنى المستفيد من التحمّل؟",
+                  q: "استثناء الحالات الطارئة والتنويم من مبلغ التحمل" },
+      penalty:  { label: "كيف يُتظلَّم من القرار؟",
+                  q: "التظلم والاعتراض لجنة النظر في المخالفات" },
+      obligation: { label: "ما الجزاء عند الإخلال بهذه الالتزامات؟",
+                    q: "مخالفة الالتزامات الجزاءات والعقوبات" },
+    };
+    if (NEXT_Q[intent.k] && followups.length < 3) followups.push(NEXT_Q[intent.k]);
+
     return {
       intent: intent,
       statements: picked,
       facts: facts,
-      inferences: infer(query, intent, picked, facts),
+      inferences: inferences,
       gaps: gaps,
       expansions: expansions(query),
+      followups: followups,
     };
   }
 
@@ -568,6 +699,7 @@
     detectIntent: detectIntent, expansions: expansions,
     extractFacts: extractFacts, modality: modality, actor: actor,
     rephrase: rephrase, analyze: analyze,
+    durationCtx: durationCtx, crossRefs: crossRefs,
   };
 })(typeof window !== "undefined" ? window : globalThis);
 

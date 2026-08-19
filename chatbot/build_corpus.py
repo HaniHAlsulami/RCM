@@ -170,6 +170,147 @@ def page_text(page, use_ocr: bool):
     return repair_ligatures(o), True
 
 
+
+# ──────────────────────────────────────────────────────────────────────
+# 2.5 تنقية النصّ المستخرَج
+# ──────────────────────────────────────────────────────────────────────
+# بعض ملفات PDF تُرمِّز رموزاً عربية بأحرف لاتينية، فتظهر في النصّ كلمات
+# دخيلة مثل «Led» و«Sale]» وسط الجملة العربية. والمسح الضوئي يقرأ الفاصلة
+# العربية همزةً («الموافقاتء») ويشطر الكلمة أحياناً («المو افقة»).
+# هذه الدوال تُصلح ما يمكن إصلاحه يقيناً قبل الفهرسة والعرض.
+
+_BIDI = re.compile(r"[\u200b-\u200f\u202a-\u202e\u2066-\u2069\xad]")
+_AR_LETTER = re.compile(r"[ء-ي]")
+_LATIN_TOKEN = re.compile(r"^[«»\[\]()'’]*[A-Za-z][A-Za-z'’!\[\]()«»°:;,.\-]*$")
+
+# مختصرات إنجليزية حقيقية ترِد داخل النصّ العربي ويجب إبقاؤها
+_KEEP_LATIN = {
+    "HIV", "AIDS", "CHI", "CCHI", "CTAS", "ICD", "ACHI", "AM", "MDS", "DRG",
+    "NPHIES", "SFDA", "IBAN", "VAT", "MRI", "CT", "ER", "ICU", "NICU", "TPA",
+    "CPT", "SBS", "GTIN", "DRGs", "Pre", "Authorization", "Telemedicine",
+    "Telehealth", "Page", "BMI", "SHIB", "DHS",
+}
+
+# حروف لا تقبل همزة متطرفة بعدها في الإملاء العربي — الهمزة بعدها فاصلة
+# قرأها المسح خطأً. (تُستثنى حروف الكلمات الصحيحة: جزء، عبء، دفء، بطء،
+# بدء، ملء، نشء، شيء، بناء، ضوء…)
+_HAMZA_COMMA = re.compile(r"([تةنمرسقكهحجخصضعغثذ])ء(?=\s|$)")
+
+# سطور الترويسة والتذييل: شعار المجلس وتصنيف السرية ورقم الصفحة تتكرّر في كل
+# صفحة، فتلوّث الاقتباس والفهرس معاً دون أن تحمل حكماً.
+_BOILER_LINE = [
+    re.compile(r"Council of (?:Cooperative )?Health Insurance"),
+    re.compile(r"Classification"),
+    re.compile(r"^(?:\s*(?:Restricted|public|Confidential|Pdf|[0OH])\s*/?)+$", re.I),
+    re.compile(r"^\s*Page\s+\d+\s+of\s+\d+\s*$", re.I),
+    re.compile(r"^\s*[0-9٠-٩]{1,3}\s*$"),
+    re.compile(r"^\s*(?:ضمان|مان|بمان|صب)?\s*مجلس الضمان الصحي\s*$"),
+]
+
+
+def _line_ratio(line: str) -> float:
+    ar = len(_AR_LETTER.findall(line))
+    lat = len(re.findall(r"[A-Za-z]", line))
+    total = ar + lat
+    return ar / total if total else 1.0
+
+
+def _strip_latin_junk(line: str) -> str:
+    """يُسقط الرموز اللاتينية القصيرة الدخيلة داخل سطر عربيّ الغالبية،
+    ويفصل الذيل الإنجليزي الطويل (العمود الموازي) إلى سطر مستقل."""
+    if _line_ratio(line) < 0.65:
+        return line                                   # سطر إنجليزي — يُترك
+    toks = line.split(" ")
+    out = []
+    for t in toks:
+        core = t.strip("«»[]()!'’.,:;-")
+        if (_LATIN_TOKEN.match(t) and len(core) <= 12
+                and core not in _KEEP_LATIN
+                and not any(ch.isdigit() for ch in t)):
+            continue                                  # «Led» «Sale]» «ALY» …
+        out.append(t)
+    line = " ".join(out)
+    # ذيل لاتيني طويل متّصل = العمود الإنجليزي التصق بالسطر العربي
+    m = re.search(r"\s([A-Za-z][A-Za-z\s'’:;,.()\-]{24,})$", line)
+    if m:
+        line = line[:m.start()] + "\n" + m.group(1)
+    return line
+
+
+def polish_text(text: str, vocab_freq=None) -> str:
+    """تنقية نصّ صفحة كاملةً. vocab_freq (اختياري): تكرارات الكلمات في كامل
+    المدوّنة — تُستعمل لِلَمّ الكلمة المشطورة («المو افقة» → «الموافقة»)."""
+    t = _BIDI.sub("", text)
+    t = re.sub(r"[©®™●○▪]", "•", t)
+    t = _HAMZA_COMMA.sub(r"\1،", t)
+
+    # رموز المستند ورقم الصفحة حيثما وقعا داخل السطر
+    t = re.sub(r"\bC?CHI-\d{2}-[A-Z]{2}-\d{2}[\d/\-]*", " ", t)
+    t = re.sub(r"Page\s+\d+\s+of\s+\d+", " ", t, flags=re.I)
+    t = re.sub(r"الصفحة\s*[0-9٠-٩]{1,3}\s*من\s*[0-9٠-٩]{1,3}", " ", t)
+
+    page_ratio = _line_ratio(t)
+    lines = []
+    for l in t.split("\n"):
+        ls = l.strip()
+        if not ls:
+            lines.append(l)
+            continue
+        if len(ls) < 90 and any(b.search(ls) for b in _BOILER_LINE):
+            continue                                  # ترويسة/تذييل متكرّر
+        # شظية العمود الإنجليزي الموازي داخل صفحة عربية: سطر لاتيني قصير
+        # يقطع تسلسل النصّ العربي. النصّ الإنجليزي الكامل يبقى حين يطول.
+        if page_ratio >= 0.5 and _line_ratio(ls) < 0.35 and len(ls) < 100:
+            continue
+        lines.append(_strip_latin_junk(l))
+    t = "\n".join(lines)
+
+    # الرمز اللاتيني القصير المحاصَر بين كلمتين عربيتين شظية استخراج لا كلمة —
+    # الإنجليزية الحقيقية تأتي متتابعة، فلا يمسّها هذا الإسقاط أياً كان السطر.
+    surrounded = []
+    for line in t.split("\n"):
+        toks = line.split(" ")
+        kept = []
+        for i, tok in enumerate(toks):
+            core = re.sub(r"^[^A-Za-z]+|[^A-Za-z]+$", "", tok)
+            nxt = toks[i + 1] if i + 1 < len(toks) else ""
+            if (re.fullmatch(r"[A-Za-z]+", core or "-") and len(core) <= 12
+                    and core not in _KEEP_LATIN
+                    and not any(ch.isdigit() for ch in tok)
+                    and kept and _AR_LETTER.search(kept[-1][-1:] or "")
+                    and _AR_LETTER.search(nxt[:1] or "")):
+                continue
+            kept.append(tok)
+        surrounded.append(" ".join(kept))
+    t = "\n".join(surrounded)
+    t = re.sub(r"[ \t]{2,}", " ", t)
+
+    if vocab_freq:
+        merged_lines = []
+        for line in t.split("\n"):
+            toks = line.split(" ")
+            out, i = [], 0
+            while i < len(toks):
+                if i + 1 < len(toks):
+                    a, b = toks[i], toks[i + 1]
+                    if (re.fullmatch(r"[ء-ي]{2,}", a) and re.fullmatch(r"[ء-ي]{2,}", b)):
+                        j = vocab_freq.get(a + b, 0)
+                        if j >= 8 and min(vocab_freq.get(a, 0), vocab_freq.get(b, 0)) <= j // 4:
+                            out.append(a + b)
+                            i += 2
+                            continue
+                out.append(toks[i])
+                i += 1
+            merged_lines.append(" ".join(out))
+        t = "\n".join(merged_lines)
+
+    # شظايا معروفة (بعد اللمّ حتى لا يفسد «المو افقة»): «المو» تُستخرج أحياناً
+    # رمزاً لاتينياً فيبقى ذيل الكلمة وحده. «افقة» ليست كلمة عربية فإصلاحها قطعيّ.
+    t = re.sub(r"(?<![ء-ي])افقة(?![ء-ي])", "الموافقة", t)
+    t = re.sub(r"(?<![ء-ي])المو الموافقة(?![ء-ي])", "الموافقة", t)
+    return t
+
+
 HEAD_RE = re.compile(
     r"^\s*(?:الماده|المادة|البند|الفصل|الملحق|الباب|القسم)\s*[\(\)\d٠-٩/:\-\.]*.{0,70}",
 )
@@ -260,6 +401,7 @@ def main():
     files = unique
 
     docs, passages = [], []
+    page_texts = []                                   # (di, pno, txt) قبل التنقية
     t0 = time.time()
 
     for di, fn in enumerate(files):
@@ -273,6 +415,7 @@ def main():
             page = doc[pno]
             txt, ocr = page_text(page, use_ocr=True)
             n_ocr += int(ocr)
+            page_texts.append((di, pno, txt))
 
             if not args.no_images:
                 pix = page.get_pixmap(dpi=150)
@@ -284,15 +427,25 @@ def main():
                 img.save(os.path.join(PAGES, f"d{di}-p{pno+1}.jpg"),
                          "JPEG", quality=IMG_QUALITY, optimize=True)
 
-            for head, body in split_passages(txt):
-                passages.append({"d": di, "p": pno + 1, "h": head, "t": body})
-
         docs.append({"id": di, "key": key, "title": title,
                      "pages": len(doc), "ocr_pages": n_ocr})
         titles.setdefault(key, title)
         print(f"  [{di+1}/{len(files)}] {key[:38]:40s} {len(doc):3d} صفحة"
               f"{f' · OCR {n_ocr}' if n_ocr else ''}")
         doc.close()
+
+    # ── تنقية النصوص بمعجم تكرارات مبنيّ من كامل المدوّنة ──
+    # لمّ الكلمة المشطورة يحتاج معرفة صورتها الصحيحة، ولا تُعرف إلا بعد
+    # اكتمال الاستخراج — لذا التنقية تجري في تمريرة ثانية.
+    print("\nتنقية النصوص…")
+    vocab_freq = Counter()
+    for _, _, txt in page_texts:
+        vocab_freq.update(w for w in txt.split() if re.fullmatch(r"[ء-ي]{2,}", w))
+
+    for di, pno, txt in page_texts:
+        txt = polish_text(txt, vocab_freq)
+        for head, body in split_passages(txt):
+            passages.append({"d": di, "p": pno + 1, "h": head, "t": body})
 
     # ── فهرس معكوس + معطيات BM25 ──
     print("\nبناء الفهرس…")
