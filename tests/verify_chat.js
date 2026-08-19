@@ -254,6 +254,33 @@ ok("جاهزية: Gemini بلا مفتاح ⇒ لا",
 check("النموذج الفعّال يتبع المزوّد",
   LLM.activeModel({ provider: "gemini", geminiModel: "gemini-flash-latest", model: "claude-opus-5" }),
   "gemini-flash-latest");
+ok("جاهزية: بوّابة منصّة بلا مفتاح في المتصفّح ⇒ نعم",
+   LLM.ready({ enabled: true, provider: "gemini", geminiKey: "",
+               geminiBase: "https://gw.example.workers.dev/v1beta/models/" }));
+
+// إعدادات المنصّة (site-config): افتراض مشترك، وتفضيلات المستخدم تغلبه
+{
+  global.window.SADEED_SITE_LLM = {
+    enabled: true, provider: "gemini",
+    geminiBase: "https://gw.example.workers.dev/v1beta/models/",
+  };
+  const noStore = LLM.loadCfg();
+  check("إعداد المنصّة يسري على زائر بلا تفضيلات", noStore.provider, "gemini");
+  check("رابط البوّابة من إعداد المنصّة",
+        noStore.geminiBase, "https://gw.example.workers.dev/v1beta/models/");
+  ok("التوليد مفعّل للجميع من إعداد المنصّة", noStore.enabled === true);
+  ok("زائر المنصّة جاهز بلا أي مفتاح", LLM.ready(noStore));
+
+  global.localStorage = {
+    getItem: () => JSON.stringify({ provider: "anthropic", enabled: false }),
+    setItem: () => {}, removeItem: () => {},
+  };
+  const withUser = LLM.loadCfg();
+  check("تفضيل المستخدم يغلب إعداد المنصّة", withUser.provider, "anthropic");
+  check("إيقاف المستخدم يغلب تفعيل المنصّة", withUser.enabled, false);
+  delete global.localStorage;
+  delete global.window.SADEED_SITE_LLM;
+}
 
 ok("التعليمات تُلزم بالاسترجاع قبل الحكم", /search_regulations/.test(LLM.SYSTEM));
 ok("التعليمات تُلزم بذكر المرجع", /\[n\]/.test(LLM.SYSTEM));
@@ -487,10 +514,31 @@ console.log("\n٦. شكل الطلب وحلقة الأداة");
               ok("المستخدم أُبلغ بإعادة المحاولة",
                  statuses.length === 2 && /مزدحمة/.test(statuses[0]),
                  JSON.stringify(statuses));
+              // عبر البوّابة بلا مفتاح: لا ترويسة x-goog-api-key إطلاقاً
+              let gwHeaders = null;
+              global.fetch = (url, init) => {
+                gwHeaders = init.headers;
+                return Promise.resolve(bodyOf2(okText));
+              };
+              const gwCfg = { enabled: true, provider: "gemini", geminiKey: "",
+                              geminiBase: "https://gw.example.workers.dev/v1beta/models/",
+                              geminiModel: "gemini-flash-latest", retryBaseMs: 1 };
+              return LLM.ask(gwCfg, [{ role: "user", content: "سؤال" }],
+                             { search: () => [], addSource: () => 1 }, {})
+                .then((res) => {
+                  check("البوّابة: الإجابة تصل", res.text, "تمّ [1].");
+                  ok("لا مفتاح في ترويسات المتصفّح",
+                     gwHeaders && !("x-goog-api-key" in gwHeaders),
+                     JSON.stringify(gwHeaders));
+                });
+            })
+            .then(() => {
               // 503 دائم ⇒ يفشل بعد ثلاث محاولات لا قبلها
               let always = 0;
               global.fetch = () => { always++; return overload(); };
-              return LLM.ask(rcfg, [{ role: "user", content: "سؤال" }],
+              return LLM.ask({ enabled: true, provider: "gemini", geminiKey: "k",
+                               geminiModel: "gemini-flash-latest", retryBaseMs: 1 },
+                             [{ role: "user", content: "سؤال" }],
                              { search: () => [], addSource: () => 1 }, {})
                 .then(() => ok("503 الدائم يجب أن يفشل", false))
                 .catch((e) => {

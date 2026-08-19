@@ -55,9 +55,15 @@
   function loadCfg() {
     var c = {};
     try { c = JSON.parse(localStorage.getItem(CFG_KEY) || "{}"); } catch (e) { c = {}; }
+    // إعدادات المنصّة (site-config.js) افتراضٌ مشترك لكل الزوّار،
+    // وتفضيلات المستخدم المحفوظة محلياً تغلبها.
+    var site = (root.SADEED_SITE_LLM && typeof root.SADEED_SITE_LLM === "object")
+      ? root.SADEED_SITE_LLM : {};
     var out = {};
     Object.keys(DEFAULTS).forEach(function (k) {
-      out[k] = c[k] === undefined ? DEFAULTS[k] : c[k];
+      out[k] = c[k] !== undefined ? c[k]
+             : site[k] !== undefined ? site[k]
+             : DEFAULTS[k];
     });
     return out;
   }
@@ -73,7 +79,7 @@
   function ready(c) {
     c = c || loadCfg();
     if (!c.enabled) return false;
-    if (c.provider === "gemini") return !!c.geminiKey;
+    if (c.provider === "gemini") return !!(c.geminiKey || c.geminiBase);
     return c.mode === "proxy" ? !!c.endpoint : !!c.apiKey;
   }
 
@@ -403,9 +409,11 @@
     // تحمل المفتاح، أو لاختبار المسار على محاكٍ محليّ.
     var url = (cfg.geminiBase || GEMINI_BASE) + encodeURIComponent(cfg.geminiModel) +
               ":streamGenerateContent?alt=sse";
+    var gheaders = { "content-type": "application/json" };
+    if (cfg.geminiKey) gheaders["x-goog-api-key"] = cfg.geminiKey;   // البوّابة تحقنه بنفسها
     return fetch(url, {
       method: "POST",
-      headers: { "content-type": "application/json", "x-goog-api-key": cfg.geminiKey },
+      headers: gheaders,
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: SYSTEM }] },
         tools: GEMINI_TOOLS,
