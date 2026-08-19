@@ -290,6 +290,8 @@ if (fs.existsSync(corpusPath)) {
 }
 
 check("خطأ 401 مفهوم", /المفتاح غير صالح/.test(LLM.explain({ status: 401 })), true);
+check("خطأ 503 يذكر الازدحام وإعادة المحاولة",
+  /مزدحمة/.test(LLM.explain({ status: 503 })) && /أُعيدت المحاولة/.test(LLM.explain({ status: 503 })), true);
 check("خطأ 429 مفهوم", /حدّ الطلبات/.test(LLM.explain({ status: 429 })), true);
 ok("تعذّر الشبكة يقترح البوّابة",
    /بوّابة المنشأة/.test(LLM.explain({ message: "Failed to fetch" })));
@@ -456,9 +458,51 @@ console.log("\n٦. شكل الطلب وحلقة الأداة");
              res.messages[2].content[0].type === "tool_result",
              String(res.messages.length));
           delete global.fetch;
-
-          console.log(`\n${fail === 0 ? "✔" : "✗"} ${pass} ناجحاً · ${fail} فاشلاً`);
-          process.exit(fail === 0 ? 0 : 1);
+        })
+        .then(() => {
+          // ── الأعطال العابرة: 503 مرتين ثم نجاح ⇒ تُستوعب بصمت ──
+          console.log("\n٨. إعادة المحاولة على الأعطال العابرة");
+          const overload = () => Promise.resolve({
+            ok: false, status: 503,
+            text: () => Promise.resolve('{"error":{"code":503,"status":"UNAVAILABLE"}}'),
+          });
+          const okText = gsse([
+            { candidates: [{ content: { role: "model", parts: [{ text: "تمّ [1]." }] },
+                            finishReason: "STOP" }] },
+          ]);
+          let tries = 0;
+          const statuses = [];
+          global.fetch = () => {
+            tries++;
+            return tries <= 2 ? overload() : Promise.resolve(bodyOf2(okText));
+          };
+          const rcfg = { enabled: true, provider: "gemini", geminiKey: "k",
+                         geminiModel: "gemini-flash-latest", retryBaseMs: 1 };
+          return LLM.ask(rcfg, [{ role: "user", content: "سؤال" }],
+                         { search: () => [], addSource: () => 1 },
+                         { onStatus: (m) => statuses.push(m) })
+            .then((res) => {
+              check("نجاح بعد محاولتين فاشلتين", res.text, "تمّ [1].");
+              check("عدد المحاولات", tries, 3);
+              ok("المستخدم أُبلغ بإعادة المحاولة",
+                 statuses.length === 2 && /مزدحمة/.test(statuses[0]),
+                 JSON.stringify(statuses));
+              // 503 دائم ⇒ يفشل بعد ثلاث محاولات لا قبلها
+              let always = 0;
+              global.fetch = () => { always++; return overload(); };
+              return LLM.ask(rcfg, [{ role: "user", content: "سؤال" }],
+                             { search: () => [], addSource: () => 1 }, {})
+                .then(() => ok("503 الدائم يجب أن يفشل", false))
+                .catch((e) => {
+                  check("فشل نهائي بعد ثلاث محاولات", always, 3);
+                  check("الحالة 503 مبلَّغة", e.status, 503);
+                });
+            })
+            .then(() => {
+              delete global.fetch;
+              console.log(`\n${fail === 0 ? "✔" : "✗"} ${pass} ناجحاً · ${fail} فاشلاً`);
+              process.exit(fail === 0 ? 0 : 1);
+            });
         });
     });
 }

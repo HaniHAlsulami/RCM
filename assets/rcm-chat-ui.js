@@ -299,6 +299,10 @@
         bodyEl.innerHTML = '<div class="searching">🔎 يبحث في اللوائح: ' +
           esc(q || "") + "</div>";
       },
+      onStatus: function (msg) {
+        if (started) return;
+        bodyEl.innerHTML = '<div class="searching">⏳ ' + esc(msg) + "</div>";
+      },
     }).then(function (res) {
       HISTORY = res.messages;
       if (res.refused || (!acc && !res.text)) {

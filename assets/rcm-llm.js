@@ -201,6 +201,30 @@
     return h;
   }
 
+  // أعطال عابرة تستحق إعادة المحاولة: ازدحام (503/529) وحدود المعدل (429)
+  // وأعطال الخادم (500/502). القصر على أخطاء مستوى HTTP مقصود: انقطاع البثّ
+  // في منتصفه لو أُعيد لكرّر النصّ المعروض للمستخدم.
+  var RETRYABLE = { 429: 1, 500: 1, 502: 1, 503: 1, 529: 1 };
+
+  function wait(ms) {
+    return new Promise(function (res) { setTimeout(res, ms); });
+  }
+
+  function withRetry(doTurn, cfg, hooks) {
+    var base = cfg.retryBaseMs || 1500;
+    function attempt(n) {
+      return doTurn().catch(function (e) {
+        if (!RETRYABLE[e.status] || n >= 3) throw e;
+        hooks.onStatus && hooks.onStatus(
+          "خدمة المزوّد مزدحمة — إعادة المحاولة (" + n + "/3)…");
+        return wait(base * Math.pow(2, n - 1)).then(function () {
+          return attempt(n + 1);
+        });
+      });
+    }
+    return attempt(1);
+  }
+
   /** يقرأ بثّ SSE ويُنادي onEvent لكل حدث */
   function readStream(res, onEvent) {
     var reader = res.body.getReader();
@@ -437,7 +461,9 @@
       if (++rounds > 6) {
         return Promise.resolve({ messages: messages, text: "", truncated: true });
       }
-      return geminiTurn(cfg, toGeminiContents(messages), hooks).then(function (r) {
+      return withRetry(function () {
+        return geminiTurn(cfg, toGeminiContents(messages), hooks);
+      }, cfg, hooks).then(function (r) {
         if (r.blocked || r.finishReason === "SAFETY" || r.finishReason === "PROHIBITED_CONTENT") {
           return { messages: messages, refused: true,
                    text: "اعتذر النموذج عن معالجة هذا الطلب." };
@@ -487,12 +513,16 @@
       if (++rounds > 6) {
         return Promise.resolve({ messages: messages, text: "", truncated: true });
       }
-      return turn(cfg, messages, hooks, useFallbacks).catch(function (e) {
+      return withRetry(function () {
+        return turn(cfg, messages, hooks, useFallbacks);
+      }, cfg, hooks).catch(function (e) {
         // بيئات لا تُفعِّل تجربة الاحتياط: نُعيد المحاولة مرّةً بدونها
         if (useFallbacks && e.status === 400 &&
             /fallback|beta/i.test(e.bodyText || "")) {
           useFallbacks = false;
-          return turn(cfg, messages, hooks, false);
+          return withRetry(function () {
+            return turn(cfg, messages, hooks, false);
+          }, cfg, hooks);
         }
         throw e;
       }).then(function (r) {
@@ -551,8 +581,14 @@
     if (e.status === 401) return "المفتاح غير صالح أو منتهٍ. راجعه في الإعدادات.";
     if (e.status === 403) return "المفتاح لا يملك صلاحية على هذا النموذج.";
     if (e.status === 404) return "النموذج المحدَّد غير متاح لهذا الحساب.";
-    if (e.status === 429) return "تجاوزتَ حدّ الطلبات. انتظر قليلاً ثم أعد المحاولة.";
-    if (e.status >= 500) return "عطل مؤقّت لدى المزوّد. أعد المحاولة بعد لحظات.";
+    if (e.status === 429) return "تجاوزتَ حدّ الطلبات (أُعيدت المحاولة تلقائياً دون جدوى). " +
+      "انتظر دقيقةً ثم أعد المحاولة.";
+    if (e.status === 503 || e.status === 529) {
+      return "خدمة المزوّد مزدحمة حالياً — أُعيدت المحاولة ثلاث مرات دون جدوى. " +
+        "انتظر دقيقةً وأعد المحاولة، أو بدّل النموذج أو المزوّد من ⚙ الإعدادات.";
+    }
+    if (e.status >= 500) return "عطل مؤقّت لدى المزوّد — أُعيدت المحاولة تلقائياً دون جدوى. " +
+      "أعد المحاولة بعد لحظات.";
     if (!e.status && /Failed to fetch|NetworkError|CORS/i.test(t + e.message)) {
       return provider === "gemini"
         ? "تعذّر الوصول إلى خدمة Google. تحقّق من اتصالك وأن نطاق " +
