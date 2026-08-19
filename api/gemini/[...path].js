@@ -16,6 +16,13 @@
 
 export const config = { runtime: "edge" };
 
+/* اكتب مفتاح Gemini هنا إن لم ترغب بمتغيرات البيئة — لكن فقط في نسخة
+   منشورة خاصة، لا في هذا المستودع العلنيّ (المفاتيح المرصودة في المستودعات
+   العلنية تُعطَّل آلياً). البديل الأفضل: متغيّر بيئة GEMINI_API_KEY. */
+export const SETTINGS = {
+  EMBEDDED_GEMINI_KEY: "",          // ← ضع المفتاح بين علامتي الاقتباس
+};
+
 const DEFAULT_ORIGINS = "https://hanihalsulami.github.io";
 const DEFAULT_MODELS =
   "gemini-flash-lite-latest,gemini-flash-latest,gemini-pro-latest";
@@ -49,8 +56,11 @@ export default async function handler(request) {
   }
   if (request.method !== "POST") return json(405, "POST فقط", cors);
   if (!originOk) return json(403, "المصدر غير مسموح لهذه البوّابة", cors);
-  if (!env.GEMINI_API_KEY) {
-    return json(500, "GEMINI_API_KEY غير مضبوط في متغيرات البيئة", cors);
+  const apiKey = env.GEMINI_API_KEY || SETTINGS.EMBEDDED_GEMINI_KEY;
+  if (!apiKey) {
+    return json(500,
+      "لا مفتاح: ضعه متغيّرَ بيئة باسم GEMINI_API_KEY أو اكتبه في " +
+      "SETTINGS.EMBEDDED_GEMINI_KEY", cors);
   }
 
   const len = Number(request.headers.get("content-length") || "0");
@@ -75,7 +85,7 @@ export default async function handler(request) {
     headers: {
       "content-type": "application/json",
       // المفتاح يُحقن هنا — في الخادم — ولا يمرّ بأي متصفّح
-      "x-goog-api-key": env.GEMINI_API_KEY,
+      "x-goog-api-key": apiKey,
     },
     body: request.body,
   });

@@ -29,6 +29,20 @@
  *   ALLOWED_MODELS   (اختياري) نماذج مسموحة مفصولة بفواصل.
  */
 
+/* ═══════════════════════════════════════════════════════════════════
+   اكتب مفتاح Gemini هنا — في النسخة التي تلصقها في منصّة التشغيل فقط.
+
+   ⚠ لا تكتبه في نسخة المستودع أبداً: المستودع علنيّ، وGitHub وGoogle
+   يمسحان المستودعات العلنية ويعطّلان آلياً أي مفتاح يظهر فيها — فكتابته
+   هناك تقتل المفتاح خلال دقائق وتكشفه قبل ذلك.
+
+   البديل الأفضل (اختياري): اتركه فارغاً وضع المفتاح متغيّرَ بيئة باسم
+   GEMINI_API_KEY في إعدادات المنصّة — فيبقى خارج الشيفرة كلياً.
+   ═══════════════════════════════════════════════════════════════════ */
+export const SETTINGS = {
+  EMBEDDED_GEMINI_KEY: "",          // ← ضع المفتاح بين علامتي الاقتباس
+};
+
 const DEFAULT_ORIGINS = "https://hanihalsulami.github.io";
 const DEFAULT_MODELS =
   "gemini-flash-latest,gemini-pro-latest,gemini-flash-lite-latest";
@@ -66,8 +80,12 @@ const gateway = {
     if (!originOk) {
       return json(403, "المصدر غير مسموح لهذه البوّابة", cors);
     }
-    if (!env.GEMINI_API_KEY) {
-      return json(500, "GEMINI_API_KEY غير مضبوط في أسرار البوّابة", cors);
+    // متغيّر البيئة مقدَّم؛ وإلا فالمفتاح المكتوب داخل الملف
+    const apiKey = env.GEMINI_API_KEY || SETTINGS.EMBEDDED_GEMINI_KEY;
+    if (!apiKey) {
+      return json(500,
+        "لا مفتاح: اكتبه في SETTINGS.EMBEDDED_GEMINI_KEY داخل الملف، " +
+        "أو ضعه متغيّرَ بيئة باسم GEMINI_API_KEY", cors);
     }
 
     const len = Number(request.headers.get("content-length") || "0");
@@ -94,7 +112,7 @@ const gateway = {
       headers: {
         "content-type": "application/json",
         // المفتاح يُحقن هنا — في الخادم — ولا يمرّ بأي متصفّح
-        "x-goog-api-key": env.GEMINI_API_KEY,
+        "x-goog-api-key": apiKey,
       },
       body: request.body,
     });

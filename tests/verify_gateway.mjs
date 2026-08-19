@@ -8,8 +8,8 @@
  *
  *     node tests/verify_gateway.mjs
  */
-import worker from "../gateway/worker.js";
-import vercelHandler from "../api/gemini/[...path].js";
+import worker, { SETTINGS as WORKER_SETTINGS } from "../gateway/worker.js";
+import vercelHandler, { SETTINGS as VERCEL_SETTINGS } from "../api/gemini/[...path].js";
 
 let pass = 0, fail = 0;
 const ok = (name, cond, detail) => {
@@ -27,6 +27,7 @@ const TARGETS = [
     base: "https://gw.example.workers.dev",
     prefix: "",
     call: (request, env) => worker.fetch(request, env),
+    settings: WORKER_SETTINGS,
   },
   {
     name: "Vercel edge function",
@@ -45,6 +46,7 @@ const TARGETS = [
       };
       return vercelHandler(request).then(done);
     },
+    settings: VERCEL_SETTINGS,
   },
 ];
 
@@ -112,6 +114,17 @@ ok("جسد البثّ مُرّر كما هو", body === 'data: {"ok":true}\n\n')
 ok("المسار الأصلي وصل لـ Google بلا بادئة الدالة",
    upstreamCall.url ===
    "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:streamGenerateContent?alt=sse");
+
+// ٧. المفتاح المكتوب داخل الملف: يعمل بلا متغيرات بيئة، والبيئة تغلبه إن وُجدت
+T.settings.EMBEDDED_GEMINI_KEY = "written-in-backend";
+r = await T.call(req(PATH, { body: '{"contents":[]}' }), {});
+ok("المفتاح المكتوب داخل الملف يكفي وحده", r.status === 200);
+ok("وهو الذي حُقن لـ Google",
+   upstreamCall.headers["x-goog-api-key"] === "written-in-backend");
+r = await T.call(req(PATH, { body: '{"contents":[]}' }), ENV);
+ok("متغيّر البيئة مقدَّم على المكتوب",
+   upstreamCall.headers["x-goog-api-key"] === "secret-key-on-server");
+T.settings.EMBEDDED_GEMINI_KEY = "";
 }
 
 globalThis.fetch = realFetch;
