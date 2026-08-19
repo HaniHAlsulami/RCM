@@ -1,0 +1,396 @@
+/*!
+ * rcm-batch.js — تبويب «التنبؤ بالملفات»: رفع Excel/CSV وتسجيله دفعياً داخل المتصفح
+ * منصّة سديد · تجمع مكة المكرمة الصحي · إدارة أداء تنمية الإيرادات
+ *
+ * يقرأ الملف ويُسجِّله بنفس محرّك التنبؤ (RCMEngine) دون إرسال أي بيانات لأي خادم،
+ * ويُصدِّر النتائج ملف Excel أو CSV، مع قالب Excel جاهز للتعبئة.
+ * قراءة/كتابة الملفات عبر مكتبة SheetJS المضمّنة محلّياً (assets/vendor) —
+ * تُحمَّل عند أول استخدام للتبويب فقط.
+ */
+(function () {
+  "use strict";
+
+  var B = window.RCM_BUNDLE, E = window.RCMEngine,
+      $ = function (id) { return document.getElementById(id); };
+  if (!B || !B.approval || !E) return;
+
+  var NFA = 1;
+  var THRESHOLD = B.approval.threshold || 0.5;
+
+  // ── الأعمدة: المفتاح اللاتيني بين قوسين هو ما يُطابَق عليه عند القراءة ──
+  var COLS = [
+    { key: "total",            head: "إجمالي الفاتورة (total)",                 ex: [320, 900, 2600] },
+    { key: "visit_date",       head: "تاريخ الزيارة (visit_date)",              ex: ["2026-08-18 14:30", "2026-08-18 14:30", "2026-08-18 14:30"] },
+    { key: "visit_type",       head: "نوع الزيارة (visit_type)",                dd: "visit_type", ex: ["opd", "er", "er"] },
+    { key: "hospital",         head: "المستشفى (hospital)",                     dd: "hospital", ex: ["khalais general hospital", "ajyad emergency hospital", "field hospital in mina"] },
+    { key: "clinic",           head: "القسم / العيادة (clinic)",                dd: "clinic", ex: ["OTHER", "emergeny dept", "emergency department"] },
+    { key: "contract",         head: "عقد التأمين (contract)",                  dd: "contract", ex: ["OTHER", "hajj1447", "hajj1447"] },
+    { key: "icd",              head: "رمز التشخيص ICD-10 (icd)",                ex: ["E11.9", "S61.9", "R51"] },
+    { key: "nphies",           head: "فحص الأهلية نفيس (nphies)",               dd: "nphies_elig", ex: ["eligible", "eligible", "error"] },
+    { key: "triage",           head: "درجة الطوارئ CTAS 1-5 (triage)",          ex: [4, 4, 5] },
+    { key: "gender",           head: "الجنس (gender)",                          dd: "gender", ex: ["", "", ""] },
+    { key: "nationality",      head: "الجنسية (nationality)",                   dd: "nationality", ex: ["", "", ""] },
+    { key: "patient_class",    head: "تصنيف المريض (patient_class)",            dd: "patient_class", ex: ["", "hajj", "hajj"] },
+    { key: "prior_claims",     head: "عدد الطلبات السابقة للمريض (prior_claims)", ex: ["", "", ""] },
+    { key: "prior_reject_rate", head: "نسبة عدم الاكتمال السابقة 0-1 (prior_reject_rate)", ex: ["", "", ""] },
+  ];
+
+  // خرائط قيمة/تسمية ← القيمة الآلية، لكل حقل قوائم
+  var VALUE_MAPS = {};
+  COLS.forEach(function (c) {
+    if (!c.dd) return;
+    var m = {};
+    (B.options[c.dd] || []).forEach(function (o) {
+      m[String(o.v).trim().toLowerCase()] = o.v;
+      if (o.l) m[String(o.l).trim().toLowerCase()] = o.v;
+    });
+    VALUE_MAPS[c.key] = m;
+  });
+
+  // الحقل الفارغ يأخذ القيمة الأكثر شيوعاً — نفس نقطة انطلاق النموذج في الصفحة،
+  // حتى يتطابق تسجيل الملف مع ما يعطيه إدخال الطلب نفسه يدوياً.
+  var DD_DEFAULT = {};
+  COLS.forEach(function (c) {
+    if (!c.dd) return;
+    var first = (B.options[c.dd] || [])[0];
+    DD_DEFAULT[c.key] = first ? first.v : "";
+  });
+
+  function normCat(key, raw) {
+    if (raw == null || raw === "") return DD_DEFAULT[key] || "";
+    var s = String(raw).trim();
+    var m = VALUE_MAPS[key];
+    return (m && m[s.toLowerCase()] !== undefined) ? m[s.toLowerCase()] : s;
+  }
+
+  // ── تحميل مكتبة SheetJS المضمّنة محلياً عند الحاجة ──
+  var xlsxReady = null;
+  function loadXLSX() {
+    if (window.XLSX) return Promise.resolve(window.XLSX);
+    if (xlsxReady) return xlsxReady;
+    xlsxReady = new Promise(function (res, rej) {
+      var s = document.createElement("script");
+      s.src = "assets/vendor/xlsx.full.min.js";
+      s.onload = function () { res(window.XLSX); };
+      s.onerror = function () { rej(new Error("تعذّر تحميل assets/vendor/xlsx.full.min.js")); };
+      document.head.appendChild(s);
+    });
+    return xlsxReady;
+  }
+
+  // ── القالب ──
+  function buildTemplate(XLSX) {
+    var wb = XLSX.utils.book_new();
+    wb.Workbook = { Views: [{ RTL: true }] };
+
+    // ورقة الطلبات: صف العناوين + ثلاثة أمثلة جاهزة للاستبدال
+    var rows = [COLS.map(function (c) { return c.head; })];
+    for (var i = 0; i < 3; i++) rows.push(COLS.map(function (c) { return c.ex[i]; }));
+    var ws = XLSX.utils.aoa_to_sheet(rows);
+    ws["!cols"] = COLS.map(function (c) { return { wch: Math.max(18, c.head.length + 2) }; });
+    XLSX.utils.book_append_sheet(wb, ws, "الطلبات");
+
+    // ورقة القيم المسموحة: عمودان (القيمة الآلية، الاسم المعروض) لكل حقل قوائم
+    var av = [["الحقل", "القيمة (تُكتب في القالب)", "الاسم المعروض"]];
+    COLS.forEach(function (c) {
+      if (!c.dd) return;
+      (B.options[c.dd] || []).forEach(function (o) {
+        av.push([c.head, o.v, o.l || ""]);
+      });
+      av.push(["", "", ""]);
+    });
+    av.push(["درجة الطوارئ CTAS 1-5 (triage)", "1 إلى 5", "1 حرج جداً … 5 غير عاجل"]);
+    var ws2 = XLSX.utils.aoa_to_sheet(av);
+    ws2["!cols"] = [{ wch: 40 }, { wch: 36 }, { wch: 36 }];
+    XLSX.utils.book_append_sheet(wb, ws2, "القيم المسموحة");
+
+    // ورقة التعليمات
+    var inst = [
+      ["تعليمات تعبئة القالب — منصّة سديد"],
+      [""],
+      ["1. عبّئ ورقة «الطلبات»: كل صف طلب موافقة واحد. الصفوف الثلاثة الموجودة أمثلة — احذفها أو استبدلها."],
+      ["2. لا تغيّر صف العناوين: المطابقة تتم على المفتاح اللاتيني بين القوسين، وترتيب الأعمدة غير مهم."],
+      ["3. حقول القوائم (نوع الزيارة، المستشفى، العقد…) تقبل القيمة الآلية أو الاسم المعروض كما في ورقة «القيم المسموحة»."],
+      ["4. أي قيمة خارج القوائم تُعامل «أخرى / غير مدرج». حقل القوائم الفارغ يأخذ القيمة الأكثر شيوعاً (نفس نقطة انطلاق الصفحة)، والحقول الرقمية الفارغة تُعامل قيماً مفقودة."],
+      ["5. رمز التشخيص ICD-10 يُشتقّ منه الفصل والكتلة تلقائياً (مثال: E11.9)."],
+      ["6. التاريخ بصيغة 2026-08-18 14:30 أو خلية تاريخ في Excel."],
+      ["7. ارفع الملف في تبويب «التنبؤ بالملفات» — تُعالَج البيانات داخل متصفّحك ولا تُرسل لأي خادم."],
+    ];
+    var ws3 = XLSX.utils.aoa_to_sheet(inst);
+    ws3["!cols"] = [{ wch: 110 }];
+    XLSX.utils.book_append_sheet(wb, ws3, "تعليمات");
+    return wb;
+  }
+
+  function saveBlob(blob, name) {
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.appendChild(a); a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 800);
+  }
+
+  function stamp() {
+    var d = new Date(), p = function (n) { return (n < 10 ? "0" : "") + n; };
+    return d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + "-" + p(d.getHours()) + p(d.getMinutes());
+  }
+
+  function downloadTemplate() {
+    loadXLSX().then(function (XLSX) {
+      XLSX.writeFile(buildTemplate(XLSX), "sadeed-template.xlsx");
+    }).catch(showErr);
+  }
+
+  // ── قراءة الملف المرفوع ──
+  function headerKey(h) {
+    if (h == null) return null;
+    var s = String(h).trim();
+    var m = s.match(/\(([a-z][a-z0-9_]*)\)\s*$/i);
+    if (m) return m[1].toLowerCase();
+    var low = s.toLowerCase();
+    for (var i = 0; i < COLS.length; i++) if (COLS[i].key === low) return COLS[i].key;
+    return null;
+  }
+
+  function toInput(rec) {
+    var icd = (rec.icd == null ? "" : String(rec.icd)).trim().toUpperCase().replace(/\s/g, "");
+    var mCh = icd.match(/^([A-Z])/), mBl = icd.match(/^([A-Z][0-9]{2})/);
+    var vd = rec.visit_date;
+    if (vd instanceof Date && !isNaN(vd.getTime())) {
+      var p = function (n) { return (n < 10 ? "0" : "") + n; };
+      vd = vd.getFullYear() + "-" + p(vd.getMonth() + 1) + "-" + p(vd.getDate()) +
+           "T" + p(vd.getHours()) + ":" + p(vd.getMinutes());
+    } else if (vd != null && vd !== "") {
+      vd = String(vd).trim().replace(" ", "T");
+    } else vd = "";
+    var triage = (rec.triage == null || rec.triage === "") ? 3 : rec.triage;
+    return {
+      total: rec.total, visitDate: vd, triage: triage,
+      priorClaims: rec.prior_claims, priorRejectRate: rec.prior_reject_rate,
+      visitType: normCat("visit_type", rec.visit_type),
+      hospital: normCat("hospital", rec.hospital),
+      clinic: normCat("clinic", rec.clinic),
+      nationality: normCat("nationality", rec.nationality),
+      contract: normCat("contract", rec.contract),
+      nphies: normCat("nphies", rec.nphies),
+      gender: normCat("gender", rec.gender),
+      patientClass: normCat("patient_class", rec.patient_class),
+      icdChapter: mCh ? mCh[1] : "", icdBlock: mBl ? mBl[1] : "",
+    };
+  }
+
+  // تسجيل صف واحد — بدون SHAP (يبقى التسجيل سريعاً للملفات الكبيرة)
+  var RL = (B.reason && B.reason.labels) || [];
+  function scoreRow(rec) {
+    var input = toInput(rec);
+    E.prepare(B.approval.trees);
+    var x = E.encode(B, input);
+    var proba = E.toProba(E.rawScores(B.approval.trees, x, 1), B.approval);
+    var pNFA = proba[NFA];
+    var predIdx = pNFA >= THRESHOLD ? 1 : 0;
+    var band = pNFA >= 0.65 ? "خطر مرتفع" : pNFA >= 0.45 ? "خطر متوسّط" : "خطر منخفض";
+
+    var total = parseFloat(rec.total);
+    var expv = "", risk = "";
+    if (isFinite(total) && total > 0) {
+      var rc = B.recovery, keys = B.classes;
+      var e = total * (proba[0] * rc[keys[0]] + proba[1] * rc[keys[1]]);
+      expv = Math.round(e * 100) / 100;
+      risk = Math.round((total - e) * 100) / 100;
+    }
+
+    var reasons = [];
+    if (RL.length) {
+      E.prepare(B.reason.trees);
+      var rp = E.toProba(E.rawScores(B.reason.trees, x, RL.length), B.reason);
+      reasons = RL.map(function (code, i) { return { code: code, p: rp[i] }; })
+        .sort(function (a, b) { return b.p - a.p; }).slice(0, 3)
+        .map(function (r) {
+          return { label: B.reason.labels_ar[r.code] || r.code, p: r.p,
+                   action: B.reason.actions[r.code] || "" };
+        });
+    }
+    return { proba: proba, predIdx: predIdx, band: band, expv: expv, risk: risk, reasons: reasons };
+  }
+
+  var OUT_HEADS = [
+    "التنبؤ (prediction)", "احتمال الموافقة الكاملة (p_approved)",
+    "احتمال عدم الموافقة الكاملة (p_not_fully_approved)", "نطاق الخطر (risk_band)",
+    "الإيراد المتوقّع تحصيله (expected_revenue)", "المبلغ المعرّض للخطر (amount_at_risk)",
+    "السبب المرجّح 1 (reason_1)", "نسبته (reason_1_p)", "الإجراء المقترح (reason_1_action)",
+    "السبب المرجّح 2 (reason_2)", "نسبته (reason_2_p)",
+    "السبب المرجّح 3 (reason_3)", "نسبته (reason_3_p)",
+  ];
+
+  function outRow(s) {
+    var r = s.reasons;
+    return [
+      B.classes_ar[s.predIdx],
+      Math.round(s.proba[0] * 10000) / 10000,
+      Math.round(s.proba[1] * 10000) / 10000,
+      s.band, s.expv, s.risk,
+      r[0] ? r[0].label : "", r[0] ? Math.round(r[0].p * 1000) / 1000 : "", r[0] ? r[0].action : "",
+      r[1] ? r[1].label : "", r[1] ? Math.round(r[1].p * 1000) / 1000 : "",
+      r[2] ? r[2].label : "", r[2] ? Math.round(r[2].p * 1000) / 1000 : "",
+    ];
+  }
+
+  var RESULT = null;   // { aoa, name, counts }
+
+  function processFile(file) {
+    var isCsv = /\.csv$/i.test(file.name);
+    $("batchStatus").innerHTML = '<div class="loading" style="padding:16px"><div class="spin"></div>جارٍ قراءة الملف…</div>';
+    loadXLSX().then(function (XLSX) {
+      var fr = new FileReader();
+      fr.onerror = function () { showErr(new Error("تعذّرت قراءة الملف")); };
+      fr.onload = function () {
+        try {
+          var wb = XLSX.read(fr.result, { type: "array", cellDates: true, codepage: 65001 });
+          var ws = wb.Sheets[wb.SheetNames[0]];
+          var aoa = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: "" });
+          if (!aoa.length) throw new Error("الملف فارغ");
+
+          // صف العناوين → فهرس كل مفتاح
+          var heads = aoa[0], idx = {};
+          heads.forEach(function (h, i) { var k = headerKey(h); if (k && idx[k] === undefined) idx[k] = i; });
+          if (idx.total === undefined && idx.hospital === undefined && idx.contract === undefined)
+            throw new Error("لم أتعرّف على الأعمدة — استخدم قالب المنصّة (زر «تنزيل قالب Excel») أو أبقِ المفاتيح اللاتينية بين الأقواس في العناوين");
+
+          var body = aoa.slice(1).filter(function (r) {
+            return r.some(function (v) { return v !== "" && v != null; });
+          });
+          if (!body.length) throw new Error("لا توجد صفوف بيانات بعد صف العناوين");
+          if (body.length > 50000) throw new Error("الحد الأقصى 50,000 صف في الملف الواحد");
+
+          scoreAll(XLSX, file, isCsv, heads, idx, body);
+        } catch (e) { showErr(e); }
+      };
+      fr.readAsArrayBuffer(file);
+    }).catch(showErr);
+  }
+
+  function scoreAll(XLSX, file, isCsv, heads, idx, body) {
+    var out = [heads.concat(OUT_HEADS)];
+    var counts = { hi: 0, md: 0, lo: 0, nfa: 0, riskSum: 0 };
+    var i = 0, CHUNK = 400;
+
+    function step() {
+      var end = Math.min(i + CHUNK, body.length);
+      for (; i < end; i++) {
+        var rec = {};
+        Object.keys(idx).forEach(function (k) { rec[k] = body[i][idx[k]]; });
+        var s = scoreRow(rec);
+        if (s.proba[NFA] >= 0.65) counts.hi++;
+        else if (s.proba[NFA] >= 0.45) counts.md++;
+        else counts.lo++;
+        if (s.predIdx === 1) counts.nfa++;
+        if (s.risk !== "") counts.riskSum += s.risk;
+        out.push(body[i].concat(outRow(s)));
+      }
+      if (i < body.length) {
+        $("batchStatus").innerHTML = '<div class="loading" style="padding:16px"><div class="spin"></div>' +
+          "جارٍ التسجيل… " + i.toLocaleString("en") + " / " + body.length.toLocaleString("en") + "</div>";
+        setTimeout(step, 0);
+      } else {
+        RESULT = { aoa: out, base: file.name.replace(/\.(xlsx|xls|csv)$/i, ""), isCsv: isCsv, counts: counts, n: body.length };
+        renderResult();
+      }
+    }
+    step();
+  }
+
+  function renderResult() {
+    var c = RESULT.counts, n = RESULT.n;
+    var h = '<div class="note info" style="margin-top:10px"><b>اكتمل تسجيل ' + n.toLocaleString("en") + " طلباً.</b> " +
+      'التنبؤ «موافقة غير كاملة» لـ <b>' + c.nfa.toLocaleString("en") + "</b> طلباً (" +
+      (n ? Math.round(c.nfa / n * 100) : 0) + "%). النطاقات: " +
+      '<b style="color:var(--red)">' + c.hi.toLocaleString("en") + " مرتفع</b> · " +
+      '<b style="color:var(--yellow,#96590f)">' + c.md.toLocaleString("en") + " متوسّط</b> · " +
+      '<b style="color:var(--green)">' + c.lo.toLocaleString("en") + " منخفض</b>" +
+      (c.riskSum ? " · إجمالي المبلغ المعرّض للخطر <b>" + Math.round(c.riskSum).toLocaleString("en") + " ﷼</b>" : "") +
+      "</div>";
+    h += '<div class="btn-row">' +
+      '<button class="btn" id="dlXlsx" style="width:auto;padding:11px 22px">⬇️ تنزيل النتائج Excel</button>' +
+      '<button class="btn ghost" id="dlCsv" style="width:auto;padding:11px 22px">⬇️ تنزيل النتائج CSV</button></div>';
+
+    // معاينة أول 10 صفوف: أعمدة النتائج الأهم فقط
+    var aoa = RESULT.aoa, nIn = aoa[0].length - OUT_HEADS.length;
+    var showCols = [nIn, nIn + 2, nIn + 3, nIn + 5, nIn + 6];
+    h += '<div class="tw" style="overflow-x:auto;margin-top:12px"><table><tr>' +
+      "<th>#</th>" + showCols.map(function (ci) {
+        return "<th>" + String(aoa[0][ci]).replace(/\s*\([a-z0-9_]+\)\s*$/i, "") + "</th>";
+      }).join("") + "</tr>";
+    for (var r = 1; r < Math.min(11, aoa.length); r++) {
+      h += "<tr><td>" + r + "</td>" + showCols.map(function (ci) {
+        var v = aoa[r][ci];
+        if (typeof v === "number" && ci === nIn + 2) v = (v * 100).toFixed(1) + "%";
+        return "<td>" + (v == null ? "" : v) + "</td>";
+      }).join("") + "</tr>";
+    }
+    h += "</table></div>";
+    if (aoa.length > 11) h += '<p style="font-size:11.5px;color:var(--muted2)">المعاينة لأول 10 صفوف — الملف الكامل في التنزيل.</p>';
+    $("batchStatus").innerHTML = h;
+
+    $("dlXlsx").onclick = function () {
+      loadXLSX().then(function (XLSX) {
+        var wb = XLSX.utils.book_new();
+        wb.Workbook = { Views: [{ RTL: true }] };
+        var ws = XLSX.utils.aoa_to_sheet(RESULT.aoa);
+        XLSX.utils.book_append_sheet(wb, ws, "النتائج");
+        XLSX.writeFile(wb, RESULT.base + "-scored-" + stamp() + ".xlsx");
+      }).catch(showErr);
+    };
+    $("dlCsv").onclick = function () {
+      loadXLSX().then(function (XLSX) {
+        var ws = XLSX.utils.aoa_to_sheet(RESULT.aoa);
+        var csv = "\ufeff" + XLSX.utils.sheet_to_csv(ws);   // BOM ليقرأ Excel العربية UTF-8
+        saveBlob(new Blob([csv], { type: "text/csv;charset=utf-8" }), RESULT.base + "-scored-" + stamp() + ".csv");
+      }).catch(showErr);
+    };
+  }
+
+  function showErr(e) {
+    $("batchStatus").innerHTML = '<div class="err" style="margin-top:10px"><b>تعذّرت المعالجة:</b> ' +
+      (e && e.message ? e.message : e) + "</div>";
+  }
+
+  // ── بناء التبويب ──
+  function render() {
+    var host = $("batchBody");
+    var h = '<div class="card">';
+    h += '<div class="sec-label">📂 التنبؤ بواسطة ملف Excel أو CSV</div>';
+    h += '<p style="font-size:13px;color:var(--muted2);line-height:1.9;margin:0 0 12px">' +
+      "نزّل القالب وعبّئ كل طلب في صف، ثم ارفع الملف — تُسجَّل كل الصفوف بنفس نموذج " +
+      "المنصّة وتنزل النتائج ملف Excel أو CSV. <b>تتم المعالجة كاملةً داخل متصفّحك: " +
+      "لا يُرسل الملف ولا أي بيانات إلى أي خادم.</b></p>";
+    h += '<div class="btn-row" style="justify-content:flex-start">' +
+      '<button class="btn ghost" id="dlTemplate" style="width:auto;padding:11px 22px">📄 تنزيل قالب Excel</button></div>';
+    h += '<div id="dropZone" style="margin-top:12px;border:2px dashed var(--border);border-radius:12px;' +
+      'padding:34px 16px;text-align:center;color:var(--muted2);font-size:13.5px;cursor:pointer">' +
+      '<div style="font-size:30px;margin-bottom:6px">⬆️</div>' +
+      "اسحب ملف <b>Excel (.xlsx)</b> أو <b>CSV</b> هنا، أو اضغط للاختيار" +
+      '<input type="file" id="batchFile" accept=".xlsx,.xls,.csv" style="display:none"></div>';
+    h += '<div id="batchStatus"></div>';
+    h += "</div>";
+    host.innerHTML = h;
+
+    $("dlTemplate").onclick = downloadTemplate;
+    var dz = $("dropZone"), fi = $("batchFile");
+    dz.onclick = function () { fi.click(); };
+    fi.onchange = function () { if (fi.files[0]) { processFile(fi.files[0]); fi.value = ""; } };
+    dz.ondragover = function (e) { e.preventDefault(); dz.style.borderColor = "var(--accent)"; };
+    dz.ondragleave = function () { dz.style.borderColor = "var(--border)"; };
+    dz.ondrop = function (e) {
+      e.preventDefault(); dz.style.borderColor = "var(--border)";
+      var f = e.dataTransfer.files && e.dataTransfer.files[0];
+      if (f) processFile(f);
+    };
+  }
+
+  var drawn = false;
+  document.addEventListener("click", function (e) {
+    var t = e.target.closest && e.target.closest('[data-p="batch"]');
+    if (t && !drawn) { drawn = true; render(); }
+  });
+  if (document.querySelector('[data-p="batch"].active')) { drawn = true; render(); }
+})();
