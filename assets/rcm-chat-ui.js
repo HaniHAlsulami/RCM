@@ -340,7 +340,7 @@
   // ════════════════════════════════════════════════════════════════
   function caseHtml(c) {
     var p = c.payload, risk = p.probabilities.notFullyApproved;
-    var band = risk >= 0.65 ? "hi" : risk >= 0.45 ? "md" : "lo";
+    var band = risk >= 0.65 ? "hi" : risk >= 0.5 ? "md" : "lo";
     var h = '<div class="casecard"><div class="chead">' +
       '<span class="tag">🔗 حالة من منصّة سديد</span>' +
       '<span class="conf ' + (band === "hi" ? "lo" : band === "md" ? "md" : "hi") + '">' +

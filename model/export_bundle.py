@@ -51,7 +51,7 @@ def _flatten_tree(node):
         d.append(0); w.append(0.0); mt.append(0)
         if "leaf_value" in n:
             k[i], f[i] = 2, -1
-            v[i] = R6(n["leaf_value"])
+            v[i] = float(n["leaf_value"])   # دقّة كاملة — التقريب يغيّر مجموع الهوامش
             w[i] = float(n.get("leaf_count", n.get("leaf_weight", 1)))
             return i
         w[i] = float(n["internal_count"])
@@ -63,7 +63,9 @@ def _flatten_tree(node):
             v[i] = len(sets) - 1
         else:
             k[i] = 0
-            v[i] = R6(n["threshold"])
+            # دقّة كاملة إلزاميّة: عتبات LightGBM نقاط وسطى مضبوطة بتقنية
+            # تقريبها يقلب القرار حين تساوي قيمة الخاصية العتبة المقرّبة
+            v[i] = float(n["threshold"])
         d[i] = 1 if n.get("default_left") else 0
         mt[i] = MT.get(str(n.get("missing_type", "None")), 0)
         l[i] = add(n["left_child"])

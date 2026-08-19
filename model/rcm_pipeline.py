@@ -450,7 +450,7 @@ ENTITY_COLS = {"contract": "Contract Name", "hosp": "Hospital Name", "clinic": "
 ENTITY_SUFFIXES = ("hist_nfa", "hist_ok", "vol")   # nfa = not fully approved
 ENTITY_FEATURES = [f"{n}_{s}" for n in ENTITY_COLS for s in ENTITY_SUFFIXES]
 ENTITY_K = 25.0                        # قوة التنعيم البايزي
-PRIOR_NFA, PRIOR_OK = 0.5674, 0.4326   # المعدّل العام في بيانات التدريب
+PRIOR_NFA, PRIOR_OK = 0.5739, 0.4261   # المعدّل العام في بيانات التدريب (حتى 2026-07-18)
 
 FEATURE_AR.update({
     "contract_hist_nfa": "معدل عدم القبول الكامل لشركة التأمين",

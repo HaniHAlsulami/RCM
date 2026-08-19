@@ -375,7 +375,7 @@
       cls = "warn";
       tip = "<strong>خطر مرتفع لعدم الموافقة الكاملة.</strong> راجع الأسباب المرجّحة في " +
             where + " وعالجها قبل الإرسال — التصحيح المسبق أرخص بكثير من الاستئناف.";
-    } else if (risk >= 0.45) {
+    } else if (risk >= 0.5) {
       cls = "";
       tip = "<strong>خطر متوسّط.</strong> تحقّق من اكتمال المستندات ومطابقة الترميز وحدود " +
             "التغطية في العقد قبل الإرسال — الأسباب المرجّحة في " + where + ".";
@@ -506,8 +506,8 @@
     h.push(kv("الدقة", pct(m.precision_nfa), "نسبة الإنذارات الصحيحة"));
     h.push("</div>");
     h.push('<div class="note"><b>عتبة القرار ' + m.threshold + "</b> — اختيرت بتعظيم F1 " +
-      "الماكرو على شريحة تحقّق مقتطعة من نهاية فترة التدريب، لا على بيانات الاختبار. " +
-      "خُفِّضت دون 0.5 عمداً: تفويت حالة خاسرة أغلى من إنذار زائد يُراجَع في دقيقة.</div></div>");
+      "الماكرو على شريحة تحقّق مقتطعة من نهاية فترة التدريب، لا على بيانات الاختبار — " +
+      "فلا تتفصّل العتبة على ما يُقاس به.</div></div>");
 
     // مصفوفة الالتباس
     if (cm.length) {
@@ -752,7 +752,7 @@
       prediction_ar: B.classes_ar[out.predIndex],
       confidence: out.proba[out.predIndex],
       probabilities: { approved: out.proba[0], notFullyApproved: out.proba[NFA] },
-      riskBand: out.proba[NFA] >= 0.65 ? "high" : out.proba[NFA] >= 0.45 ? "medium" : "low",
+      riskBand: out.proba[NFA] >= 0.65 ? "high" : out.proba[NFA] >= 0.5 ? "medium" : "low",
       threshold: out.threshold,
       shap: out.groups[out.predIndex].slice(0, 8).map(function (g) {
         return { feature: g.key, label: g.label, value: +g.value.toFixed(5) }; }),

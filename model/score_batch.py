@@ -26,7 +26,7 @@ import rcm_pipeline as P  # noqa: E402
 HERE = os.path.dirname(os.path.abspath(__file__))
 ART = os.path.join(HERE, "artifacts")
 
-RISK_BANDS = [(0.65, "خطر مرتفع"), (0.45, "خطر متوسّط"), (0.0, "خطر منخفض")]
+RISK_BANDS = [(0.65, "خطر مرتفع"), (0.5, "خطر متوسّط"), (0.0, "خطر منخفض")]
 
 # تجميع الخصائص التقنية تحت مفاهيم تشغيلية (نفس تجميع الصفحة)
 GROUPS = {

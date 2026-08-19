@@ -210,7 +210,7 @@ const CASE = require(path.join(__dirname, "..", "assets", "rcm-case.js"));
   const fakeCase = {
     savedAt: "2026-01-01T00:00:00Z",
     payload: {
-      prediction_ar: "موافقة غير كاملة", threshold: 0.45,
+      prediction_ar: "موافقة غير كاملة", threshold: 0.5,
       probabilities: { approved: 0.09, notFullyApproved: 0.91 },
       topReasons: [
         { code: "DOCUMENTATION", label: "نقص في المستندات", probability: 0.4, action: "أرفق التقرير" },
