@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 """
-score_batch.py — تسجيل دفعي لملف مطالبات كامل
+score_batch.py — تسجيل دفعي لملف طلبات كامل
 Sadeed · Makkah Health Cluster · Revenue Development Performance
 
-يقرأ ملف مطالبات (xlsx/csv) ويُخرج ملفاً مسجَّلاً جاهزاً للاستيراد في Power BI،
-يحتوي لكل مطالبة على: التنبؤ، احتمالات الفئات الثلاث، شريحة الخطر، الإيراد
+يقرأ ملف طلبات (xlsx/csv) ويُخرج ملفاً مسجَّلاً جاهزاً للاستيراد في Power BI،
+يحتوي لكل طلب على: التنبؤ، احتمالات الفئات الثلاث، شريحة الخطر، الإيراد
 المتوقّع، المبلغ المعرّض للخطر، أعلى ٣ عوامل SHAP، وأعلى ٣ أسباب رفض متوقّعة.
 
-    python3 model/score_batch.py --data claims.xlsx --out scored.csv
-    python3 model/score_batch.py --data claims.xlsx --out scored.xlsx --shap 5
+    python3 model/score_batch.py --data authorizations.xlsx --out scored.csv
+    python3 model/score_batch.py --data authorizations.xlsx --out scored.xlsx --shap 5
 """
 from __future__ import annotations
 
@@ -30,7 +30,7 @@ RISK_BANDS = [(0.65, "خطر مرتفع"), (0.45, "خطر متوسّط"), (0.0, 
 
 # تجميع الخصائص التقنية تحت مفاهيم تشغيلية (نفس تجميع الصفحة)
 GROUPS = {
-    "إجمالي الفاتورة": ["total", "log_total"],
+    "إجمالي مبلغ الطلب": ["total", "log_total"],
     "عقد التأمين (الضامن)": ["contract", "contract_hist_nfa", "contract_hist_ok", "contract_vol"],
     "المستشفى": ["hospital", "hosp_hist_nfa", "hosp_hist_ok", "hosp_vol"],
     "القسم / العيادة": ["clinic", "clinic_hist_nfa", "clinic_hist_ok", "clinic_vol"],
@@ -64,7 +64,7 @@ def load_artifacts():
 
 
 def load_bundle_meta():
-    """عتبة القرار ونسب التحصيل من حزمة النموذج."""
+    """عتبة القرار ونسب الاعتماد من حزمة النموذج."""
     mb = os.path.join(ART, "model_bundle.json")
     if not os.path.exists(mb):
         return 0.5, None
@@ -141,8 +141,8 @@ def score(df, model, reason_model, reason_labels, vocab, snap,
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--data", required=True, help="ملف المطالبات المراد تسجيله")
-    ap.add_argument("--out", default="scored_claims.csv", help="ملف الإخراج (csv أو xlsx)")
+    ap.add_argument("--data", required=True, help="ملف طلبات الموافقة المراد تسجيله")
+    ap.add_argument("--out", default="scored_authorizations.csv", help="ملف الإخراج (csv أو xlsx)")
     ap.add_argument("--shap", type=int, default=3, help="عدد عوامل SHAP المُخرجة (0 لتعطيلها)")
     ap.add_argument("--reasons", type=int, default=3, help="عدد أسباب الرفض المُخرجة")
     ap.add_argument("--keep", default="", help="أعمدة أصلية إضافية تُرحَّل، مفصولة بفاصلة")
@@ -152,7 +152,7 @@ def main():
     threshold, recovery = load_bundle_meta()
 
     df = P.load_raw(args.data)
-    print(f"قراءة {len(df):,} مطالبة من {args.data}")
+    print(f"قراءة {len(df):,} طلب من {args.data}")
 
     scored = score(df, model, rmodel, rlabels, vocab, snap,
                    args.shap, args.reasons, recovery, threshold)

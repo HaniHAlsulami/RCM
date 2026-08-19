@@ -2,27 +2,27 @@
 // مقاييس DAX جاهزة — لوحة التنبؤ بالموافقة التأمينية
 // منصّة سديد · تجمع مكة المكرمة الصحي · إدارة أداء تنمية الإيرادات
 //
-// تفترض وجود جدول اسمه Claims ناتج عن powerbi/powerbi_script.py
+// تفترض وجود جدول اسمه Authorizations ناتج عن powerbi/powerbi_script.py
 // ════════════════════════════════════════════════════════════════════
 
-// ── 1. رابط صفحة التنبؤ للمطالبة المحدّدة ─────────────────────────────
+// ── 1. رابط صفحة التنبؤ للطلب المحدّد ─────────────────────────────
 // اعرضه في مرئي «HTML Content» داخل <iframe>، أو كزرّ Web URL.
 // استبدل BaseUrl بعنوان نشر الصفحة لديك.
 رابط التنبؤ =
 VAR BaseUrl = "https://<حسابك>.github.io/RCM/predict.html"
 VAR Q =
     "?embed=1&auto=1"
-    & "&total="        & FORMAT( COALESCE( SELECTEDVALUE( Claims[Total] ), 0 ), "0.##" )
-    & "&visitType="    & SELECTEDVALUE( Claims[Visit Type Key] )
-    & "&hospital="     & SELECTEDVALUE( Claims[Hospital Key] )
-    & "&clinic="       & SELECTEDVALUE( Claims[Clinic Key] )
-    & "&contract="     & SELECTEDVALUE( Claims[Contract Key] )
-    & "&nphies="       & SELECTEDVALUE( Claims[Nphies Key] )
-    & "&nationality="  & SELECTEDVALUE( Claims[Nationality Key] )
-    & "&patientClass=" & SELECTEDVALUE( Claims[Patient Class Key] )
-    & "&icd="          & SELECTEDVALUE( Claims[Icd 10] )
-    & "&triage="       & FORMAT( COALESCE( SELECTEDVALUE( Claims[Triage Num] ), 3 ), "0" )
-    & "&gender="       & SELECTEDVALUE( Claims[Gender] )
+    & "&total="        & FORMAT( COALESCE( SELECTEDVALUE( Authorizations[Total] ), 0 ), "0.##" )
+    & "&visitType="    & SELECTEDVALUE( Authorizations[Visit Type Key] )
+    & "&hospital="     & SELECTEDVALUE( Authorizations[Hospital Key] )
+    & "&clinic="       & SELECTEDVALUE( Authorizations[Clinic Key] )
+    & "&contract="     & SELECTEDVALUE( Authorizations[Contract Key] )
+    & "&nphies="       & SELECTEDVALUE( Authorizations[Nphies Key] )
+    & "&nationality="  & SELECTEDVALUE( Authorizations[Nationality Key] )
+    & "&patientClass=" & SELECTEDVALUE( Authorizations[Patient Class Key] )
+    & "&icd="          & SELECTEDVALUE( Authorizations[Icd 10] )
+    & "&triage="       & FORMAT( COALESCE( SELECTEDVALUE( Authorizations[Triage Num] ), 3 ), "0" )
+    & "&gender="       & SELECTEDVALUE( Authorizations[Gender] )
 RETURN
     BaseUrl & Q
 
@@ -31,36 +31,36 @@ RETURN
 "<iframe src=""" & [رابط التنبؤ] & """ width=""100%"" height=""880"" frameborder=""0""></iframe>"
 
 // ── 3. مؤشّرات الأداء الرئيسية ──────────────────────────────────────
-عدد المطالبات = COUNTROWS( Claims )
+عدد طلبات الموافقة = COUNTROWS( Authorizations )
 
-المبلغ المعرّض للخطر = SUM( Claims[amount_at_risk] )
+المبلغ المعرّض للخطر = SUM( Authorizations[amount_at_risk] )
 
-الإيراد المتوقّع = SUM( Claims[expected_revenue] )
+المبلغ المتوقّع اعتماده = SUM( Authorizations[expected_revenue] )
 
 نسبة المعرّض للخطر =
-DIVIDE( [المبلغ المعرّض للخطر], SUM( Claims[billed_amount] ) )
+DIVIDE( [المبلغ المعرّض للخطر], SUM( Authorizations[billed_amount] ) )
 
-مطالبات عالية الخطر =
-CALCULATE( COUNTROWS( Claims ), Claims[risk_band] = "خطر مرتفع" )
+طلبات عالية الخطر =
+CALCULATE( COUNTROWS( Authorizations ), Authorizations[risk_band] = "خطر مرتفع" )
 
 نسبة عالية الخطر =
-DIVIDE( [مطالبات عالية الخطر], [عدد المطالبات] )
+DIVIDE( [طلبات عالية الخطر], [عدد طلبات الموافقة] )
 
-متوسّط خطر عدم التحصيل = AVERAGE( Claims[p_not_fully_approved] )
+متوسّط خطر عدم الاعتماد = AVERAGE( Authorizations[p_not_fully_approved] )
 
-// ── 4. دقّة النموذج على المطالبات التي صدر فيها قرار فعلي ──────────
+// ── 4. دقّة النموذج على طلبات الموافقة التي صدر فيها قرار فعلي ──────────
 // الهدف ثنائي: تُقارن «موافقة كاملة» بحالة Approved، وكل ما عداها
 // (Rejected أو Partially Approved) يقابل «موافقة غير كاملة».
 دقّة النموذج =
 VAR Decided =
-    FILTER( Claims, Claims[Approval Status] IN { "Approved", "Partially Approved", "Rejected" } )
+    FILTER( Authorizations, Authorizations[Approval Status] IN { "Approved", "Partially Approved", "Rejected" } )
 VAR Hits =
     COUNTROWS(
         FILTER(
             Decided,
-            ( Claims[pred_label] = "Approved" && Claims[Approval Status] = "Approved" )
-                || ( Claims[pred_label] = "NotFullyApproved"
-                     && Claims[Approval Status] <> "Approved" )
+            ( Authorizations[pred_label] = "Approved" && Authorizations[Approval Status] = "Approved" )
+                || ( Authorizations[pred_label] = "NotFullyApproved"
+                     && Authorizations[Approval Status] <> "Approved" )
         )
     )
 RETURN
@@ -69,26 +69,26 @@ RETURN
 // استرجاع الفئة الحرجة: نسبة الحالات الخاسرة فعلاً التي التقطها النموذج.
 // هذا هو المؤشّر التشغيلي الأهم — أهم من الدقّة الإجمالية.
 استرجاع الحالات الخاسرة =
-VAR Lost = FILTER( Claims, Claims[Approval Status] IN { "Rejected", "Partially Approved" } )
-VAR Caught = COUNTROWS( FILTER( Lost, Claims[pred_label] = "NotFullyApproved" ) )
+VAR Lost = FILTER( Authorizations, Authorizations[Approval Status] IN { "Rejected", "Partially Approved" } )
+VAR Caught = COUNTROWS( FILTER( Lost, Authorizations[pred_label] = "NotFullyApproved" ) )
 RETURN
     DIVIDE( Caught, COUNTROWS( Lost ) )
 
 // ── 5. المبلغ القابل للاسترداد بالتدخّل المسبق ─────────────────────
-// تقدير الأثر: المطالبات عالية الخطر التي لم يصدر فيها قرار بعد،
+// تقدير الأثر: طلبات الموافقة عالية الخطر التي لم يصدر فيها قرار بعد،
 // أي النافذة الزمنية التي ما زال بالإمكان التدخّل فيها.
 فرصة التدخّل =
 CALCULATE(
-    SUM( Claims[amount_at_risk] ),
-    Claims[risk_band] = "خطر مرتفع",
-    NOT Claims[Approval Status] IN { "Approved", "Partially Approved", "Rejected" }
+    SUM( Authorizations[amount_at_risk] ),
+    Authorizations[risk_band] = "خطر مرتفع",
+    NOT Authorizations[Approval Status] IN { "Approved", "Partially Approved", "Rejected" }
 )
 
 // ── 6. تنسيق شرطي لشريحة الخطر ─────────────────────────────────────
 // اربطه بخاصية Background color للجدول: Format ← Conditional formatting ← Field value
 لون الخطر =
 SWITCH(
-    SELECTEDVALUE( Claims[risk_band] ),
+    SELECTEDVALUE( Authorizations[risk_band] ),
     "خطر مرتفع",  "#F87171",
     "خطر متوسّط", "#FBBF24",
     "#22D3A0"

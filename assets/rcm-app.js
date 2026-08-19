@@ -91,7 +91,7 @@
       d.dataset.val = o.v;
       d.dataset.txt = (o.l + " " + o.v).toLowerCase();
       var badge = o.r >= 0
-        ? '<span class="rr ' + rrClass(o.r) + '" title="نسبة الرفض التاريخية · ' + fmt(o.n) + ' مطالبة">'
+        ? '<span class="rr ' + rrClass(o.r) + '" title="نسبة الرفض التاريخية · ' + fmt(o.n) + ' طلب">'
           + fmt(o.r, 0) + "%</span>" : "";
       d.innerHTML = '<span class="nm">' + esc(o.l) + "</span>" + badge;
       d.onclick = function () { select(col, o.v, o.l); };
@@ -179,7 +179,7 @@
     return s;
   }
 
-  /** مخطط الشلال: من القيمة الأساسية إلى درجة المطالبة */
+  /** مخطط الشلال: من القيمة الأساسية إلى درجة الطلب */
   function drawWaterfall(host, groups, base, margin, clsIdx) {
     host.innerHTML = "";
     var TOP = 9;
@@ -234,7 +234,7 @@
     svg.appendChild(el("line", { x1: X(run), y1: PAD + 4, x2: X(run), y2: y + 2,
       stroke: COLORS_()[clsIdx], "stroke-width": 1.2, "stroke-dasharray": "3 3", opacity: .8 }));
     svg.appendChild(el("text", { x: LW, y: y + 15, "text-anchor": "end", "font-size": 12,
-      fill: COLORS_()[clsIdx], "font-weight": 700 }, "درجة المطالبة"));
+      fill: COLORS_()[clsIdx], "font-weight": 700 }, "درجة الطلب"));
     svg.appendChild(el("circle", { cx: X(run), cy: y + 11, r: 4.5, fill: COLORS_()[clsIdx] }));
     svg.appendChild(el("text", { x: plotR + 6, y: y + 15, "font-size": 11.5,
       fill: COLORS_()[clsIdx], "font-weight": 700 }, run.toFixed(3)));
@@ -351,7 +351,7 @@
     ["bA", "bR"].forEach(function (id, k) {
       var diff = p[k] - B.prior[k];
       $(id).textContent = (diff >= 0 ? "▲ " : "▼ ") + pct(Math.abs(diff), 0) + " عن المتوسّط";
-      // ارتفاع خطر عدم التحصيل سيّئ، وارتفاع القبول جيّد
+      // ارتفاع خطر عدم الاعتماد سيّئ، وارتفاع القبول جيّد
       $(id).style.color = (k === NFA ? diff > 0 : diff < 0) ? "var(--red)" : "var(--green)";
     });
 
@@ -374,7 +374,7 @@
     if (risk >= 0.65) {
       cls = "warn";
       tip = "<strong>خطر مرتفع لعدم الموافقة الكاملة.</strong> راجع الأسباب المرجّحة في " +
-            where + " وعالجها قبل الإرسال — التصحيح المسبق أرخص بكثير من الاستئناف.";
+            where + " وعالجها قبل الإرسال — التصحيح المسبق أرخص بكثير من إعادة الطلب بعد الرفض.";
     } else if (risk >= 0.45) {
       cls = "";
       tip = "<strong>خطر متوسّط.</strong> تحقّق من اكتمال المستندات ومطابقة الترميز وحدود " +
@@ -457,7 +457,7 @@
     $("reasonEmpty").style.display = "none";
     $("reasonBody").style.display = "block";
     $("reasonSub").innerHTML =
-      "احتمال عدم الموافقة الكاملة لهذه المطالبة <b>" + pct(out.proba[NFA]) + "</b>. " +
+      "احتمال عدم الموافقة الكاملة لهذا الطلب <b>" + pct(out.proba[NFA]) + "</b>. " +
       "النسب أدناه مشروطة بحدوث ذلك، ومرتّبة من الأرجح. " +
       "دقّة النموذج في وضع السبب الصحيح ضمن أعلى ثلاثة: <b>" +
       pct(B.metrics.reason_model.top3_accuracy) + "</b>.";
@@ -536,7 +536,7 @@
       h.push('<div class="card"><div class="sec-label">🔬 مقارنة الخوارزميات</div>');
       h.push('<div class="chart-sub">دُرِّبت كل الخوارزميات على نفس الخصائص وقُيِّمت بتقسيم ' +
         "<b>زمني</b> — التدريب على الفترة الأقدم والاختبار على الأحدث، وهو التقييم الأمين " +
-        "لنموذج سيعمل على مطالبات مستقبلية. الصف المميّز هو النموذج المُعتمد.</div>");
+        "لنموذج سيعمل على طلبات مستقبلية. الصف المميّز هو النموذج المُعتمد.</div>");
       h.push('<div class="tbl-wrap"><table><tr><th>الخوارزمية</th><th>الدقة</th>' +
         "<th>الرفع</th><th>AUC</th><th>استرجاع الخطر</th></tr>");
       m.comparison.forEach(function (r) {
@@ -562,16 +562,16 @@
     h.push('<div class="note"><b>منع تسريب البيانات:</b> استُبعدت كل الأعمدة التي لا تُعرف إلا ' +
       "بعد صدور قرار الضامن — المبلغ المغطّى، صافي النقد، رقم الموافقة المرجعي، ونص سبب الرفض. " +
       "أمّا معدّلات الرفض التاريخية للعقد والمستشفى والعيادة فتُحسب أثناء التدريب بنافذة " +
-      "<b>متوسّعة زمنياً</b> (من المطالبات السابقة فقط) حتى لا يتسرّب المستقبل إلى الماضي.</div></div>");
+      "<b>متوسّعة زمنياً</b> (من طلبات الموافقة السابقة فقط) حتى لا يتسرّب المستقبل إلى الماضي.</div></div>");
 
     // البيانات
     h.push('<div class="card"><div class="sec-label">🗄️ بيانات التدريب</div><div class="kv">');
     h.push(kv("إجمالي السجلات", fmt(ds.rows_total), "قبل التصفية"));
-    h.push(kv("مطالبات ذات قرار نهائي", fmt(ds.rows_decided), "المستخدمة في التدريب"));
+    h.push(kv("طلبات ذات قرار نهائي", fmt(ds.rows_decided), "المستخدمة في التدريب"));
     h.push("</div>");
     h.push('<div class="chart-sub">الفترة: ' + esc(ds.date_from) + " → " + esc(ds.date_to) +
       " · فاصل التدريب/الاختبار: " + esc(ds.split_date) + "</div>");
-    h.push('<div class="tbl-wrap"><table><tr><th>الفئة</th><th>عدد المطالبات</th><th>النسبة</th></tr>');
+    h.push('<div class="tbl-wrap"><table><tr><th>الفئة</th><th>عدد طلبات الموافقة</th><th>النسبة</th></tr>');
     var tot = 0;
     Object.keys(ds.class_distribution || {}).forEach(function (k) { tot += ds.class_distribution[k]; });
     Object.keys(ds.class_distribution || {}).forEach(function (k) {
@@ -650,39 +650,39 @@
       "</ol>");
     h.push("<pre>" + esc('<iframe src="' + url + '?embed=1" width="100%" height="900" frameborder="0"></iframe>') + "</pre>");
 
-    h.push('<div class="chart-title" style="margin-top:18px">الطريقة ٢ — تمرير بيانات المطالبة المحدّدة (ديناميكي)</div>');
+    h.push('<div class="chart-title" style="margin-top:18px">الطريقة ٢ — تمرير بيانات الطلب المحدّد (ديناميكي)</div>');
     h.push('<div class="chart-sub">أنشئ مقياساً (Measure) يبني الرابط من الصف المختار في اللوحة، ' +
-      "ثم اعرضه في <b>مرئي HTML Content</b> أو كزرّ <b>Web URL</b>. عند اختيار المستخدم لمطالبة " +
+      "ثم اعرضه في <b>مرئي HTML Content</b> أو كزرّ <b>Web URL</b>. عند اختيار المستخدم لطلب " +
       "في أي جدول، تُحدَّث الصفحة تلقائياً وتشغّل التنبؤ.</div>");
     h.push("<pre>" + esc(
 'رابط_التنبؤ = \n' +
 'VAR BaseUrl = "' + url + '"\n' +
 'VAR Q =\n' +
 '    "?embed=1&auto=1"\n' +
-'    & "&total="      & COALESCE( SELECTEDVALUE(Claims[Total]), 0 )\n' +
-'    & "&visitType="  & SELECTEDVALUE(Claims[Visit Type])\n' +
-'    & "&hospital="   & SELECTEDVALUE(Claims[Hospital Key])\n' +
-'    & "&clinic="     & SELECTEDVALUE(Claims[Clinic Key])\n' +
-'    & "&contract="   & SELECTEDVALUE(Claims[Contract Key])\n' +
-'    & "&nphies="     & SELECTEDVALUE(Claims[Nphies Key])\n' +
-'    & "&icd="        & SELECTEDVALUE(Claims[Icd 10])\n' +
-'    & "&triage="     & SELECTEDVALUE(Claims[Triage Num])\n' +
-'    & "&gender="     & SELECTEDVALUE(Claims[Gender])\n' +
-'    & "&nationality="& SELECTEDVALUE(Claims[Nationality Key])\n' +
-'    & "&patientClass=" & SELECTEDVALUE(Claims[Patient Class Key])\n' +
+'    & "&total="      & COALESCE( SELECTEDVALUE(Authorizations[Total]), 0 )\n' +
+'    & "&visitType="  & SELECTEDVALUE(Authorizations[Visit Type])\n' +
+'    & "&hospital="   & SELECTEDVALUE(Authorizations[Hospital Key])\n' +
+'    & "&clinic="     & SELECTEDVALUE(Authorizations[Clinic Key])\n' +
+'    & "&contract="   & SELECTEDVALUE(Authorizations[Contract Key])\n' +
+'    & "&nphies="     & SELECTEDVALUE(Authorizations[Nphies Key])\n' +
+'    & "&icd="        & SELECTEDVALUE(Authorizations[Icd 10])\n' +
+'    & "&triage="     & SELECTEDVALUE(Authorizations[Triage Num])\n' +
+'    & "&gender="     & SELECTEDVALUE(Authorizations[Gender])\n' +
+'    & "&nationality="& SELECTEDVALUE(Authorizations[Nationality Key])\n' +
+'    & "&patientClass=" & SELECTEDVALUE(Authorizations[Patient Class Key])\n' +
 'RETURN BaseUrl & Q') + "</pre>");
     h.push('<div class="note">أعمدة <code>*_Key</code> هي القيم المطبَّعة التي يتوقّعها النموذج ' +
       "(حروف صغيرة، مسافات موحّدة). يولّدها سكربت <code>powerbi/powerbi_script.py</code> جاهزةً " +
-      "ضمن جدول المطالبات المسجَّل، فلا حاجة لبنائها يدوياً في Power Query.</div>");
+      "ضمن جدول طلبات الموافقة المسجَّل، فلا حاجة لبنائها يدوياً في Power Query.</div>");
 
-    h.push('<div class="chart-title" style="margin-top:18px">الطريقة ٣ — تسجيل دفعي لكل المطالبات (الأقوى للوحات)</div>');
+    h.push('<div class="chart-title" style="margin-top:18px">الطريقة ٣ — تسجيل دفعي لكل الطلبات (الأقوى للوحات)</div>');
     h.push('<div class="chart-sub">لعرض التنبؤات كأعمدة في جداول ومرئيات Power BI العادية ' +
       "(بدل صفحة ويب مضمّنة)، شغّل النموذج داخل Power BI مباشرةً:</div>");
     h.push('<ol class="steps">' +
       "<li><b>Home ← Get Data ← More… ← Other ← Python script</b>.</li>" +
       "<li>ألصق محتوى <code>powerbi/powerbi_script.py</code> بعد تعديل مسار ملف البيانات.</li>" +
       "<li>اختر جدول <b>scored</b> — يحتوي على احتمال عدم الموافقة الكاملة، التنبؤ، شريحة " +
-      "الخطر، المبلغ المعرّض للخطر، أعلى ٣ عوامل SHAP، وأعلى ٣ أسباب متوقّعة لكل مطالبة.</li>" +
+      "الخطر، المبلغ المعرّض للخطر، أعلى ٣ عوامل SHAP، وأعلى ٣ أسباب متوقّعة لكل طلب.</li>" +
       "<li>حدّث البيانات دورياً عبر <b>Personal Gateway</b>.</li></ol>");
     h.push('<div class="note"><b>الأعمدة الناتجة:</b> <code>pred_label</code>، <code>p_approved</code>، ' +
       "<code>p_not_fully_approved</code>، <code>risk_band</code>، " +
@@ -714,7 +714,7 @@
 
     h.push('<div class="card"><div class="sec-label">🧭 معاملات الرابط المدعومة</div>');
     h.push('<div class="tbl-wrap"><table><tr><th>المعامل</th><th>الوصف</th><th>مثال</th></tr>' +
-      "<tr><td><code>total</code></td><td>إجمالي الفاتورة</td><td>1250</td></tr>" +
+      "<tr><td><code>total</code></td><td>إجمالي مبلغ الطلب</td><td>1250</td></tr>" +
       "<tr><td><code>visitType</code></td><td>نوع الزيارة</td><td>er / opd / ip</td></tr>" +
       "<tr><td><code>hospital</code></td><td>اسم المستشفى المطبَّع</td><td>al noor specialist hospital</td></tr>" +
       "<tr><td><code>clinic</code></td><td>اسم العيادة المطبَّع</td><td>emergency</td></tr>" +
@@ -859,7 +859,7 @@
       '<span class="chip">رفع فوق الأساس <b>+' + pct(m.lift_over_majority) + "</b></span>" +
       '<span class="chip">AUC <b>' + m.roc_auc.toFixed(3) + "</b></span>" +
       '<span class="chip">التقاط الخطر <b>' + pct(m.recall_nfa) + "</b></span>" +
-      '<span class="chip">مُدرَّب على <b>' + fmt(m.dataset.rows_decided) + "</b> مطالبة</span>";
+      '<span class="chip">مُدرَّب على <b>' + fmt(m.dataset.rows_decided) + "</b> طلب</span>";
   }
 
   function initTabs() {

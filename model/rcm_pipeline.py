@@ -38,7 +38,7 @@ RAW_DECIDED = ["Approved", "Partially Approved", "Rejected"]
 
 # الهدف ثنائي: «موافقة كاملة» مقابل «موافقة غير كاملة».
 # الموافقة الجزئية تُضمّ إلى الفئة الثانية لأنها خسارة إيراد فعلية —
-# نسبة التحصيل الوسيطة فيها ~50% مقابل ~93% للموافقة كاملة.
+# نسبة الاعتماد الوسيطة فيها ~50% مقابل ~93% للموافقة كاملة.
 CLASSES = ["Approved", "NotFullyApproved"]
 CLASS_AR = {
     "Approved": "موافقة كاملة",
@@ -166,7 +166,7 @@ def norm_contract(x) -> str:
 #    مرتّبة من الأكثر تحديداً إلى الأعم؛ أول نمط يطابق هو الفائز.
 # ──────────────────────────────────────────────────────────────────────
 REASON_TAXONOMY = [
-    ("DUPLICATE", "مطالبة مكررة / تمت الموافقة عليها مسبقاً", [
+    ("DUPLICATE", "طلب مكرّر / تمت الموافقة عليه مسبقاً", [
         r"duplicate", r"already been approved", r"already approved",
     ]),
     ("ELIGIBILITY", "عدم أهلية المؤمَّن عليه أو بطاقة غير سارية", [
@@ -186,7 +186,7 @@ REASON_TAXONOMY = [
         r"late submission", r"late notification", r"not within validity",
         r"time limit", r"exceeded the submission",
     ]),
-    ("PRICING_CODING", "خطأ في التسعير أو الترميز أو بيانات المطالبة", [
+    ("PRICING_CODING", "خطأ في التسعير أو الترميز أو بيانات الطلب", [
         r"price not specif", r"not mapped with provider price",
         r"item not correct", r"validation error", r"payer id",
         r"license number must", r"cannot exceed maximum", r"sequence \d",
@@ -252,10 +252,10 @@ REASON_CODES = [c for c, _, _ in REASON_TAXONOMY] + ["OTHER"]
 
 # إجراء تصحيحي مقترح لكل سبب — يُعرض في الواجهة
 REASON_ACTION = {
-    "DUPLICATE": "تحقّق من عدم وجود مطالبة سابقة بنفس رمز الخدمة والتاريخ قبل الإرسال.",
+    "DUPLICATE": "تحقّق من عدم وجود طلب سابق بنفس رمز الخدمة والتاريخ قبل الإرسال.",
     "ELIGIBILITY": "أعد فحص الأهلية في نفيس وتأكد من سريان البوليصة ورقم العضوية.",
     "NETWORK": "تأكد من أن المنشأة ضمن شبكة الضامن، أو احصل على موافقة استثنائية مسبقة.",
-    "LATE_SUBMISSION": "أرسل المطالبة خلال المهلة النظامية (30 يوماً) ووثّق تاريخ الإشعار.",
+    "LATE_SUBMISSION": "أرسل الطلب خلال المهلة النظامية (30 يوماً) ووثّق تاريخ الإشعار.",
     "PRICING_CODING": "راجع التسعير ومطابقة رموز الخدمات مع قائمة أسعار الضامن قبل الإرسال.",
     "REFERRAL_REQUIRED": "احصل على إحالة من مركز الرعاية الأولية أو وجّه المريض لمنشأة ضمن الشبكة.",
     "DOCUMENTATION": "أرفق تقرير الطوارئ والتاريخ المرضي والفحص السريري ونتائج التحاليل.",
@@ -315,15 +315,15 @@ CAT_FEATURES = [
 FEATURES = NUM_FEATURES + CAT_FEATURES
 
 FEATURE_AR = {
-    "total": "إجمالي الفاتورة",
-    "log_total": "إجمالي الفاتورة (لوغاريتمي)",
+    "total": "إجمالي مبلغ الطلب",
+    "log_total": "إجمالي مبلغ الطلب (لوغاريتمي)",
     "triage": "درجة الطوارئ CTAS",
     "visit_hour": "ساعة الزيارة",
     "visit_dow": "يوم الأسبوع",
     "visit_month": "الشهر",
     "is_night": "زيارة ليلية",
     "is_weekend": "نهاية الأسبوع",
-    "prior_claims": "عدد مطالبات المريض السابقة",
+    "prior_claims": "عدد طلبات المريض السابقة",
     "prior_reject_rate": "نسبة عدم القبول الكامل للمريض تاريخياً",
     "visit_type": "نوع الزيارة",
     "hospital": "المستشفى",
@@ -399,7 +399,7 @@ def build_features(df: pd.DataFrame, vocab: dict | None = None) -> tuple[pd.Data
 
 
 def _patient_history(df: pd.DataFrame):
-    """عدد المطالبات السابقة ونسبة الرفض التاريخية للمريض — بدون تسريب."""
+    """عدد طلبات الموافقة السابقة ونسبة الرفض التاريخية للمريض — بدون تسريب."""
     n = len(df)
     if "Mrn" not in df.columns or "Visit Date" not in df.columns:
         return pd.Series(0.0, index=df.index), pd.Series(np.nan, index=df.index)
@@ -437,7 +437,7 @@ def load_raw(path: str) -> pd.DataFrame:
 
 
 def decided_mask(df: pd.DataFrame) -> pd.Series:
-    """المطالبات التي صدر فيها قرار نهائي فقط (تُستخدم للتدريب والتقييم)."""
+    """طلبات الموافقة التي صدر فيها قرار نهائي فقط (تُستخدم للتدريب والتقييم)."""
     return df[COL_TARGET].astype(str).str.strip().isin(RAW_DECIDED)
 
 # ──────────────────────────────────────────────────────────────────────
@@ -455,13 +455,13 @@ PRIOR_NFA, PRIOR_OK = 0.5674, 0.4326   # المعدّل العام في بيان
 FEATURE_AR.update({
     "contract_hist_nfa": "معدل عدم القبول الكامل للضامن",
     "contract_hist_ok": "معدل القبول الكامل للضامن",
-    "contract_vol": "حجم مطالبات الضامن",
+    "contract_vol": "حجم طلبات الضامن",
     "hosp_hist_nfa": "معدل عدم القبول الكامل للمستشفى",
     "hosp_hist_ok": "معدل القبول الكامل للمستشفى",
-    "hosp_vol": "حجم مطالبات المستشفى",
+    "hosp_vol": "حجم طلبات المستشفى",
     "clinic_hist_nfa": "معدل عدم القبول الكامل للعيادة",
     "clinic_hist_ok": "معدل القبول الكامل للعيادة",
-    "clinic_vol": "حجم مطالبات العيادة",
+    "clinic_vol": "حجم طلبات العيادة",
 })
 
 ALL_FEATURES = FEATURES + ENTITY_FEATURES

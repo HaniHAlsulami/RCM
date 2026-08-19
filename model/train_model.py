@@ -73,7 +73,7 @@ REASON_PARAMS = dict(
 
 # تجميع الخصائص التقنية تحت مفاهيم تشغيلية يفهمها فريق تنمية الإيرادات
 SHAP_GROUPS = {
-    "total":         ("إجمالي الفاتورة",            ["total", "log_total"]),
+    "total":         ("إجمالي مبلغ الطلب",            ["total", "log_total"]),
     "contract":      ("عقد التأمين (الضامن)",       ["contract", "contract_hist_nfa", "contract_hist_ok", "contract_vol"]),
     "hospital":      ("المستشفى",                   ["hospital", "hosp_hist_nfa", "hosp_hist_ok", "hosp_vol"]),
     "clinic":        ("القسم / العيادة",            ["clinic", "clinic_hist_nfa", "clinic_hist_ok", "clinic_vol"]),
@@ -114,7 +114,7 @@ def prepare(path):
     df = raw[P.decided_mask(raw)].copy()
     df["_vd"] = pd.to_datetime(df["Visit Date"], errors="coerce")
     df = df.sort_values("_vd", kind="mergesort").reset_index(drop=True)
-    log(f"المطالبات ذات القرار النهائي: {len(df):,}")
+    log(f"طلبات الموافقة ذات القرار النهائي: {len(df):,}")
 
     X, vocab = P.build_features(df)
     X = pd.concat([X, P.build_entity_history(df)], axis=1)[P.ALL_FEATURES]
@@ -210,7 +210,7 @@ def bakeoff(X, y, cut):  # noqa: C901
 def train_reason_model(raw, vocab, snap):
     """
     نموذج التنبؤ بسبب عدم القبول الكامل.
-    يُدرَّب على المطالبات المرفوضة والمقبولة جزئياً — وهي بالضبط الفئة
+    يُدرَّب على طلبات الموافقة المرفوضة والمقبولة جزئياً — وهي بالضبط الفئة
     الموجبة في نموذج الموافقة، فيصبح النموذجان متّسقين تماماً.
     """
     log("── نموذج أسباب عدم القبول الكامل ──")
