@@ -250,6 +250,8 @@ body.embed .wrap{max-width:100%}
   <button class="tab active" data-p="predict">🔮 التنبؤ</button>
   <button class="tab" data-p="shap">📊 تفسير SHAP</button>
   <button class="tab" data-p="reasons">⚠️ أسباب عدم الموافقة</button>
+  <button class="tab" data-p="trees">🌳 أشجار النموذج</button>
+  <button class="tab" data-p="batch">📂 التنبؤ بالملفات</button>
   <button class="tab" data-p="model">🧠 عن النموذج</button>
   <button class="tab" data-p="pbi">📈 Power BI</button>
 </div>
@@ -399,6 +401,12 @@ body.embed .wrap{max-width:100%}
   </div>
 </div>
 
+<!-- ═══ تبويب أشجار النموذج ═══ -->
+<div class="panel" id="p-trees"><div id="treesBody"></div></div>
+
+<!-- ═══ تبويب التنبؤ بالملفات ═══ -->
+<div class="panel" id="p-batch"><div id="batchBody"></div></div>
+
 <!-- ═══ تبويب النموذج ═══ -->
 <div class="panel" id="p-model"><div id="modelBody"></div></div>
 
@@ -421,5 +429,7 @@ body.embed .wrap{max-width:100%}
 <script src="model/artifacts/model_bundle.js"></script>
 <script src="assets/rcm-engine.js"></script>
 <script src="assets/rcm-app.js"></script>
+<script src="assets/rcm-trees.js"></script>
+<script src="assets/rcm-batch.js"></script>
 </body>
 </html>
