@@ -340,6 +340,14 @@ a{color:var(--accent)}
     </div>
 
     <div class="row" style="margin-top:12px">
+      <label for="llmProvider">المزوّد</label>
+      <select id="llmProvider">
+        <option value="anthropic">Anthropic — Claude</option>
+        <option value="gemini">Google — Gemini</option>
+      </select>
+    </div>
+
+    <div class="row" id="rowMode">
       <label for="llmMode">طريقة الاتصال</label>
       <select id="llmMode">
         <option value="direct">مباشر — بمفتاحك الشخصي</option>
@@ -354,11 +362,11 @@ a{color:var(--accent)}
       <label for="llmEndpoint">عنوان البوّابة</label>
       <input type="text" id="llmEndpoint" placeholder="https://gateway.example.sa/v1/messages">
     </div>
-    <div class="row">
+    <div class="row" id="rowModel">
       <label for="llmModel">النموذج</label>
       <select id="llmModel"></select>
     </div>
-    <div class="row">
+    <div class="row" id="rowEffort">
       <label for="llmEffort">عمق التفكير</label>
       <select id="llmEffort">
         <option value="low">منخفض — أسرع</option>
@@ -369,9 +377,19 @@ a{color:var(--accent)}
       </select>
     </div>
 
+    <div class="row" id="rowGeminiKey" style="display:none">
+      <label for="llmGeminiKey">مفتاح Gemini</label>
+      <input type="password" id="llmGeminiKey" placeholder="AIza… أو AQ.…" autocomplete="off">
+    </div>
+    <div class="row" id="rowGeminiModel" style="display:none">
+      <label for="llmGeminiModel">النموذج</label>
+      <select id="llmGeminiModel"></select>
+    </div>
+
     <div class="danger">
       <b>قبل التفعيل، اعرف ما يُرسَل:</b> سؤالك، ومقاطع اللائحة التي يسترجعها المساعد،
-      وملخّص الحالة إن أرفقتها — تُرسَل إلى مزوّد النموذج لمعالجتها.
+      وملخّص الحالة إن أرفقتها — تُرسَل إلى مزوّد النموذج الذي اخترته
+      (Anthropic أو Google) لمعالجتها وفق شروطه.
       <b>لا ترفق حالة تحمل بيانات تُعرِّف مريضاً بعينه.</b>
       المفتاح يُحفَظ في متصفّحك وحده (<code>localStorage</code>) ولا يُرسَل إلى موقع سديد،
       لكنّ أي شخص يستعمل هذا الجهاز والمتصفّح يمكنه استخراجه —
