@@ -65,6 +65,39 @@ check("مطابقة العدد لمعدوده (جمع)",
 check("مطابقة العدد لمعدوده (مثنّى)",
   R.extractFacts("مدة 2 شهر").map(f => f.display), ["شهران"]);
 
+// سياق المدد — المدة العارية بلا نطاقها تُقرأ خطأً
+check("سياق: مهلة الردّ",
+  R.extractFacts("تلتزم الشركات بالإجابة خلال 60 دقيقة كحد أقصى من وقت استلام الطلب")[0].ctx,
+  "مهلة الردّ");
+{
+  const fs2 = R.extractFacts(
+    "تلتزم شركة التأمين بالرد على طلبات إعادة التقييم خلال مدة لا تتجاوز 24 ساعة " +
+    "للحالات المستعجلة و3 أيام عمل للحالات غير المستعجلة");
+  ok("سياق: الحالات المستعجلة", /المستعجلة/.test(fs2[0].ctx));
+  ok("سياق: غير المستعجلة", /غير المستعجلة/.test(fs2[1].ctx));
+}
+check("سياق: مهلة الإبلاغ في الطوارئ",
+  R.extractFacts("يجب إبلاغ الشركة خلال 24 ساعة من وقت استقبال الحالة")[0].ctx,
+  "مهلة الإبلاغ، للحالات الطارئة");
+check("سياق: مهلة السداد",
+  R.extractFacts("تسوية وسداد المستحقات خلال مدة لا تزيد عن 30 يوم")[0].ctx,
+  "مهلة السداد");
+
+// الإحالات بين المواد
+check("إحالة: رقم المادة والمُحال إليه",
+  R.crossRefs("وذلك وفقاً للمادة (96) من اللائحة التنفيذية لنظام الضمان الصحي التعاوني"),
+  [{ num: "96", target: "اللائحة التنفيذية لنظام الضمان الصحي التعاوني" }]);
+check("إحالة: قصّ ذيل الجملة",
+  R.crossRefs("كما نصت المادة ٤٥ من نظام الضمان الصحي على ذلك")[0].target,
+  "نظام الضمان الصحي");
+check("إحالة ذاتية مبهمة تُهمل", R.crossRefs("راجع المادة (7) من هذه اللائحة"), []);
+
+// تقسيم البنود المرقّمة
+ok("البنود المرقّمة تنفصل جُملاً",
+   R.sentences("تلتزم شركة التأمين بالتالي: 1. عمل سياسة داخلية للتعامل مع الاعتراض " +
+               "على قرارات رفض التغطية 2. مواصلة علاج المستفيد في الحالات الطارئة لدى " +
+               "مقدم الخدمة الحالي 3. الالتزام بدليل الأدوية التأمينية المعتمد").length >= 3);
+
 check("حكم: حظر", R.modality("لا يجوز لشركة التأمين رفض الطلب").k, "prohibition");
 check("حكم: إلزام", R.modality("يجب على مقدم الخدمة تقديم العلاج").k, "obligation");
 check("حكم: استثناء", R.modality("يستثنى من ذلك الحالات الطارئة").k, "exception");
@@ -94,6 +127,17 @@ if (!fs.existsSync(corpusPath)) {
     "ما مدة سداد مستحقات مقدم الخدمة؟",
     "ما التزامات مقدم الخدمة في الطب الاتصالي؟",
   ];
+  {
+    const res = S.search(C, "كم مدة الرد على طلب الموافقة المسبقة؟", 6);
+    const a = R.analyze("كم مدة الرد على طلب الموافقة المسبقة؟", res, { depth: 4 });
+    ok("الجواب المباشر يتصدّر الاستنتاجات",
+       a.inferences.length > 0 && a.inferences[0].text.indexOf("الجواب المباشر") === 0,
+       a.inferences.length ? a.inferences[0].text.slice(0, 60) : "لا استنتاجات");
+    ok("توجد أسئلة متابعة", (a.followups || []).length > 0);
+    a.followups.forEach((f) =>
+      ok(`المتابعة «${f.label.slice(0, 24)}» تسترجع نتائج`, S.search(C, f.q, 3).length > 0));
+  }
+
   QUERIES.forEach((q) => {
     const res = S.search(C, q, 6);
     ok(`استرجاع «${q.slice(0, 26)}»`, res.length > 0);
@@ -116,6 +160,30 @@ if (!fs.existsSync(corpusPath)) {
   });
   ok("لا مقاطع مكرّرة حرفياً في الفهرس",
      new Set(C.passages.map((p) => p.d + "|" + p.p + "|" + p.t)).size === C.passages.length);
+  // رموز لاتينية دخيلة: الكلمة المشوّهة («Led» «Sale» «ALY») تأتي معزولةً بين
+  // كلمتين عربيتين، أمّا الإنجليزية الحقيقية (العمود الموازي) فتأتي متتابعة.
+  // نحصي المحاصَر وحده — فيصطاد المقياس التلف ولا يعاقب الترجمة.
+  {
+    const KEEP = new Set(["HIV","AIDS","CHI","CCHI","CTAS","ICD","ACHI","AM","MDS",
+      "DRG","NPHIES","SFDA","IBAN","VAT","MRI","CT","ER","ICU","NICU","TPA","CPT",
+      "SBS","GTIN","DRGs","Pre","Page","BMI","SHIB","DHS"]);
+    const isAr = (t) => /^[ء-ي]/.test(t);
+    const isLat = (t) => {
+      const core = t.replace(/^[^A-Za-z]+|[^A-Za-z]+$/g, "");
+      return /^[A-Za-z]+$/.test(core) && core.length <= 12 && !KEEP.has(core);
+    };
+    let junk = 0, words = 0;
+    C.passages.forEach((p) => {
+      const toks = p.t.split(/\s+/);
+      words += toks.length;
+      for (let i = 1; i < toks.length - 1; i++) {
+        if (isLat(toks[i]) && isAr(toks[i - 1]) && isAr(toks[i + 1])) junk++;
+      }
+    });
+    const jr = 1000 * junk / Math.max(words, 1);
+    ok(`رموز لاتينية محاصَرة بالعربية (${jr.toFixed(2)}/١٠٠٠ كلمة ≤ 1.5)`, jr <= 1.5);
+  }
+
   const art = C.passages.reduce((a, p) => a + (p.t.match(/[اأإآ]{2}|اإل|األ|الئ|امل/g) || []).length, 0);
   const chars = C.passages.reduce((a, p) => a + p.t.length, 0);
   const rate = 1000 * art / chars;

@@ -66,7 +66,9 @@
     var ICON = { duration: "⏱", pct: "٪", money: "﷼" };
     return '<div class="facts">' + facts.slice(0, 6).map(function (f) {
       return '<span class="fact ' + f.kind + '">' + (ICON[f.kind] || "•") + " " +
-        esc(f.display) + '<i>[' + f.ref + "]</i></span>";
+        esc(f.display) +
+        (f.ctx ? '<em>' + esc(f.ctx) + "</em>" : "") +
+        '<i>[' + f.ref + "]</i></span>";
     }).join("") + "</div>";
   }
 
@@ -102,7 +104,9 @@
     if (a.inferences.length) {
       h += '<div class="infer"><div class="ititle">ما يُستنتج من مجموع النصوص</div><ul>';
       a.inferences.forEach(function (it) {
-        h += "<li>" + esc(it.text) + " " + refChips(it.refs, aid) + "</li>";
+        var direct = it.text.indexOf("الجواب المباشر") === 0;
+        h += '<li class="' + (direct ? "direct" : "") + '">' +
+          esc(it.text) + " " + refChips(it.refs, aid) + "</li>";
       });
       h += "</ul></div>";
     }
@@ -111,6 +115,13 @@
       h += '<div class="gaps">' + a.gaps.map(function (g) {
         return "<div>⚠ " + esc(g) + "</div>";
       }).join("") + "</div>";
+    }
+
+    if (a.followups && a.followups.length) {
+      h += '<div class="fups"><span class="ft">أسئلة تُكمل الصورة:</span>' +
+        a.followups.map(function (f) {
+          return '<button class="fup" data-q="' + esc(f.q) + '">' + esc(f.label) + "</button>";
+        }).join("") + "</div>";
     }
 
     h += '<div class="disc">الصياغة أعلاه من إعداد المساعد بناءً على النصوص المرقّمة أدناه، ' +
@@ -548,6 +559,10 @@
     if (LLM) initSettings();
     initCase();
     $("send").onclick = function () { ask(); };
+    $("chat").addEventListener("click", function (e) {
+      var b = e.target.closest(".fup");
+      if (b) ask(b.getAttribute("data-q"));
+    });
     $("q").addEventListener("keydown", function (e) {
       if (e.key === "Enter") ask();
     });
