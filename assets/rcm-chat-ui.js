@@ -232,7 +232,9 @@
           return "<li>" + l.replace(/^\s*(?:[-•*]|[0-9\u0660-\u0669]{1,2}[.)])\s+/, "") + "</li>";
         }).join("") + "</ul>";
       }
-      return "<p>" + lines.join("<br>") + "</p>";
+      // ما صرّح النموذج بأنه من معرفته العامة يُميَّز عن المنقول من اللائحة
+      var gk = /^\s*(?:<b>)?\s*(?:💡\s*)?من المعرفة العامة/.test(para);
+      return "<p" + (gk ? ' class="gk"' : "") + ">" + lines.join("<br>") + "</p>";
     }).join("");
   }
 
@@ -263,7 +265,7 @@
     var a = document.createElement("div");
     a.className = "msg";
     a.innerHTML = '<div class="ans"><div class="llmhead">' +
-      '<span class="tag">✨ إجابة مولَّدة ومقيَّدة بنصّ اللائحة</span>' +
+      '<span class="tag">✨ إجابة مولَّدة — ما نُقل من اللائحة مرقوم بمرجعه</span>' +
       '<span class="intent">' + esc(LLM.activeModel(cfg)) + '</span></div>' +
       '<div class="llmbody"><div class="typing"><i></i><i></i><i></i></div></div>' +
       '<div class="llmsrc"></div></div>';
