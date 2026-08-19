@@ -305,6 +305,10 @@
       },
     }).then(function (res) {
       HISTORY = res.messages;
+      if (res.modelUsed) {
+        var badge = a.querySelector(".llmhead .intent");
+        if (badge) badge.textContent = res.modelUsed + (res.fellBack ? " · احتياط" : "");
+      }
       if (res.refused || (!acc && !res.text)) {
         bodyEl.innerHTML = '<p class="warnline">' +
           esc(res.text || "لم يصل ردّ. أعد المحاولة.") + "</p>";

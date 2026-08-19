@@ -6,7 +6,8 @@
  * أن يغيّره لنفسه من ⚙ الإعدادات (تفضيلاته المحلية تغلب هذه القيم).
  *
  * تفعيل التوليد اللغوي للجميع بلا مفاتيح في المتصفّح:
- *   1) انشر بوّابة gateway/worker.js على Cloudflare (الدليل: gateway/README.md)
+ *   1) انشر البوّابة (الدليل: gateway/README.md — ثلاث منصات مجانية: Deno Deploy
+ *      لصقاً في المتصفّح، أو Vercel بربط المستودع، أو Cloudflare)
  *      وضع مفتاح Gemini في أسرارها — المفتاح لا يوضع هنا أبداً، فهذا الملف
  *      علنيّ ككل ملفات الموقع.
  *   2) أزل التعليق عن الأسطر أدناه وضع رابط بوّابتك، ثم ادفع التغيير.
@@ -14,6 +15,6 @@
 window.SADEED_SITE_LLM = {
   // enabled: true,
   // provider: "gemini",
-  // geminiModel: "gemini-flash-latest",
-  // geminiBase: "https://sadeed-gateway.<حسابك>.workers.dev/v1beta/models/",
+  // geminiModel: "gemini-flash-lite-latest",
+  // geminiBase: "https://<بوابتك>/v1beta/models/",   // Vercel: https://<مشروعك>.vercel.app/api/gemini/v1beta/models/
 };

@@ -16,7 +16,11 @@
  * يمنع من يستدعي البوّابة مباشرةً من خارج متصفّح. الحصّة المجانية لدى
  * Google وCloudflare هي سقف الضرر؛ لميزانية صارمة أضف عدّاداً لاحقاً.
  *
- * النشر: اقرأ gateway/README.md — خمس دقائق من لوحة Cloudflare بلا أدوات.
+ * النشر (gateway/README.md): الملف نفسه يعمل لصقاً كما هو على منصّتين —
+ *   • Deno Deploy (dash.deno.com ← Playground): الصق والصق المفتاح في Env.
+ *   • Cloudflare Workers: الصق في المحرّر وضع المفتاح سرّاً.
+ * ولمستخدمي Vercel: الدالة الجاهزة في api/gemini/[...path].js تُنشر بربط
+ * المستودع فقط، بلا لصق.
  *
  * الأسرار والمتغيرات (Settings ← Variables):
  *   GEMINI_API_KEY   (Secret — إلزامي) مفتاح Gemini. لا يوضع في الشيفرة أبداً.
@@ -38,7 +42,7 @@ function json(status, message, cors) {
   );
 }
 
-export default {
+const gateway = {
   async fetch(request, env) {
     const allowedOrigins = (env.ALLOWED_ORIGINS || DEFAULT_ORIGINS)
       .split(",").map((s) => s.trim()).filter(Boolean);
@@ -102,3 +106,10 @@ export default {
     return new Response(upstream.body, { status: upstream.status, headers });
   },
 };
+
+export default gateway;
+
+// على Deno Deploy يُشغَّل الملف نفسه مباشرةً؛ على Cloudflare هذا الفرع لا يعمل
+if (typeof Deno !== "undefined" && Deno.serve) {
+  Deno.serve((req) => gateway.fetch(req, Deno.env.toObject()));
+}

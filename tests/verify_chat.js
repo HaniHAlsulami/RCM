@@ -242,6 +242,11 @@ const LLM = require(path.join(__dirname, "..", "assets", "rcm-llm.js"));
 
 check("مُطفأة افتراضياً", LLM.DEFAULTS.enabled, false);
 check("النموذج الافتراضي", LLM.DEFAULTS.model, "claude-opus-5");
+check("افتراضي Gemini هو الموصى به Flash Lite",
+      LLM.DEFAULTS.geminiModel, "gemini-flash-lite-latest");
+check("Flash Lite يتصدّر قائمة النماذج",
+      LLM.GEMINI_MODELS[0].id, "gemini-flash-lite-latest");
+ok("وصفه يذكر التوصية", /الموصى به/.test(LLM.GEMINI_MODELS[0].label));
 ok("جاهزية: مُطفأة ⇒ لا", !LLM.ready({ enabled: false, mode: "direct", apiKey: "k" }));
 ok("جاهزية: مباشر بلا مفتاح ⇒ لا", !LLM.ready({ enabled: true, mode: "direct", apiKey: "" }));
 ok("جاهزية: مباشر بمفتاح ⇒ نعم", LLM.ready({ enabled: true, mode: "direct", apiKey: "k" }));
@@ -533,17 +538,72 @@ console.log("\n٦. شكل الطلب وحلقة الأداة");
                 });
             })
             .then(() => {
-              // 503 دائم ⇒ يفشل بعد ثلاث محاولات لا قبلها
+              // 503 دائم على Flash Lite نفسه ⇒ لا احتياط بعده، يفشل بعد ثلاث محاولات
               let always = 0;
               global.fetch = () => { always++; return overload(); };
               return LLM.ask({ enabled: true, provider: "gemini", geminiKey: "k",
-                               geminiModel: "gemini-flash-latest", retryBaseMs: 1 },
+                               geminiModel: "gemini-flash-lite-latest", retryBaseMs: 1 },
                              [{ role: "user", content: "سؤال" }],
                              { search: () => [], addSource: () => 1 }, {})
                 .then(() => ok("503 الدائم يجب أن يفشل", false))
                 .catch((e) => {
                   check("فشل نهائي بعد ثلاث محاولات", always, 3);
                   check("الحالة 503 مبلَّغة", e.status, 503);
+                });
+            })
+            .then(() => {
+              // ── التحويل التلقائي إلى Flash Lite ──
+              console.log("\n٩. التحويل التلقائي إلى Flash Lite");
+              // (أ) النموذج المختار يفشل بعد إعاداته ⇒ يُعاد السؤال على Lite وينجح
+              let calls9 = [];
+              global.fetch = (url) => {
+                calls9.push(String(url));
+                return String(url).includes("gemini-pro-latest")
+                  ? overload()
+                  : Promise.resolve(bodyOf2(okText));
+              };
+              const st9 = [];
+              return LLM.ask({ enabled: true, provider: "gemini", geminiKey: "k",
+                               geminiModel: "gemini-pro-latest", retryBaseMs: 1 },
+                             [{ role: "user", content: "سؤال" }],
+                             { search: () => [], addSource: () => 1 },
+                             { onStatus: (m) => st9.push(m) })
+                .then((res) => {
+                  check("الإجابة وصلت من الاحتياط", res.text, "تمّ [1].");
+                  check("النموذج المُجيب فعلاً", res.modelUsed, "gemini-flash-lite-latest");
+                  ok("مُعلَّمة احتياطاً", res.fellBack === true);
+                  check("محاولات Pro قبل التحويل",
+                        calls9.filter((u) => u.includes("gemini-pro-latest")).length, 3);
+                  check("نداء Lite واحد",
+                        calls9.filter((u) => u.includes("gemini-flash-lite-latest")).length, 1);
+                  ok("المستخدم أُبلغ بالتحويل",
+                     st9.some((m) => /التحويل إلى Flash Lite/.test(m)), JSON.stringify(st9));
+                })
+                .then(() => {
+                  // (ب) النموذج المختار «نجح» بلا أي نصّ ⇒ يُتحوَّل أيضاً
+                  const emptyTurn = gsse([
+                    { candidates: [{ content: { role: "model", parts: [] },
+                                     finishReason: "STOP" }] },
+                  ]);
+                  let calls9b = [];
+                  global.fetch = (url) => {
+                    calls9b.push(String(url));
+                    return Promise.resolve(bodyOf2(
+                      String(url).includes("gemini-flash-lite-latest") ? okText : emptyTurn));
+                  };
+                  const st9b = [];
+                  return LLM.ask({ enabled: true, provider: "gemini", geminiKey: "k",
+                                   geminiModel: "gemini-flash-latest", retryBaseMs: 1 },
+                                 [{ role: "user", content: "سؤال" }],
+                                 { search: () => [], addSource: () => 1 },
+                                 { onStatus: (m) => st9b.push(m) })
+                    .then((res) => {
+                      check("إجابة فارغة ⇒ تحويل ونجاح", res.text, "تمّ [1].");
+                      ok("سبب التحويل: لم يولّد إجابة",
+                         st9b.some((m) => /لم يولّد إجابة/.test(m)), JSON.stringify(st9b));
+                      check("التاريخ نظيف: دور المستخدم وجواب الاحتياط فقط",
+                            res.messages.length, 2);
+                    });
                 });
             })
             .then(() => {
