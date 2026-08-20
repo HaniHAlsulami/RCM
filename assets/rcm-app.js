@@ -832,13 +832,28 @@
     select("triage", "3", B.triage_ar["3"]);
   }
 
+  // مولّد بيانات تجريبية غير محدود: كل ضغطة تملأ النموذج بطلب عشوائي جديد
+  // من قوائم النموذج نفسها (rcm-demo.js) وتُشغّل التنبؤ فوراً.
   function loadSample() {
-    $("in_total").value = 1450;
-    $("in_icdCode").value = "J06.9";
+    var D = window.RCMDemo;
+    if (!D) return;
+    var c = D.randomCase();
+    $("in_total").value = c.total;
+    $("in_visitDate").value = c.visit_date.replace(" ", "T");
+    $("in_icdCode").value = c.icd;
     syncIcd();
-    selectByValue("visit_type", "er");
-    selectByValue("nphies_elig", "eligible");
-    selectByValue("triage", "4");
+    selectByValue("visit_type", c.visit_type);
+    selectByValue("hospital", c.hospital);
+    selectByValue("clinic", c.clinic);
+    selectByValue("contract", c.contract);
+    selectByValue("nphies_elig", c.nphies);
+    selectByValue("gender", c.gender);
+    selectByValue("nationality", c.nationality);
+    selectByValue("patient_class", c.patient_class);
+    selectByValue("triage", String(c.triage));
+    $("in_priorClaims").value = c.prior_claims;
+    // الحقل في النموذج نسبة مئوية، والمولّد يعيد كسراً 0-1
+    $("in_priorRejectRate").value = c.prior_reject_rate === "" ? "" : Math.round(c.prior_reject_rate * 100);
     runPredict();
   }
 

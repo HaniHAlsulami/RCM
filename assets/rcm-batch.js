@@ -141,6 +141,45 @@
     }).catch(showErr);
   }
 
+  // ── مولّد ملفات تجريبية غير محدود: صفوف عشوائية بصيغة القالب نفسها ──
+  var GEN_MAX = 50000;
+  function buildDemoAoa(n) {
+    var D = window.RCMDemo;
+    var aoa = [COLS.map(function (c) { return c.head; })];
+    for (var i = 0; i < n; i++) {
+      var r = D.randomCase();
+      aoa.push(COLS.map(function (c) { return r[c.key]; }));
+    }
+    return aoa;
+  }
+
+  function genCount() {
+    var n = parseInt($("genCount").value, 10);
+    if (!isFinite(n) || n < 1) n = 100;
+    if (n > GEN_MAX) n = GEN_MAX;
+    $("genCount").value = n;
+    return n;
+  }
+
+  function downloadDemo(asCsv) {
+    if (!window.RCMDemo) return;
+    var n = genCount();
+    loadXLSX().then(function (XLSX) {
+      var aoa = buildDemoAoa(n);
+      var ws = XLSX.utils.aoa_to_sheet(aoa);
+      if (asCsv) {
+        var csv = "\ufeff" + XLSX.utils.sheet_to_csv(ws);   // BOM ليقرأ Excel العربية UTF-8
+        saveBlob(new Blob([csv], { type: "text/csv;charset=utf-8" }), "sadeed-demo-" + n + "-" + stamp() + ".csv");
+      } else {
+        var wb = XLSX.utils.book_new();
+        wb.Workbook = { Views: [{ RTL: true }] };
+        ws["!cols"] = COLS.map(function (c) { return { wch: Math.max(18, c.head.length + 2) }; });
+        XLSX.utils.book_append_sheet(wb, ws, "الطلبات");
+        XLSX.writeFile(wb, "sadeed-demo-" + n + "-" + stamp() + ".xlsx");
+      }
+    }).catch(showErr);
+  }
+
   // ── قراءة الملف المرفوع ──
   function headerKey(h) {
     if (h == null) return null;
@@ -363,8 +402,17 @@
       "نزّل القالب وعبّئ كل طلب في صف، ثم ارفع الملف — تُسجَّل كل الصفوف بنفس نموذج " +
       "المنصّة وتنزل النتائج ملف Excel أو CSV. <b>تتم المعالجة كاملةً داخل متصفّحك: " +
       "لا يُرسل الملف ولا أي بيانات إلى أي خادم.</b></p>";
-    h += '<div class="btn-row" style="justify-content:flex-start">' +
-      '<button class="btn ghost" id="dlTemplate" style="width:auto;padding:11px 22px">📄 تنزيل قالب Excel</button></div>';
+    h += '<div class="btn-row" style="justify-content:flex-start;align-items:center">' +
+      '<button class="btn ghost" id="dlTemplate" style="width:auto;padding:11px 22px">📄 تنزيل قالب Excel</button>' +
+      '<span style="border-inline-start:1px solid var(--border);align-self:stretch"></span>' +
+      '<label style="font-size:12.5px;color:var(--muted2)">مولّد ملفات تجريبية:</label>' +
+      '<input type="number" id="genCount" value="100" min="1" max="' + GEN_MAX + '" ' +
+        'style="width:92px;padding:9px;border:1px solid var(--border);border-radius:8px;background:var(--card);' +
+        'color:var(--text);font-family:inherit;font-size:13px;text-align:center" title="عدد الصفوف (حتى ' + GEN_MAX.toLocaleString("en") + ')">' +
+      '<button class="btn ghost" id="genXlsx" style="width:auto;padding:11px 18px">🎲 ملف Excel تجريبي</button>' +
+      '<button class="btn ghost" id="genCsv" style="width:auto;padding:11px 18px">🎲 ملف CSV تجريبي</button></div>';
+    h += '<p style="font-size:11.5px;color:var(--muted2);margin:6px 0 0">المولّد غير محدود: كل ضغطة تنتج ملفاً جديداً ' +
+      "بصفوف عشوائية واقعية الشكل من قوائم النموذج نفسها — جاهزاً للرفع هنا مباشرةً لتجربة التسجيل الدفعي.</p>";
     h += '<div id="dropZone" style="margin-top:12px;border:2px dashed var(--border);border-radius:12px;' +
       'padding:34px 16px;text-align:center;color:var(--muted2);font-size:13.5px;cursor:pointer">' +
       '<div style="font-size:30px;margin-bottom:6px">⬆️</div>' +
@@ -375,6 +423,8 @@
     host.innerHTML = h;
 
     $("dlTemplate").onclick = downloadTemplate;
+    $("genXlsx").onclick = function () { downloadDemo(false); };
+    $("genCsv").onclick = function () { downloadDemo(true); };
     var dz = $("dropZone"), fi = $("batchFile");
     dz.onclick = function () { fi.click(); };
     fi.onchange = function () { if (fi.files[0]) { processFile(fi.files[0]); fi.value = ""; } };
