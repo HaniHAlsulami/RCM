@@ -413,7 +413,7 @@
           (i === 0 ? C("red", "#C4362F") : C("amber", "#96590F")) + '">' +
           '<div class="top"><span class="rk">' + (i + 1) + "</span>" +
           '<span class="nm">' + esc(r.label) + "</span>" +
-          '<span class="pc">' + pct(r.p) + "</span></div>" +
+          '<span class="pc">' + pct(r.likelihood) + "</span></div>" +
           '<div class="act">' + esc(r.action) + "</div></div>";
       }).join("");
   }
@@ -458,7 +458,8 @@
     $("reasonBody").style.display = "block";
     $("reasonSub").innerHTML =
       "احتمال عدم الموافقة الكاملة لهذا الطلب <b>" + pct(out.proba[NFA]) + "</b>. " +
-      "النسب أدناه مشروطة بحدوث ذلك، ومرتّبة من الأرجح. " +
+      "النسب أدناه هي احتمال أن يكون كلٌّ منها سببَ الردّ فعلاً — " +
+      "أي مضروبةً في احتمال الردّ أعلاه، فتصحّ مقارنتها بين الطلبات. " +
       "دقّة النموذج في وضع السبب الصحيح ضمن أعلى ثلاثة: <b>" +
       pct(B.metrics.reason_model.top3_accuracy) + "</b>.";
 
@@ -471,8 +472,9 @@
       d.innerHTML =
         '<div class="top"><span class="rk">' + (i + 1) + "</span>" +
         '<span class="nm">' + esc(r.label) + "</span>" +
-        '<span class="pc">' + pct(r.p) + "</span></div>" +
-        '<div class="mini"><i style="width:' + (r.p * 100).toFixed(1) + "%;background:" +
+        '<span class="pc" title="احتمال أن يكون هذا سبب الردّ (مشروط بالردّ: ' + pct(r.p) + ')">'
+          + pct(r.likelihood) + "</span></div>" +
+        '<div class="mini"><i style="width:' + (r.likelihood * 100).toFixed(1) + "%;background:" +
           (i === 0 ? C("red", "#C4362F") : i < 3 ? C("amber", "#96590F") : C("muted", "#5A7085")) + '"></i></div>' +
         '<div class="act"><b>الإجراء المقترح:</b> ' + esc(r.action) + "</div>" +
         (r.drivers.length ? '<div class="drv">' + r.drivers.map(function (g) {
@@ -482,7 +484,7 @@
 
     drawBars($("reasonChart"), reasons.slice(0, 10).map(function (r) {
       return { label: r.label.length > 34 ? r.label.slice(0, 33) + "…" : r.label,
-               value: r.p, text: pct(r.p) };
+               value: r.likelihood, text: pct(r.likelihood) };
     }), function (d) { return d.value > 0.15 ? C("red", "#C4362F") : d.value > 0.08 ? C("amber", "#96590F") : C("muted", "#5A7085"); });
   }
 
@@ -757,8 +759,11 @@
       shap: out.groups[out.predIndex].slice(0, 8).map(function (g) {
         return { feature: g.key, label: g.label, value: +g.value.toFixed(5) }; }),
       shapBase: out.base[out.predIndex],
+      // probability = الاحتمال المشترك (يصحّ مقارنته بين الطلبات)
+      // conditional  = الاحتمال المشروط بحدوث الردّ (كما يخرج من نموذج الأسباب)
       topReasons: (reasons || []).slice(0, 3).map(function (r) {
-        return { code: r.code, label: r.label, probability: +r.p.toFixed(4), action: r.action }; }),
+        return { code: r.code, label: r.label, probability: +r.likelihood.toFixed(4),
+                 conditional: +r.p.toFixed(4), action: r.action }; }),
       input: input,
       modelVersion: B.generated_at,
     };

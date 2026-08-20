@@ -133,9 +133,22 @@ def score(df, model, reason_model, reason_labels, vocab, snap,
             codes = [reason_labels[t] for t in j]
             out[f"reason_top{k + 1}"] = [P.REASON_AR.get(c, c) for c in codes]
             out[f"reason_top{k + 1}_code"] = codes
-            out[f"reason_top{k + 1}_p"] = rp[np.arange(len(df)), j].round(4)
+            cond = rp[np.arange(len(df)), j]
+            # المشروط: احتمال السبب بفرض أن الردّ وقع (كما يخرج من نموذج الأسباب)
+            out[f"reason_top{k + 1}_p_cond"] = cond.round(4)
+            # المشترك: مضروباً في احتمال الردّ — وهو وحده ما يصحّ مقارنته بين الطلبات
+            out[f"reason_top{k + 1}_p"] = (cond * p_nfa).round(4)
         out["reason_top1_action"] = [P.REASON_ACTION.get(c, "")
                                      for c in out["reason_top1_code"]]
+
+        # المكسب المتوقّع من معالجة هذا الطلب وإعادة إرساله:
+        #   احتمال أن يكون السبب الأول هو سبب الردّ فعلاً
+        #   × مبلغ الطلب × فجوة الاستعادة بين النتيجتين.
+        # يُرتَّب به طابور المعالجة بين الطلبات — لا بالمبلغ وحده ولا بالاحتمال وحده.
+        gap = rec[P.CLASSES[0]] - rec[P.CLASSES[1]]
+        out["recovery_gap"] = round(float(gap), 4)
+        out["expected_gain"] = (out["reason_top1_p"] * total * gap).round(2)
+        out["queue_rank"] = out["expected_gain"].rank(ascending=False, method="min").astype(int)
     return out
 
 
@@ -176,6 +189,11 @@ def main():
     for k, v in result["pred_label_ar"].value_counts().items():
         print(f"  {k:16s} {v:7,}  ({100 * v / len(result):.1f}%)")
     print(f"\nإجمالي المبلغ المعرّض للخطر: {result['amount_at_risk'].sum():,.0f} ﷼")
+    if "expected_gain" in result.columns:
+        top = result.nlargest(min(20, len(result)), "expected_gain")
+        print(f"المكسب المتوقّع من معالجة الطابور كاملاً: {result['expected_gain'].sum():,.0f} ﷼")
+        print(f"  منه في أعلى 20 حالة: {top['expected_gain'].sum():,.0f} ﷼ "
+              f"({100 * top['expected_gain'].sum() / max(result['expected_gain'].sum(), 1e-9):.1f}%)")
 
     if P.COL_TARGET in df.columns:
         m = P.decided_mask(df)
