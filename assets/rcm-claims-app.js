@@ -384,6 +384,7 @@
     renderShap(out);
     renderReasons(out, reasons);
     postToParent(out, reasons, input);
+    saveCase(out, reasons, input);
     return out;
   }
 
@@ -734,7 +735,10 @@
   }
 
   function resultPayload(out, reasons, input) {
+    var top = (reasons || []).slice(0, 3).map(function (r) {
+      return { code: r.code, label: r.label, probability: +r.p.toFixed(4), action: r.action }; });
     return {
+      stage: "claims",
       prediction: B.classes[out.predIndex],
       prediction_ar: B.classes_ar[out.predIndex],
       confidence: out.proba[out.predIndex],
@@ -743,11 +747,29 @@
       shap: out.groups[out.predIndex].slice(0, 8).map(function (g) {
         return { feature: g.key, label: g.label, value: +g.value.toFixed(5) }; }),
       shapBase: out.base[out.predIndex],
-      topDenialCodes: (reasons || []).slice(0, 3).map(function (r) {
-        return { code: r.code, label: r.label, probability: +r.p.toFixed(4), action: r.action }; }),
+      topDenialCodes: top,
+      topReasons: top,   // نفس القائمة بالاسم الذي يقرأه جسر «سَنَد»
       input: input,
       modelVersion: B.generated_at,
     };
+  }
+
+  var CASE_KEY = "sadeed.case.v1";
+
+  /**
+   * حفظ حالة المطالبة محلياً ليقرأها المساعد المرجعي «سَنَد»، بنفس مفتاح
+   * حالة الموافقات — أحدث حالة من أي منصّة هي المعروضة هناك، والحقل
+   * stage يميّزها. التخزين على الجهاز وحده ولا يُرسَل شيء لأي خادم.
+   */
+  function saveCase(out, reasons, input) {
+    try {
+      localStorage.setItem(CASE_KEY, JSON.stringify({
+        savedAt: new Date().toISOString(),
+        payload: resultPayload(out, reasons, input),
+      }));
+      var b = $("btnAskSanad");
+      if (b) b.style.display = "";
+    } catch (e) { /* التخزين ممتلئ أو محظور — الميزة اختيارية فلا نُعطّل التنبؤ */ }
   }
 
   function postToParent(out, reasons, input) {
@@ -891,6 +913,14 @@
     $("btnPredict").onclick = runPredict;
     $("btnReset").onclick = resetForm;
     $("btnSample").onclick = loadSample;
+    var ask = $("btnAskSanad");
+    if (ask) {
+      ask.onclick = function () {
+        if (!LAST) { alert("شغّل تنبّؤاً أولاً."); return; }
+        saveCase(LAST, LAST.reasons, LAST_INPUT);
+        window.open("chatbot.html?case=1", "_blank");
+      };
+    }
 
     var auto = applyUrlParams();
     $("boot").style.display = "none";
