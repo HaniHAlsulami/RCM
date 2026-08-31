@@ -252,6 +252,7 @@ body.embed .wrap{max-width:100%}
   <button class="tab" data-p="shap">📊 تفسير SHAP</button>
   <button class="tab" data-p="reasons">⚠️ أسباب الرفض المتوقّعة</button>
   <button class="tab" data-p="trees">🌳 أشجار النموذج</button>
+  <button class="tab" data-p="batch">📂 التنبؤ بالملفات</button>
   <button class="tab" data-p="model">🧠 عن النموذج</button>
   <button class="tab" data-p="pbi">📈 التكامل</button>
 </div>
@@ -402,6 +403,9 @@ body.embed .wrap{max-width:100%}
 <!-- ═══ تبويب أشجار النموذج ═══ -->
 <div class="panel" id="p-trees"><div id="treesBody"></div></div>
 
+<!-- ═══ تبويب التنبؤ بالملفات ═══ -->
+<div class="panel" id="p-batch"><div id="batchBody"></div></div>
+
 <!-- ═══ تبويب النموذج ═══ -->
 <div class="panel" id="p-model"><div id="modelBody"></div></div>
 
@@ -431,5 +435,6 @@ window.RCM_TREES_LABELS = { approval: "نموذج سداد المطالبة", re
 <script src="assets/rcm-engine.js"></script>
 <script src="assets/rcm-claims-app.js"></script>
 <script src="assets/rcm-trees.js"></script>
+<script src="assets/rcm-claims-batch.js"></script>
 </body>
 </html>

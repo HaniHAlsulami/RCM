@@ -927,7 +927,9 @@
     $("app").style.display = "block";
     if (auto) setTimeout(runPredict, 30);
 
-    window.RCM_CLAIMS = { predict: runPredict, engine: E, bundle: B, last: function () { return LAST; } };
+    window.RCM_CLAIMS = { predict: runPredict, engine: E, bundle: B,
+      encode: claimsEncode,   // يستعمله تبويب «التنبؤ بالملفات» — ترميز واحد للصفحة والملفات
+      last: function () { return LAST; } };
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
