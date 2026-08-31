@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 score_batch.py — تسجيل دفعي لملف طلبات موافقة كامل
-Sadeed · Makkah Health Cluster · Revenue Development Performance
+Namaa Predictor · Makkah Health Cluster · Revenue Development Performance
 
 يقرأ ملف طلبات موافقة (xlsx/csv) ويُخرج ملفاً مسجَّلاً جاهزاً للاستيراد في Power BI،
 يحتوي لكل طلب على: التنبؤ، احتمالات الفئات، شريحة الخطر، الإيراد

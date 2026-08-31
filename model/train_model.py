@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 train_model.py — تدريب واختيار أفضل نموذج للتنبؤ بنتيجة الموافقة التأمينية
-Sadeed · Makkah Health Cluster · Revenue Development Performance
+Namaa Predictor · Makkah Health Cluster · Revenue Development Performance
 
 المخرجات (في model/artifacts/):
   model_bundle.json   حزمة النموذج المضغوطة (أشجار + قواميس + جداول اللقطة) للمتصفح

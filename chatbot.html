@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>سَنَد — المساعد المرجعي للوائح مجلس الضمان الصحي · منصّة سديد</title>
-<meta name="description" content="سَنَد — مساعد مرجعي يقرأ لوائح وأنظمة وسياسات مجلس الضمان الصحي CHI، يصوغ الحكم بلغة تشغيلية ويستنتج منه، ويُسنِد كل جملة إلى نصّها مع رقم الصفحة وصورتها">
+<title>مساند نماء الذكي — المساعد المرجعي للوائح مجلس الضمان الصحي · مُتَنَبِّئ نماء</title>
+<meta name="description" content="مساند نماء الذكي — مساعد مرجعي يقرأ لوائح وأنظمة وسياسات مجلس الضمان الصحي CHI، يصوغ الحكم بلغة تشغيلية ويستنتج منه، ويُسنِد كل جملة إلى نصّها مع رقم الصفحة وصورتها">
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <style>
 :root{
@@ -29,7 +29,7 @@ a{color:var(--accent)}
 .brand{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:5px}
 .brand-mark{width:46px;height:46px;flex-shrink:0}
 .brand-text{text-align:right;line-height:1}
-.brand-text .ar{font-size:26px;font-weight:700;color:var(--text);margin:0}
+.brand-text .ar{font-size:21px;font-weight:700;color:var(--text);margin:0}
 .brand-text .en{display:block;font-size:10px;font-weight:600;letter-spacing:3px;color:var(--accent);margin-top:4px}
 .tagline{font-size:13.5px;color:var(--muted2)}
 .navlinks{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:12px}
@@ -116,7 +116,7 @@ a{color:var(--accent)}
 .qcase{display:inline-block;font-size:10px;font-weight:700;background:rgba(255,255,255,.25);
   border-radius:6px;padding:1px 7px;margin-inline-start:7px}
 
-/* ── بطاقة الحالة من منصّة سديد ── */
+/* ── بطاقة الحالة من منصّة مُتَنَبِّئ نماء ── */
 .casecard{background:var(--card);border:1px solid var(--border);border-inline-start:3px solid var(--accent);
   border-radius:12px;padding:14px 15px;margin-bottom:12px}
 .chead{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
@@ -243,6 +243,11 @@ a{color:var(--accent)}
 .more li{margin-bottom:6px;line-height:1.8}
 .more a{text-decoration:none;font-weight:600}
 
+/* فقاعة الترحيب الافتتاحية للمساعد */
+.greet{background:var(--card);border:1px solid var(--border);border-inline-start:3px solid var(--accent);
+  border-radius:4px 14px 14px 14px;padding:13px 16px;font-size:13.5px;color:var(--text);
+  line-height:2;max-width:88%;box-shadow:0 1px 3px rgba(18,56,79,.06)}
+
 .empty{background:var(--card);border:1px dashed var(--border-strong);border-radius:13px;
   padding:20px;text-align:center;color:var(--muted);font-size:13px}
 .sugg{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:14px}
@@ -298,13 +303,13 @@ a{color:var(--accent)}
   <div class="badge">إدارة أداء تنمية الإيرادات</div>
   <div class="brand">
     <img class="brand-mark" src="assets/sanad-logo.svg" alt="">
-    <div class="brand-text"><h1 class="ar">سَنَد</h1><span class="en">SANAD</span></div>
+    <div class="brand-text"><h1 class="ar">مساند نماء الذكي</h1><span class="en">MUSANED NAMAA</span></div>
   </div>
-  <p class="tagline">المساعد المرجعي في منصّة <b>سديد</b> — يقرأ لوائح مجلس الضمان الصحي،
+  <p class="tagline">المساعد الذكي في منصّة <b>مُتَنَبِّئ نماء</b> — يقرأ لوائح مجلس الضمان الصحي،
     ويصوغ الحكم، ويستنتج منه، ويُسنِد كل جملة إلى نصّها</p>
   <div class="navlinks">
     <a href="predict.html">🔮 منصة التنبؤ</a>
-    <a href="chatbot.html" class="on">💬 سَنَد — المساعد المرجعي</a>
+    <a href="chatbot.html" class="on">💬 مساند نماء الذكي — المساعد المرجعي</a>
     <a href="guide.html">📘 دليل الاستخدام</a>
   </div>
 </div>
@@ -314,12 +319,12 @@ a{color:var(--accent)}
 <div id="app" style="display:none">
 
   <div class="note info">
-    <b>كيف يعمل؟</b> يقرأ «سَنَد» النصوص المنطبقة على سؤالك ثم يجيب في طبقتين:
+    <b>كيف يعمل؟</b> يقرأ «مساند نماء الذكي» النصوص المنطبقة على سؤالك ثم يجيب في طبقتين:
     <b>قراءة مبسّطة واستنتاج</b> — صياغة الحكم بلغة تشغيلية، واستخراج المدد والنسب،
     واستنتاج ما يترتّب على مجموع النصوص — يليها <b>النصّ الرسمي منقولاً حرفياً</b> مع اسم
     المستند ورقم الصفحة وصورتها. كل جملة مرقومة برقم مرجعها [1] فاضغطه لترى أصلها.
     <br><br>
-    <b>طبقتان اختياريتان:</b> فعّل <b>التوليد اللغوي</b> (⚙ أدناه) ليحاورك «سَنَد» ويجيب عن
+    <b>طبقتان اختياريتان:</b> فعّل <b>التوليد اللغوي</b> (⚙ أدناه) ليحاورك «مساند نماء الذكي» ويجيب عن
     المتابعات — ما ينقله من اللائحة يستشهد له برقم مرجعه، وما يضيفه من معرفته العامة
     يميّزه صراحةً. وإن جئت من
     <a href="predict.html">منصّة التنبؤ</a> بعد تشغيل تنبّؤ، ستجد <b>حالتك</b> هنا فيبني عليها
@@ -337,7 +342,7 @@ a{color:var(--accent)}
       <input type="checkbox" id="llmEnabled">
     </div>
     <div class="hint">
-      حين تكون مُطفأة يعمل «سَنَد» بالكامل من الفهرس المحلّي: استرجاع، وصياغة مبسّطة،
+      حين تكون مُطفأة يعمل «مساند نماء الذكي» بالكامل من الفهرس المحلّي: استرجاع، وصياغة مبسّطة،
       واستنتاج بقواعد — بلا أي اتصال خارجي. وحين تُفعَّل يُضاف نموذج لغويّ يحاورك ويجيب
       عن المتابعات: <b>ما ينقله من اللائحة لا يقوله إلا بعد استرجاعه من الفهرس وبرقم
       مرجعه [n]</b>، وله أن يستكمل من معرفته العامة — شرحاً وسياقاً — <b>مع تمييز ذلك
@@ -397,7 +402,7 @@ a{color:var(--accent)}
       وملخّص الحالة إن أرفقتها — تُرسَل إلى مزوّد النموذج الذي اخترته
       (Anthropic أو Google) لمعالجتها وفق شروطه.
       <b>لا ترفق حالة تحمل بيانات تُعرِّف مريضاً بعينه.</b>
-      المفتاح يُحفَظ في متصفّحك وحده (<code>localStorage</code>) ولا يُرسَل إلى موقع سديد،
+      المفتاح يُحفَظ في متصفّحك وحده (<code>localStorage</code>) ولا يُرسَل إلى موقع مُتَنَبِّئ نماء،
       لكنّ أي شخص يستعمل هذا الجهاز والمتصفّح يمكنه استخراجه —
       <b>للتعميم على فريق، استعمل «بوّابة المنشأة» فلا يوجد مفتاح في المتصفّح أصلاً.</b>
     </div>
@@ -411,7 +416,7 @@ a{color:var(--accent)}
   <div class="ask">
     <div class="askbox">
       <input id="q" type="text" autocomplete="off"
-             placeholder="اسأل سَنَد عن مادة أو إجراء… مثال: كم مدة الرد على طلب الموافقة المسبقة؟">
+             placeholder="اسأل مساند نماء الذكي عن مادة أو إجراء… مثال: كم مدة الرد على طلب الموافقة المسبقة؟">
       <button id="send">بحث</button>
     </div>
   </div>
@@ -423,14 +428,14 @@ a{color:var(--accent)}
   </div>
 
   <div class="note warn" style="margin-top:14px">
-    <b>تنبيه:</b> «سَنَد» أداة بحث مرجعي ومساعدة تشغيلية، وليس رأياً قانونياً ولا بديلاً عن النصّ الرسمي
+    <b>تنبيه:</b> «مساند نماء الذكي» أداة بحث مرجعي ومساعدة تشغيلية، وليس رأياً قانونياً ولا بديلاً عن النصّ الرسمي
     المنشور من مجلس الضمان الصحي. عند أي تعارض، النصّ الرسمي هو المُعتمد. وبعض المستندات
     مقروءة ضوئياً (OCR) وقد يحمل نصّها المستخرَج أخطاء — <b>اعتمد دائماً على صورة الصفحة المرفقة</b>.
   </div>
 </div>
 
 <div class="foot">
-  <div><b>سَنَد</b> — المساعد المرجعي في منصّة <b>سديد</b> · تجمع مكة المكرمة الصحي — إدارة أداء تنمية الإيرادات</div>
+  <div><b>مساند نماء الذكي</b> — المساعد الذكي في منصّة <b>مُتَنَبِّئ نماء</b> · تجمع مكة المكرمة الصحي — إدارة أداء تنمية الإيرادات</div>
   <div style="margin-top:5px">Built and developed by: <b>Hani Alsulami</b></div>
 </div>
 

@@ -1,6 +1,6 @@
 /*!
  * rcm-batch.js — تبويب «التنبؤ بالملفات»: رفع Excel/CSV وتسجيله دفعياً داخل المتصفح
- * منصّة سديد · تجمع مكة المكرمة الصحي · إدارة أداء تنمية الإيرادات
+ * منصّة مُتَنَبِّئ نماء · تجمع مكة المكرمة الصحي · إدارة أداء تنمية الإيرادات
  *
  * يقرأ الملف ويُسجِّله بنفس محرّك التنبؤ (RCMEngine) دون إرسال أي بيانات لأي خادم،
  * ويُصدِّر النتائج ملف Excel أو CSV، مع قالب Excel جاهز للتعبئة.
@@ -106,7 +106,7 @@
 
     // ورقة التعليمات
     var inst = [
-      ["تعليمات تعبئة القالب — منصّة سديد"],
+      ["تعليمات تعبئة القالب — منصّة مُتَنَبِّئ نماء"],
       [""],
       ["1. عبّئ ورقة «الطلبات»: كل صف طلب موافقة واحد. الصفوف الثلاثة الموجودة أمثلة — احذفها أو استبدلها."],
       ["2. لا تغيّر صف العناوين: المطابقة تتم على المفتاح اللاتيني بين القوسين، وترتيب الأعمدة غير مهم."],
@@ -137,7 +137,7 @@
 
   function downloadTemplate() {
     loadXLSX().then(function (XLSX) {
-      XLSX.writeFile(buildTemplate(XLSX), "sadeed-template.xlsx");
+      XLSX.writeFile(buildTemplate(XLSX), "namaa-template.xlsx");
     }).catch(showErr);
   }
 
@@ -169,13 +169,13 @@
       var ws = XLSX.utils.aoa_to_sheet(aoa);
       if (asCsv) {
         var csv = "\ufeff" + XLSX.utils.sheet_to_csv(ws);   // BOM ليقرأ Excel العربية UTF-8
-        saveBlob(new Blob([csv], { type: "text/csv;charset=utf-8" }), "sadeed-demo-" + n + "-" + stamp() + ".csv");
+        saveBlob(new Blob([csv], { type: "text/csv;charset=utf-8" }), "namaa-demo-" + n + "-" + stamp() + ".csv");
       } else {
         var wb = XLSX.utils.book_new();
         wb.Workbook = { Views: [{ RTL: true }] };
         ws["!cols"] = COLS.map(function (c) { return { wch: Math.max(18, c.head.length + 2) }; });
         XLSX.utils.book_append_sheet(wb, ws, "الطلبات");
-        XLSX.writeFile(wb, "sadeed-demo-" + n + "-" + stamp() + ".xlsx");
+        XLSX.writeFile(wb, "namaa-demo-" + n + "-" + stamp() + ".xlsx");
       }
     }).catch(showErr);
   }

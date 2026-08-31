@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 export_bundle.py — تحويل نموذج LightGBM إلى حزمة JSON مضغوطة يقرأها المتصفح
-Sadeed · Makkah Health Cluster · Revenue Development Performance
+Namaa Predictor · Makkah Health Cluster · Revenue Development Performance
 
 الحزمة تحتوي على:
   • الأشجار بصيغة مصفوفات مسطّحة (تنبؤ + TreeSHAP دقيق داخل المتصفح)
@@ -356,7 +356,7 @@ def _write_model_card(m, art_dir, bundle):
     lines = [
         "# بطاقة النموذج — التنبؤ بنتيجة الموافقة التأمينية",
         "",
-        "**منصّة سديد · تجمع مكة المكرمة الصحي · إدارة أداء تنمية الإيرادات**",
+        "**منصّة مُتَنَبِّئ نماء · تجمع مكة المكرمة الصحي · إدارة أداء تنمية الإيرادات**",
         "",
         f"تاريخ التوليد: {m.get('generated_at')}",
         "",

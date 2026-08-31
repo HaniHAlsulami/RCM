@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 dump_claims_reference.py — توليد مرجع التحقّق لمحرّك المتصفح (نموذج المطالبات)
-منصّة سديد · تجمع مكة المكرمة الصحي · إدارة أداء تنمية الإيرادات
+منصّة مُتَنَبِّئ نماء · تجمع مكة المكرمة الصحي · إدارة أداء تنمية الإيرادات
 
     python3 tests/dump_claims_reference.py --data RCM_Claims_Cleaned.xlsx
     node tests/verify_engine.js claims
