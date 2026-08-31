@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>سديد — منصة التنبؤ بسداد المطالبات</title>
-<meta name="description" content="سديد — التنبؤ بسداد المطالبة التأمينية (Claims) قبل تقديمها: هل ستُسدَّد كاملة؟ وما رمز رفض NPHIES المرجَّح؟ مع تفسير SHAP كاملاً داخل المتصفح">
+<title>مُتَنَبِّئ نماء — التنبؤ بسداد المطالبات</title>
+<meta name="description" content="مُتَنَبِّئ نماء — التنبؤ بسداد المطالبة التأمينية (Claims) قبل تقديمها: هل ستُسدَّد كاملة؟ وما رمز رفض NPHIES المرجَّح؟ مع تفسير SHAP كاملاً داخل المتصفح">
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <style>
 :root{
@@ -37,7 +37,7 @@ a{color:var(--accent)}
   border:1px solid rgba(27,111,168,.22);color:var(--accent);font-size:11px;font-weight:600;
   padding:4px 14px;border-radius:20px;margin-bottom:10px}
 .header h1{font-size:22px;font-weight:700;color:var(--text);margin-bottom:4px}
-/* ── هوية «سديد» ── */
+/* ── هوية «مُتَنَبِّئ نماء» ── */
 .brand{display:flex;align-items:center;justify-content:center;gap:13px;margin-bottom:7px}
 .brand-mark{width:54px;height:54px;flex-shrink:0}
 .brand-text{text-align:right;line-height:1}
@@ -238,12 +238,13 @@ body.embed .wrap{max-width:100%}
   <div class="badge">إدارة أداء تنمية الإيرادات · مرحلة المطالبات Claims · LightGBM + SHAP</div>
   <div class="brand">
     <img class="brand-mark" src="assets/sadeed-logo.svg" alt="">
-    <div class="brand-text"><h1 class="ar">سديد</h1><span class="en">SADEED · CLAIMS</span></div>
+    <div class="brand-text"><h1 class="ar">مُتَنَبِّئ نماء</h1><span class="en">NAMAA PREDICTOR · CLAIMS</span></div>
   </div>
-  <p class="tagline">منصة التنبؤ بسداد المطالبات التأمينية</p>
+  <p class="tagline"><b>رؤية استباقية للمطالبات والموافقات.. نستبق القرار لنقود النمو.</b></p>
+  <p class="tagline">منصة التنبؤ بسداد المطالبات التأمينية — مرحلة المطالبات</p>
   <p>هل ستُسدَّد هذه المطالبة كاملةً؟ — تقدير الخطر ورموز رفض NPHIES المرجَّحة قبل التقديم</p>
   <div class="chips" id="headChips"></div>
-  <div class="chips"><a class="chip guide-link" href="predict.html">🔮 منصّة الموافقات المسبقة</a><a class="chip guide-link" href="chatbot.html">💬 سَنَد — المساعد المرجعي</a></div>
+  <div class="chips"><a class="chip guide-link" href="predict.html">🔮 منصّة الموافقات المسبقة</a><a class="chip guide-link" href="chatbot.html">💬 مساند نماء الذكي — المساعد المرجعي</a></div>
 </div>
 
 <div class="tabs" id="tabs">
@@ -332,7 +333,7 @@ body.embed .wrap{max-width:100%}
     </div>
     <div class="tip" id="rTip"></div>
     <button class="btn ghost" id="btnAskSanad" style="display:none;margin-top:12px">
-      💬 اسأل «سَنَد»: كيف أرفع فرصة سداد هذه المطالبة كاملةً؟
+      💬 اسأل «مساند نماء الذكي»: كيف أرفع فرصة سداد هذه المطالبة كاملةً؟
     </button>
   </div>
 

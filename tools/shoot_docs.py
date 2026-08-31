@@ -87,7 +87,7 @@ async def main():
         await page.wait_for_timeout(1500)
         await shot(page, "body", "embed.png", full_page=True)
 
-        # ── المساعد المرجعي «سَنَد» ──
+        # ── المساعد المرجعي «مساند نماء الذكي» ──
         # بطاقة الحالة تُقرأ من تخزين المتصفّح، فنشغّل تنبّؤاً أولاً في السياق نفسه
         await page.set_viewport_size({"width": 1000, "height": 1400})
         await page.goto(f"{args.base}/predict.html{CASE}", wait_until="networkidle")
