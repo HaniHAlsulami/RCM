@@ -15,12 +15,17 @@ const path = require("path");
 
 const TOL = { margin: 1e-3, proba: 1e-4, shap: 1e-3, additivity: 1e-5 };
 
+// `node tests/verify_engine.js` يفحص حزمة الموافقات (الافتراضي)،
+// و`node tests/verify_engine.js claims` يفحص حزمة المطالبات بنفس المنطق.
+const CLAIMS = process.argv[2] === "claims";
+
 global.window = global;
-require(path.join(__dirname, "..", "model", "artifacts", "model_bundle.js"));
+require(path.join(__dirname, "..", "model", "artifacts",
+  CLAIMS ? "claims_bundle.js" : "model_bundle.js"));
 const E = require(path.join(__dirname, "..", "assets", "rcm-engine.js"));
 
-const B = global.RCM_BUNDLE;
-const refPath = path.join(__dirname, "reference.json");
+const B = CLAIMS ? global.RCM_CLAIMS_BUNDLE : global.RCM_BUNDLE;
+const refPath = path.join(__dirname, CLAIMS ? "claims_reference.json" : "reference.json");
 if (!fs.existsSync(refPath)) {
   console.error("لم يُعثر على reference.json — شغّل tests/dump_reference.py أولاً.");
   process.exit(1);

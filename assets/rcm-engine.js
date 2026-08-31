@@ -293,9 +293,14 @@
   // 5. الواجهة العامة
   // ────────────────────────────────────────────────────────────────
   function predict(B, input) {
+    return predictX(B, encode(B, input));
+  }
+
+  /** predict على متجه خصائص مشفَّر جاهز — تستعمله صفحة المطالبات التي
+      تملك ترميزها الخاص، بنفس منطق العرض الثنائي حرفياً. */
+  function predictX(B, x) {
     var A = B.approval;
     prepare(A.trees);
-    var x = encode(B, input);
     var nOut = A.outputs || B.classes.length;
     var binary = A.task === "binary";
 
@@ -342,9 +347,12 @@
   }
 
   function predictReasons(B, input, rejRisk) {
+    return predictReasonsX(B, encode(B, input), rejRisk);
+  }
+
+  function predictReasonsX(B, x, rejRisk) {
     if (!B.reason || !B.reason.trees.length) return [];
     prepare(B.reason.trees);
-    var x = encode(B, input);
     var L = B.reason.labels;
     var p = toProba(rawScores(B.reason.trees, x, L.length), B.reason);
     var phi = shapValues(B.reason.trees, x, L.length, B.features.length);
@@ -363,7 +371,9 @@
   }
 
   root.RCMEngine = {
-    predict: predict, predictReasons: predictReasons, encode: encode,
+    predict: predict, predictX: predictX,
+    predictReasons: predictReasons, predictReasonsX: predictReasonsX,
+    encode: encode,
     softmax: softmax, sigmoid: sigmoid, toProba: toProba,
     shapValues: shapValues, rawScores: rawScores,
     groupShap: groupShap, prepare: prepare,

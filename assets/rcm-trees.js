@@ -13,9 +13,13 @@
 
   var SV = "http://www.w3.org/2000/svg";
   var LEAF = 2;
+  // الصفحة المضيفة قد تسمّي النموذجين باسمها (صفحة المطالبات مثلاً)
+  var NAMES = window.RCM_TREES_LABELS || {};
+  var POS_AR = (B.classes_ar && B.classes_ar[1]) || "موافقة غير كاملة";
   var MODELS = {
-    approval: { key: "approval", name: "نموذج الموافقة", trees: B.approval.trees },
-    reason:   { key: "reason",   name: "نموذج أسباب عدم الموافقة", trees: (B.reason && B.reason.trees) || [] },
+    approval: { key: "approval", name: NAMES.approval || "نموذج الموافقة", trees: B.approval.trees },
+    reason:   { key: "reason",   name: NAMES.reason || "نموذج أسباب عدم الموافقة",
+                trees: (B.reason && B.reason.trees) || [] },
   };
   var CUR = { model: "approval", idx: 0 };
 
@@ -226,8 +230,8 @@
 
     h += '<div class="note info" style="margin-top:8px"><b>المجموع الكلّي ' +
       (sa.count + sr.count).toLocaleString("en") + " شجرة:</b> " +
-      sa.count.toLocaleString("en") + " شجرة لقرار الموافقة (ثنائي — شجرة واحدة لكل دورة تدريب)، و" +
-      sr.count.toLocaleString("en") + " شجرة لأسباب عدم الموافقة (" +
+      sa.count.toLocaleString("en") + " شجرة للقرار الثنائي (شجرة واحدة لكل دورة تدريب)، و" +
+      sr.count.toLocaleString("en") + " شجرة للأسباب (" +
       (B.reason ? B.reason.labels.length : 0) + " فئة لكل دورة).</div>";
     h += "</div>";
 
@@ -248,7 +252,7 @@
     h += "</div>";
     h += '<p style="font-size:12px;color:var(--muted2);margin:0 0 8px">كل عقدة شرطٌ على خاصية واحدة: ' +
       "تحقُّقه يهبط بالطلب يساراً («نعم») وإلا يميناً («لا»)، و★ يعلّم اتجاه القيمة المفقودة. " +
-      'الأوراق قيمُ الدرجة: <b style="color:var(--red)">الموجبة ترفع</b> احتمال «موافقة غير كاملة» ' +
+      'الأوراق قيمُ الدرجة: <b style="color:var(--red)">الموجبة ترفع</b> احتمال «' + POS_AR + "» " +
       'و<b style="color:var(--green)">السالبة تخفضه</b>. مرّر المؤشّر فوق أي عقدة لتفاصيلها.</p>';
     h += '<div id="treeCanvas" style="overflow:auto;border:1px solid var(--border);border-radius:10px;' +
       'background:var(--bg);max-height:640px"></div>';
