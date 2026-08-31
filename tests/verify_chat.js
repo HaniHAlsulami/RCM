@@ -235,6 +235,52 @@ const CASE = require(path.join(__dirname, "..", "assets", "rcm-case.js"));
       ok(`«${it.label}» يطرح سؤال تحقّق`, !!it.check && it.check.length > 12);
     });
   }
+
+  // ── حالة منصّة المطالبات: كل رمز رفض NPHIES له استعلام نظاميّ أيضاً ──
+  const claimsBundlePath = path.join(__dirname, "..", "model", "artifacts", "claims_bundle.js");
+  if (fs.existsSync(claimsBundlePath)) {
+    require(claimsBundlePath);
+    const CB = global.window.RCM_CLAIMS_BUNDLE;
+    ((CB.reason && CB.reason.labels) || []).forEach((c) =>
+      ok(`رمز الرفض «${c}» له استعلام نظاميّ`, !!CASE.REASON_MAP[c]));
+  } else {
+    console.log("  ⚠ لا توجد حزمة المطالبات — يُتخطّى فحص تغطية رموز الرفض");
+  }
+
+  const claimsCase = {
+    savedAt: "2026-01-01T00:00:00Z",
+    payload: {
+      stage: "claims",
+      prediction_ar: "سداد غير كامل", threshold: 0.79,
+      probabilities: { paid: 0.12, notFullyPaid: 0.88 },
+      topReasons: [
+        { code: "BE-1-4", label: "BE-1-4 — الإذن المسبق مطلوب ولم يتم الحصول عليه",
+          probability: 0.35, action: "احصل على الموافقة المسبقة قبل الخدمة" },
+        { code: "AD-2-5", label: "AD-2-5 — انتهاء المهلة النظامية لتقديم المطالبة",
+          probability: 0.22, action: "قدّم ضمن المهلة" },
+      ],
+      shap: [{ feature: "insurance", label: "شركة التأمين (Payer)", value: 0.31 }],
+      input: { amount: "900", insurance: "bupa", hospital: "al noor specialist hospital",
+               visitDate: "2026-06-10", submitDate: "2026-06-29", hasApproval: "0" },
+    },
+  };
+  ok("تمييز حالة المطالبات", CASE.isClaims(claimsCase.payload) === true &&
+     CASE.isClaims(fakeCase.payload) === false);
+  check("خطر الحالة من notFullyPaid", CASE.riskOf(claimsCase.payload), 0.88);
+  const csum = CASE.summarize(claimsCase);
+  ok("ملخّص المطالبة بلغة السداد لا الموافقة",
+     /عدم السداد الكامل/.test(csum) && /88\.0٪/.test(csum) && /رموز رفض NPHIES/.test(csum));
+  ok("ملخّص المطالبة يذكر مدخلاتها", /submitDate=2026-06-29/.test(csum) && /hasApproval=0/.test(csum));
+
+  if (fs.existsSync(corpusPath)) {
+    const C3 = global.window.CHI_CORPUS;
+    const cplan = CASE.plan(claimsCase, C3, S, R);
+    check("خطة لكل رمز رفض", cplan.length, 2);
+    cplan.forEach((it) => {
+      ok(`«${it.code}» يسترجع نصّاً نظامياً`, it.hits.length > 0);
+      ok(`«${it.code}» يطرح سؤال تحقّق`, !!it.check && it.check.length > 12);
+    });
+  }
 }
 
 console.log("\n٥. الطبقة التوليدية");

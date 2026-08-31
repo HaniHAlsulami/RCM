@@ -339,12 +339,14 @@
   // بطاقة الحالة القادمة من منصّة سديد
   // ════════════════════════════════════════════════════════════════
   function caseHtml(c) {
-    var p = c.payload, risk = p.probabilities.notFullyApproved;
+    var p = c.payload, claims = CASE.isClaims && CASE.isClaims(p);
+    var risk = CASE.riskOf ? CASE.riskOf(p) : p.probabilities.notFullyApproved;
     var band = risk >= 0.65 ? "hi" : risk >= 0.45 ? "md" : "lo";
     var h = '<div class="casecard"><div class="chead">' +
-      '<span class="tag">🔗 حالة من منصّة سديد</span>' +
+      '<span class="tag">🔗 ' + (claims ? "مطالبة من منصّة سديد للمطالبات" : "حالة من منصّة سديد") + "</span>" +
       '<span class="conf ' + (band === "hi" ? "lo" : band === "md" ? "md" : "hi") + '">' +
-      "خطر عدم اكتمال الموافقة " + (risk * 100).toFixed(1) + "٪</span></div>";
+      (claims ? "خطر عدم السداد الكامل " : "خطر عدم اكتمال الموافقة ") +
+      (risk * 100).toFixed(1) + "٪</span></div>";
     if (p.topReasons && p.topReasons.length) {
       h += '<ul class="creasons">';
       p.topReasons.forEach(function (r) {
@@ -382,7 +384,11 @@
       CASE_ON = true; initCase();
       var empty = $("chat").querySelector(".empty");
       if (empty) empty.remove();
-      ask("بناءً على هذه الحالة، ما الذي ينبغي إرفاقه أو تصحيحه أو التحقّق منه " +
+      var claims = CASE.isClaims && CASE.isClaims(c.payload);
+      ask(claims
+        ? "بناءً على هذه المطالبة، ما الذي ينبغي إرفاقه أو تصحيحه أو التحقّق منه " +
+          "قبل تقديمها حتى ترتفع فرصة سدادها كاملة؟"
+        : "بناءً على هذه الحالة، ما الذي ينبغي إرفاقه أو تصحيحه أو التحقّق منه " +
           "قبل إرسال الطلب حتى ترتفع فرصة الموافقة الكاملة؟");
     };
   }
@@ -392,16 +398,19 @@
     var c = CASE && CASE.load();
     if (!c) return false;
     var chat = $("chat"), aid = "a" + (++ANS);
+    var claims = CASE.isClaims && CASE.isClaims(c.payload);
     var items = CASE.plan(c, C, S, R);
     var q = document.createElement("div");
     q.className = "msg q";
-    q.innerHTML = '<div class="bubble">خطة تحسين الطلب — لهذه الحالة</div>';
+    q.innerHTML = '<div class="bubble">' +
+      (claims ? "خطة تحسين المطالبة — قبل تقديمها" : "خطة تحسين الطلب — لهذه الحالة") + "</div>";
     chat.appendChild(q);
 
     var a = document.createElement("div");
     a.className = "msg";
-    var h = '<div class="ans"><div class="lead"><span>لكل سبب متوقَّع: ما يوجبه النظام، ' +
-      "وسؤال تحقّق قبل الإرسال</span></div>";
+    var h = '<div class="ans"><div class="lead"><span>لكل ' +
+      (claims ? "رمز رفض متوقَّع" : "سبب متوقَّع") + ": ما يوجبه النظام، " +
+      "وسؤال تحقّق قبل " + (claims ? "التقديم" : "الإرسال") + "</span></div>";
     var n = 0;
     items.forEach(function (it) {
       h += '<div class="planitem"><div class="ptitle"><span class="pn">' +
