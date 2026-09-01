@@ -407,16 +407,27 @@
       }
     });
     var applied = 0, ignored = 0, ref;
+    var salvByStage = {}, riskByStage = {}, daily = {};
+    rows.forEach(function (r) {
+      if (r.response === "prediction") {
+        var d = String(r.ts).slice(0, 10);
+        if (d) daily[d] = (daily[d] || 0) + 1;
+      }
+    });
     for (ref in appliedRefs) {
       applied++;
       // الإيراد المستنقذ: انخفاض الخطر بين أول تنبؤ وأحدث قياس × قيمة الفاتورة
       var r1 = appliedRefs[ref];
-      salvaged += Math.max(0, (r1.initialRisk - r1.finalRisk) / 100) * (r1.amount || 0);
+      var sv = Math.max(0, (r1.initialRisk - r1.finalRisk) / 100) * (r1.amount || 0);
+      salvaged += sv;
+      salvByStage[r1.stage] = (salvByStage[r1.stage] || 0) + sv;
     }
     for (ref in ignoredRefs) {
       ignored++;
       var r2 = ignoredRefs[ref];
-      atRiskIgnored += (r2.finalRisk / 100) * (r2.amount || 0);
+      var ar = (r2.finalRisk / 100) * (r2.amount || 0);
+      atRiskIgnored += ar;
+      riskByStage[r2.stage] = (riskByStage[r2.stage] || 0) + ar;
     }
     var respTotal = applied + ignored;
     return {
@@ -425,7 +436,105 @@
       salvaged: salvaged, atRiskIgnored: atRiskIgnored,
       compliance: respTotal ? applied / respTotal : null,
       devices: Object.keys(devices).length,
+      daily: daily, salvByStage: salvByStage, riskByStage: riskByStage,
     };
+  }
+
+  // ── مخططات اللوحة (SVG بهوية المنصّة — بلا أي مكتبة) ──────────
+  /** أعمدة يومية: جلسات التنبؤ في آخر ١٤ يوماً */
+  function chartDaily(daily) {
+    var days = [], now = new Date();
+    for (var i = 13; i >= 0; i--) {
+      var d = new Date(now.getTime() - i * 864e5);
+      var key = d.toISOString().slice(0, 10);
+      days.push({ key: key, label: key.slice(5), n: daily[key] || 0 });
+    }
+    var max = Math.max.apply(null, days.map(function (d) { return d.n; }));
+    if (max <= 0) return '<div class="note">لا جلسات في آخر ١٤ يوماً.</div>';
+    var W2 = 700, H2 = 170, top = 22, bottom = 26, bw = 34, gap2 = (W2 - 40 - 14 * bw) / 13;
+    var maxI = days.reduce(function (m, d, i) { return d.n > days[m].n ? i : m; }, 0);
+    var svg = '<svg viewBox="0 0 ' + W2 + " " + H2 + '" style="width:100%;height:auto;direction:ltr" role="img">';
+    days.forEach(function (d, i) {
+      var x = 20 + i * (bw + gap2);
+      var bh = d.n ? Math.max(3, (d.n / max) * (H2 - top - bottom)) : 0;
+      var y = H2 - bottom - bh;
+      svg += "<g><title>" + d.key + " — " + fmt(d.n) + " جلسة</title>";
+      if (d.n) svg += '<rect x="' + x + '" y="' + y + '" width="' + bw + '" height="' + bh +
+        '" rx="4" fill="var(--accent,#1B6FA8)"></rect>';
+      else svg += '<rect x="' + x + '" y="' + (H2 - bottom - 2) + '" width="' + bw +
+        '" height="2" rx="1" fill="var(--border,#D6E2ED)"></rect>';
+      if (d.n && (i === maxI || i === days.length - 1))
+        svg += '<text x="' + (x + bw / 2) + '" y="' + (y - 6) + '" font-size="12" font-weight="700" ' +
+          'fill="var(--muted2,#456076)" text-anchor="middle">' + fmt(d.n) + "</text>";
+      if (i % 2 === 1)
+        svg += '<text x="' + (x + bw / 2) + '" y="' + (H2 - 8) + '" font-size="10" ' +
+          'fill="var(--muted,#5A7085)" text-anchor="middle">' + d.label + "</text>";
+      svg += "</g>";
+    });
+    svg += "</svg>";
+    return svg;
+  }
+
+  /** دائرة الاستجابة: تطبيق مقابل تجاهل (أخضر/أحمر بفاصل أبيض وتسميات نصية) */
+  function chartDonut(applied, ignored) {
+    var total = applied + ignored;
+    if (!total) return '<div class="note">لا استجابات مسجَّلة بعد.</div>';
+    var pctA = applied / total, R = 56, CX = 70, CY = 70, SW = 22;
+    var C2 = 2 * Math.PI * R, gapLen = total > 0 && applied && ignored ? 3 : 0;
+    var aLen = Math.max(0, C2 * pctA - gapLen), iLen = Math.max(0, C2 * (1 - pctA) - gapLen);
+    var svg = '<svg viewBox="0 0 140 140" style="width:130px;height:130px;direction:ltr" role="img">' +
+      '<g transform="rotate(-90 ' + CX + " " + CY + ')">' +
+      '<circle cx="' + CX + '" cy="' + CY + '" r="' + R + '" fill="none" stroke="var(--green,#0B7A5E)" stroke-width="' + SW +
+        '" stroke-dasharray="' + aLen + " " + (C2 - aLen) + '" stroke-linecap="butt"><title>تطبيق الإجراء: ' + fmt(applied) + "</title></circle>" +
+      '<circle cx="' + CX + '" cy="' + CY + '" r="' + R + '" fill="none" stroke="var(--red,#C4362F)" stroke-width="' + SW +
+        '" stroke-dasharray="0 ' + (aLen + gapLen) + " " + iLen + " " + gapLen +
+        '" stroke-linecap="butt"><title>تجاهل: ' + fmt(ignored) + "</title></circle></g>" +
+      '<text x="' + CX + '" y="' + (CY + 1) + '" font-size="22" font-weight="700" fill="var(--text,#12384F)" text-anchor="middle">' +
+        fmt(pctA * 100, 0) + '%</text>' +
+      '<text x="' + CX + '" y="' + (CY + 19) + '" font-size="9.5" fill="var(--muted,#5A7085)" text-anchor="middle">معدل الاستجابة</text></svg>';
+    return '<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">' + svg +
+      '<div style="font-size:12.5px;line-height:2.1">' +
+      '<div><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--green,#0B7A5E);margin-inline-start:2px"></span> ✅ طبَّقوا الإجراء: <b>' + fmt(applied) + "</b></div>" +
+      '<div><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--red,#C4362F);margin-inline-start:2px"></span> ✖ تجاهلوا: <b>' + fmt(ignored) + "</b></div>" +
+      "</div></div>";
+  }
+
+  /** أشرطة أفقية حسب المرحلة: المستنقَذ (أخضر) مقابل المتجاهَل المعرَّض (أحمر) */
+  function chartStages(salvByStage, riskByStage) {
+    var stages = {};
+    Object.keys(salvByStage).forEach(function (k) { stages[k] = 1; });
+    Object.keys(riskByStage).forEach(function (k) { stages[k] = 1; });
+    var keys = Object.keys(stages);
+    if (!keys.length) return '<div class="note">ستظهر المقارنة المالية بعد أول استجابة.</div>';
+    var max = 0;
+    keys.forEach(function (k) { max = Math.max(max, salvByStage[k] || 0, riskByStage[k] || 0); });
+    if (max <= 0) return '<div class="note">لا مبالغ مسجَّلة بعد.</div>';
+    var W3 = 680, rowH = 56, labelW = 170, valW = 90, barMax = W3 - labelW - valW - 20;
+    var H3 = keys.length * rowH + 6;
+    var svg = '<svg viewBox="0 0 ' + W3 + " " + H3 + '" style="width:100%;height:auto;direction:ltr" role="img">';
+    keys.forEach(function (k, i) {
+      var y = 3 + i * rowH;
+      var pairs = [
+        { v: salvByStage[k] || 0, c: "var(--green,#0B7A5E)", t: "مستنقَذ" },
+        { v: riskByStage[k] || 0, c: "var(--red,#C4362F)", t: "متجاهَل معرَّض" },
+      ];
+      svg += '<text x="' + (W3 - 6) + '" y="' + (y + rowH / 2 + 2) + '" font-size="12.5" font-weight="700" ' +
+        'fill="var(--text,#12384F)" text-anchor="end" direction="rtl">' + esc(STAGE_AR[k] || k) + "</text>";
+      pairs.forEach(function (p, j) {
+        var bw2 = p.v > 0 ? Math.max(3, (p.v / max) * barMax) : 0;
+        var yy = y + 8 + j * 20, x0 = W3 - labelW - bw2;
+        svg += "<g><title>" + esc(STAGE_AR[k] || k) + " — " + p.t + ": " + fmt(p.v) + " ﷼</title>";
+        if (bw2) svg += '<rect x="' + x0 + '" y="' + yy + '" width="' + bw2 + '" height="14" rx="4" fill="' + p.c + '"></rect>' +
+          '<text x="' + (x0 - 6) + '" y="' + (yy + 11.5) + '" font-size="11" fill="var(--muted2,#456076)" text-anchor="end">' + fmt(p.v) + "</text>";
+        else svg += '<rect x="' + (W3 - labelW - 2) + '" y="' + (yy + 6) + '" width="2" height="2" fill="var(--border,#D6E2ED)"></rect>';
+        svg += "</g>";
+      });
+    });
+    svg += "</svg>";
+    return '<div style="display:flex;gap:16px;font-size:11.5px;color:var(--muted2);margin-bottom:6px">' +
+      '<span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--green,#0B7A5E)"></span> الإيرادات المستنقَذة ﷼</span>' +
+      '<span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--red,#C4362F)"></span> قيمة المتجاهَل المعرَّضة ﷼</span>' +
+      "</div>" + svg;
   }
 
   function kpiCard(k, v, s, color) {
@@ -459,6 +568,19 @@
         '<button class="btn ghost" id="adminRefresh">🔄 تحديث</button>' +
         '<button class="btn ghost" id="adminLogout">🚪 خروج</button></div>';
       h += "</div>";
+
+      // قراءة بصرية — مخططات النتائج
+      if (rows.length) {
+        h += '<div class="card"><div class="sec-label">📊 قراءة بصرية للنتائج</div>';
+        h += '<div style="font-size:12.5px;font-weight:700;color:var(--text);margin-bottom:6px">جلسات التنبؤ اليومية — آخر ١٤ يوماً</div>';
+        h += chartDaily(K.daily);
+        h += '<div style="display:grid;grid-template-columns:1fr 1.4fr;gap:18px;margin-top:18px;align-items:start">' +
+          '<div><div style="font-size:12.5px;font-weight:700;color:var(--text);margin-bottom:6px">الاستجابة للإنذارات</div>' +
+          chartDonut(K.applied, K.ignored) + "</div>" +
+          '<div><div style="font-size:12.5px;font-weight:700;color:var(--text);margin-bottom:6px">الأثر المالي حسب المرحلة</div>' +
+          chartStages(K.salvByStage, K.riskByStage) + "</div></div>";
+        h += "</div>";
+      }
 
       // أحدث الأحداث
       h += '<div class="card"><div class="sec-label">🕓 أحدث الأحداث (' + fmt(rows.length) + " حدثاً مسجَّلاً)</div>";
