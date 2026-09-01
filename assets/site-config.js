@@ -18,3 +18,17 @@ window.SADEED_SITE_LLM = {
   // geminiModel: "gemini-flash-lite-latest",
   // geminiBase: "https://<بوابتك>/v1beta/models/",   // Vercel: https://<مشروعك>.vercel.app/api/gemini/v1beta/models/
 };
+
+/*
+ * تتبّع السلوك والاستجابة (Audit Trail) — سجلّ تراكمي في Google Sheets:
+ *   1) انشر audit/Code.gs تطبيقَ ويب على Google Apps Script (الدليل: audit/README.md)
+ *   2) ▼▼ ضع رابط Web App URL هنا (ينتهي بـ /exec) ▼▼ — ما دام فارغاً تبقى الميزة صامتة
+ * اختيارياً: token يطابق SHARED_TOKEN في Code.gs، وpinHash لتغيير الرقم السري
+ * للوحة القيادة (الافتراضي Admin2026 — ولّد بصمة رقم جديد من Console بالأمر:
+ *   RCMAudit.hash("رقمك").then(console.log)
+ */
+window.NAMAA_AUDIT = {
+  url: "",          // ← رابط Google Apps Script Web App
+  // token: "",
+  // pinHash: "",
+};

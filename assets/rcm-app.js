@@ -334,6 +334,8 @@
     renderReasons(out, reasons);
     postToParent(out, reasons, input);
     saveCase(out, reasons, input);
+    if (window.RCMAudit) window.RCMAudit.onPredict("approvals", out.proba[NFA],
+      parseFloat(input.total), out.threshold);
     return out;
   }
 
