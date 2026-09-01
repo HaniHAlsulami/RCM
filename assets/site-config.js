@@ -28,7 +28,7 @@ window.SADEED_SITE_LLM = {
  *   RCMAudit.hash("رقمك").then(console.log)
  */
 window.NAMAA_AUDIT = {
-  url: "",          // ← رابط Google Apps Script Web App
+  url: "https://script.google.com/macros/s/AKfycbyY2Qo-afn8iBF8LHWaTrAEWbQGIaULCkW9PIhC0K2BQvvWIG_Ney7O0gNaG6-UsCyNCg/exec",
   // token: "",
   // pinHash: "",
 };
