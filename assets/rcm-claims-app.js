@@ -385,6 +385,8 @@
     renderReasons(out, reasons);
     postToParent(out, reasons, input);
     saveCase(out, reasons, input);
+    if (window.RCMAudit) window.RCMAudit.onPredict("claims", out.proba[NFP],
+      parseFloat(input.amount), out.threshold);
     return out;
   }
 

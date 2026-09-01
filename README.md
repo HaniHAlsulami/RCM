@@ -122,6 +122,7 @@ assets/
   rcm-app.js                  واجهة صفحة الموافقات والرسوم وتكامل Power BI
   rcm-claims-app.js           واجهة صفحة المطالبات (ترميز خصائص المطالبات + الرسوم)
   rcm-claims-batch.js         تبويب «التنبؤ بالملفات» في صفحة المطالبات
+  rcm-audit.js                تتبّع السلوك والاستجابة + تبويب «لوحة القيادة» المحمي
   rcm-trees.js                تبويب «أشجار النموذج» — مستعرض الأشجار التفاعلي
   rcm-batch.js                تبويب «التنبؤ بالملفات» — تسجيل Excel/CSV داخل المتصفح
   vendor/xlsx.full.min.js     مكتبة SheetJS (Apache-2.0) مضمّنة محلياً لقراءة/كتابة Excel
@@ -150,6 +151,9 @@ model/
     claims_bundle.js/.json    حزمة المطالبات
     metrics.json              مقاييس الأداء ومقارنة الخوارزميات
     model_card.md             بطاقة النموذج
+audit/
+  Code.gs                     الواجهة الخلفية لسجلّ التتبّع (Google Apps Script + Sheets)
+  README.md                   دليل تشغيل تتبّع السلوك ولوحة القيادة في ٥ دقائق
 gateway/
   worker.js                   بوّابة المفتاح (تعمل لصقاً على Deno Deploy وCloudflare)
   README.md                   دليل النشر بثلاث طرق مجانية
