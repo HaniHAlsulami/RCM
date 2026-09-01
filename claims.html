@@ -244,7 +244,7 @@ body.embed .wrap{max-width:100%}
   <p class="tagline">منصة التنبؤ بسداد المطالبات التأمينية — مرحلة المطالبات</p>
   <p>هل ستُسدَّد هذه المطالبة كاملةً؟ — تقدير الخطر ورموز رفض NPHIES المرجَّحة قبل التقديم</p>
   <div class="chips" id="headChips"></div>
-  <div class="chips"><a class="chip guide-link" href="predict.html">🔮 منصّة الموافقات المسبقة</a><a class="chip guide-link" href="chatbot.html">💬 مساند نماء الذكي — المساعد المرجعي</a></div>
+  <div class="chips"><a class="chip guide-link" href="predict.html">🔮 منصّة الموافقات المسبقة</a><a class="chip guide-link" href="chatbot.html">💬 مساند نماء الذكي — المساعد المرجعي</a><a class="chip guide-link" href="guide.html#s9c">📘 دليل الاستخدام</a></div>
 </div>
 
 <div class="tabs" id="tabs">
@@ -438,5 +438,15 @@ window.RCM_TREES_LABELS = { approval: "نموذج سداد المطالبة", re
 <script src="assets/rcm-trees.js"></script>
 <script src="assets/rcm-claims-batch.js"></script>
 <script src="assets/rcm-audit.js"></script>
+<style>
+#homeFab{position:fixed;bottom:16px;left:16px;z-index:2000;width:46px;height:46px;
+  display:flex;align-items:center;justify-content:center;font-size:21px;text-decoration:none;
+  background:#fff;border:1px solid #d5dfe7;border-radius:50%;
+  box-shadow:0 3px 14px rgba(15,40,60,.16);transition:transform .15s ease}
+#homeFab:hover{transform:scale(1.1)}
+body.embed #homeFab{display:none}
+@media print{#homeFab{display:none}}
+</style>
+<a href="index.html" id="homeFab" title="الصفحة الرئيسية" aria-label="العودة إلى الصفحة الرئيسية">🏠</a>
 </body>
 </html>
