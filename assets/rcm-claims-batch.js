@@ -241,6 +241,25 @@
     return String(v).trim().split(" ")[0];
   }
 
+  // ── مفاتيح مطابقة الصفوف لتتبّع الملفات وقياس الاستنقاذ (rcm-audit.js) ──
+  // عمود معرّف اختياري إن وُجد في الملف، وإلا بصمة من الحقول التي لا تتغيّر
+  // عند المعالجة (تاريخ الزيارة، الشركة، الطبيب، المبلغ).
+  function idColIndex(heads) {
+    for (var i = 0; i < heads.length; i++) {
+      var h = String(heads[i] == null ? "" : heads[i]);
+      if (headerKey(h) == null && /معر|claim[ _-]?id|\bid\b|\(id\)|^ref|reference/i.test(h)) return i;
+    }
+    return -1;
+  }
+  function auditKey(rec, rawRow, idIdx, seen) {
+    var nrm = function (v) { return String(v == null ? "" : v).trim().toLowerCase(); };
+    var idv = idIdx >= 0 ? nrm(rawRow[idIdx]) : "";
+    var base = idv ? "id:" + idv :
+      cellDate(rec.visit_date) + "|" + nrm(rec.insurance) + "|" + nrm(rec.physician) + "|" + nrm(rec.amount);
+    var n = seen[base] = (seen[base] || 0) + 1;
+    return n > 1 ? base + "#" + n : base;
+  }
+
   /** يبني مدخل الصفحة نفسه ثم يرمّزه بترميز الصفحة (window.RCM_CLAIMS.encode) */
   function toInput(rec) {
     var icd = (rec.icd == null ? "" : String(rec.icd)).trim().toUpperCase().replace(/\s/g, "");
@@ -351,16 +370,17 @@
           if (!body.length) throw new Error("لا توجد صفوف بيانات بعد صف العناوين");
           if (body.length > GEN_MAX) throw new Error("الحد الأقصى 50,000 صف في الملف الواحد");
 
-          scoreAll(XLSX, file, isCsv, heads, idx, body);
+          scoreAll(XLSX, file, isCsv, heads, idx, body, idColIndex(heads));
         } catch (e) { showErr(e); }
       };
       fr.readAsArrayBuffer(file);
     }).catch(showErr);
   }
 
-  function scoreAll(XLSX, file, isCsv, heads, idx, body) {
+  function scoreAll(XLSX, file, isCsv, heads, idx, body, idIdx) {
     var out = [heads.concat(OUT_HEADS)];
     var counts = { over: 0, nfp: 0, riskSum: 0 };
+    var auditRows = [], seen = {};
     var i = 0, CHUNK = 400;
 
     function step() {
@@ -372,6 +392,9 @@
         if (s.proba[NFP] >= THRESHOLD) counts.over++;
         if (s.predIdx === 1) counts.nfp++;
         if (s.risk !== "") counts.riskSum += s.risk;
+        var amt = parseFloat(rec.amount);
+        auditRows.push({ k: auditKey(rec, body[i], idIdx, seen),
+                         p: s.proba[NFP], a: isFinite(amt) ? amt : 0 });
         out.push(body[i].concat(outRow(s)));
       }
       if (i < body.length) {
@@ -379,7 +402,8 @@
           "جارٍ التسجيل… " + i.toLocaleString("en") + " / " + body.length.toLocaleString("en") + "</div>";
         setTimeout(step, 0);
       } else {
-        RESULT = { aoa: out, base: file.name.replace(/\.(xlsx|xls|csv)$/i, ""), isCsv: isCsv, counts: counts, n: body.length };
+        RESULT = { aoa: out, base: file.name.replace(/\.(xlsx|xls|csv)$/i, ""), isCsv: isCsv, counts: counts, n: body.length,
+                   audit: { stage: "claims", noun: "مطالبة", threshold: THRESHOLD, rows: auditRows } };
         renderResult();
       }
     }
@@ -430,6 +454,8 @@
         saveBlob(new Blob([csv], { type: "text/csv;charset=utf-8" }), RESULT.base + "-scored-" + stamp() + ".csv");
       }).catch(showErr);
     };
+
+    if (window.RCMAudit && RCMAudit.onBatch) RCMAudit.onBatch(RESULT.audit);
   }
 
   function showErr(e) {

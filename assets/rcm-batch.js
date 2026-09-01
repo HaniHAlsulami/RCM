@@ -276,6 +276,29 @@
 
   var RESULT = null;   // { aoa, name, counts }
 
+  // ── مفاتيح مطابقة الصفوف لتتبّع الملفات وقياس الاستنقاذ (rcm-audit.js) ──
+  // عمود معرّف اختياري إن وُجد في الملف، وإلا بصمة من الحقول التي لا تتغيّر
+  // عند المعالجة (تاريخ الزيارة، المستشفى، العقد، المبلغ).
+  function idColIndex(heads) {
+    for (var i = 0; i < heads.length; i++) {
+      var h = String(heads[i] == null ? "" : heads[i]);
+      if (headerKey(h) == null && /معر|claim[ _-]?id|\bid\b|\(id\)|^ref|reference/i.test(h)) return i;
+    }
+    return -1;
+  }
+  function auditDate(v) {
+    if (v instanceof Date && !isNaN(v.getTime())) return v.toISOString().slice(0, 16);
+    return String(v == null ? "" : v).trim();
+  }
+  function auditKey(rec, rawRow, idIdx, seen) {
+    var nrm = function (v) { return String(v == null ? "" : v).trim().toLowerCase(); };
+    var idv = idIdx >= 0 ? nrm(rawRow[idIdx]) : "";
+    var base = idv ? "id:" + idv :
+      auditDate(rec.visit_date) + "|" + nrm(rec.hospital) + "|" + nrm(rec.contract) + "|" + nrm(rec.total);
+    var n = seen[base] = (seen[base] || 0) + 1;
+    return n > 1 ? base + "#" + n : base;
+  }
+
   function processFile(file) {
     var isCsv = /\.csv$/i.test(file.name);
     $("batchStatus").innerHTML = '<div class="loading" style="padding:16px"><div class="spin"></div>جارٍ قراءة الملف…</div>';
@@ -301,16 +324,17 @@
           if (!body.length) throw new Error("لا توجد صفوف بيانات بعد صف العناوين");
           if (body.length > 50000) throw new Error("الحد الأقصى 50,000 صف في الملف الواحد");
 
-          scoreAll(XLSX, file, isCsv, heads, idx, body);
+          scoreAll(XLSX, file, isCsv, heads, idx, body, idColIndex(heads));
         } catch (e) { showErr(e); }
       };
       fr.readAsArrayBuffer(file);
     }).catch(showErr);
   }
 
-  function scoreAll(XLSX, file, isCsv, heads, idx, body) {
+  function scoreAll(XLSX, file, isCsv, heads, idx, body, idIdx) {
     var out = [heads.concat(OUT_HEADS)];
     var counts = { hi: 0, md: 0, lo: 0, nfa: 0, riskSum: 0 };
+    var auditRows = [], seen = {};
     var i = 0, CHUNK = 400;
 
     function step() {
@@ -324,6 +348,9 @@
         else counts.lo++;
         if (s.predIdx === 1) counts.nfa++;
         if (s.risk !== "") counts.riskSum += s.risk;
+        var amt = parseFloat(rec.total);
+        auditRows.push({ k: auditKey(rec, body[i], idIdx, seen),
+                         p: s.proba[NFA], a: isFinite(amt) ? amt : 0 });
         out.push(body[i].concat(outRow(s)));
       }
       if (i < body.length) {
@@ -331,7 +358,8 @@
           "جارٍ التسجيل… " + i.toLocaleString("en") + " / " + body.length.toLocaleString("en") + "</div>";
         setTimeout(step, 0);
       } else {
-        RESULT = { aoa: out, base: file.name.replace(/\.(xlsx|xls|csv)$/i, ""), isCsv: isCsv, counts: counts, n: body.length };
+        RESULT = { aoa: out, base: file.name.replace(/\.(xlsx|xls|csv)$/i, ""), isCsv: isCsv, counts: counts, n: body.length,
+                   audit: { stage: "approvals", noun: "طلب", threshold: THRESHOLD, rows: auditRows } };
         renderResult();
       }
     }
@@ -386,6 +414,8 @@
         saveBlob(new Blob([csv], { type: "text/csv;charset=utf-8" }), RESULT.base + "-scored-" + stamp() + ".csv");
       }).catch(showErr);
     };
+
+    if (window.RCMAudit && RCMAudit.onBatch) RCMAudit.onBatch(RESULT.audit);
   }
 
   function showErr(e) {
