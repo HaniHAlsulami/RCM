@@ -104,22 +104,33 @@
     rows.forEach(function (r) {
       var v = r.dims[dimKey];
       v = (v == null || v === "") ? "غير محدد" : String(v);
-      var o = g[v] || (g[v] = { value: v, n: 0, hi: 0, sumP: 0, amount: 0, risk: 0 });
+      var o = g[v] || (g[v] = { value: v, n: 0, hi: 0, sumP: 0, amount: 0, risk: 0, codes: {} });
       o.n++; if (r.hi) o.hi++;
       o.sumP += r.p;
       if (isFinite(r.amount)) o.amount += r.amount;
       if (isFinite(r.risk)) o.risk += r.risk;
+      var c = r.dims.code;
+      if (c && c !== "—") o.codes[c] = (o.codes[c] || 0) + 1;
     });
     var list = Object.keys(g).map(function (k) { return g[k]; });
     list.sort(function (a, b) { return b.risk - a.risk || b.n - a.n; });
     maxRows = maxRows || 12;
     if (list.length > maxRows) {
       var rest = list.slice(maxRows - 1);
-      var o = { value: "أخرى (" + rest.length + ")", n: 0, hi: 0, sumP: 0, amount: 0, risk: 0 };
-      rest.forEach(function (r) { o.n += r.n; o.hi += r.hi; o.sumP += r.sumP; o.amount += r.amount; o.risk += r.risk; });
+      var o = { value: "أخرى (" + rest.length + ")", n: 0, hi: 0, sumP: 0, amount: 0, risk: 0, codes: {} };
+      rest.forEach(function (r) { o.n += r.n; o.hi += r.hi; o.sumP += r.sumP; o.amount += r.amount; o.risk += r.risk;
+        Object.keys(r.codes || {}).forEach(function (c) { o.codes[c] = (o.codes[c] || 0) + r.codes[c]; }); });
       list = list.slice(0, maxRows - 1).concat([o]);
     }
     return list;
+  }
+
+  /** أرجح ثلاثة أسباب داخل مجموعة (بحسب السبب الأول لكل صف) */
+  function topCodes(o) {
+    return Object.keys(o.codes || {})
+      .map(function (c) { return { c: c, n: o.codes[c] }; })
+      .sort(function (a, b) { return b.n - a.n; })
+      .slice(0, 3);
   }
 
   /** مخطط أشرطة أفقي بلون واحد (مقدار) — تسميات مباشرة وتلميح لكل شريط */
@@ -170,15 +181,21 @@
     function render(dimKey) {
       var dim = cfg.dims.filter(function (d) { return d.key === dimKey; })[0] || cfg.dims[0];
       var agg = pivotAgg(cfg.rows, dim.key);
+      var acts = cfg.actions || {};
       var b = '<div class="tbl-wrap"><table>' +
-        "<tr><th>" + esc(dim.label) + "</th><th>عدد الصفوف</th><th>" + esc(cfg.hiLabel) +
-        "</th><th>متوسط الخطر</th><th>إجمالي المبلغ</th><th>" + esc(cfg.moneyLabel) + "</th></tr>";
+        "<tr><th>" + esc(dim.label) + "</th><th>" + esc(cfg.moneyLabel) + " ﷼</th>" +
+        "<th>السبب المرجّح ١</th><th>السبب المرجّح ٢</th><th>السبب المرجّح ٣</th>" +
+        "<th>الإجراء المقترح ١</th><th>الإجراء المقترح ٢</th><th>الإجراء المقترح ٣</th></tr>";
       agg.forEach(function (r) {
-        b += "<tr><td>" + esc(r.value) + "</td><td>" + fmt(r.n) + "</td>" +
-          '<td style="color:' + (r.hi ? "var(--red,#C4362F)" : "var(--muted)") + ';font-weight:600">' + fmt(r.hi) + "</td>" +
-          "<td>" + fmt(r.n ? (r.sumP / r.n) * 100 : 0, 1) + "%</td>" +
-          "<td>" + fmt(r.amount) + "</td>" +
-          "<td><b>" + fmt(r.risk) + "</b></td></tr>";
+        var tc = topCodes(r);
+        b += "<tr><td><b>" + esc(r.value) + "</b><div style='font-size:10.5px;color:var(--muted)'>" +
+          fmt(r.n) + " صفاً · " + esc(cfg.hiLabel) + " " + fmt(r.hi) + "</div></td>" +
+          "<td><b>" + fmt(r.risk) + "</b></td>";
+        for (var j = 0; j < 3; j++)
+          b += "<td>" + (tc[j] ? esc(tc[j].c) + ' <span style="color:var(--muted);font-size:10.5px">(' + fmt(tc[j].n) + ")</span>" : "—") + "</td>";
+        for (j = 0; j < 3; j++)
+          b += '<td style="font-size:11px;color:var(--muted2)">' + (tc[j] ? esc(acts[tc[j].c] || "—") : "—") + "</td>";
+        b += "</tr>";
       });
       b += "</table></div>";
       b += '<div style="margin-top:12px;font-size:12px;color:var(--muted2)">' + esc(cfg.moneyLabel) +
@@ -197,11 +214,16 @@
   function pivotAoa(cfg) {
     var aoa = [["الملخص المحوري — من مُتَنَبِّئ نماء"], [""]];
     cfg.dims.forEach(function (d) {
+      var acts = cfg.actions || {};
       aoa.push(["حسب: " + d.label]);
-      aoa.push([d.label, "عدد الصفوف", cfg.hiLabel, "متوسط الخطر %", "إجمالي المبلغ", cfg.moneyLabel]);
+      aoa.push([d.label, cfg.moneyLabel, "عدد الصفوف", cfg.hiLabel,
+                "السبب المرجّح 1", "السبب المرجّح 2", "السبب المرجّح 3",
+                "الإجراء المقترح 1", "الإجراء المقترح 2", "الإجراء المقترح 3"]);
       pivotAgg(cfg.rows, d.key, 25).forEach(function (r) {
-        aoa.push([r.value, r.n, r.hi, Math.round((r.n ? r.sumP / r.n : 0) * 1000) / 10,
-                  Math.round(r.amount * 100) / 100, Math.round(r.risk * 100) / 100]);
+        var tc = topCodes(r), row = [r.value, Math.round(r.risk * 100) / 100, r.n, r.hi];
+        for (var j = 0; j < 3; j++) row.push(tc[j] ? tc[j].c : "");
+        for (j = 0; j < 3; j++) row.push(tc[j] ? (acts[tc[j].c] || "") : "");
+        aoa.push(row);
       });
       aoa.push([""]);
     });

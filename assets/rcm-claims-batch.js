@@ -17,6 +17,11 @@
   var NFP = 1;
   var THRESHOLD = B.approval.threshold || 0.5;
   var RL = (B.reason && B.reason.labels) || [];
+  // تسمية كل سبب ← إجراؤه المقترح (للملخّص المحوري)
+  var ACTION_BY_LABEL = {};
+  RL.forEach(function (code) {
+    ACTION_BY_LABEL[B.reason.labels_ar[code] || code] = B.reason.actions[code] || "";
+  });
 
   // ── الأعمدة: المفتاح اللاتيني بين قوسين هو ما يُطابَق عليه عند القراءة ──
   var COLS = [
@@ -431,10 +436,11 @@
         RESULT = { aoa: out, base: file.name.replace(/\.(xlsx|xls|csv)$/i, ""), isCsv: isCsv, counts: counts, n: body.length,
                    audit: { stage: "claims", noun: "مطالبة", threshold: THRESHOLD, rows: auditRows },
                    pivot: { rows: pivotRows, hiLabel: "عالية الخطورة", moneyLabel: "المبلغ المعرّض للخطر",
-                            dims: [ { key: "insurance", label: "شركة التأمين" },
+                            actions: ACTION_BY_LABEL,
+                            dims: [ { key: "band", label: "نطاق الخطر" },
+                                    { key: "insurance", label: "شركة التأمين" },
                                     { key: "hospital", label: "المستشفى" },
                                     { key: "code", label: "رمز الرفض المرجّح" },
-                                    { key: "band", label: "نطاق الخطر" },
                                     { key: "visit_type", label: "نوع الزيارة" } ] } };
         renderResult();
       }

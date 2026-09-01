@@ -238,6 +238,11 @@
 
   // تسجيل صف واحد — بدون SHAP (يبقى التسجيل سريعاً للملفات الكبيرة)
   var RL = (B.reason && B.reason.labels) || [];
+  // تسمية كل سبب ← إجراؤه المقترح (للملخّص المحوري)
+  var ACTION_BY_LABEL = {};
+  RL.forEach(function (code) {
+    ACTION_BY_LABEL[B.reason.labels_ar[code] || code] = B.reason.actions[code] || "";
+  });
   function scoreRow(rec) {
     var input = toInput(rec);
     E.prepare(B.approval.trees);
@@ -388,11 +393,12 @@
         RESULT = { aoa: out, base: file.name.replace(/\.(xlsx|xls|csv)$/i, ""), isCsv: isCsv, counts: counts, n: body.length,
                    audit: { stage: "approvals", noun: "طلب", threshold: THRESHOLD, rows: auditRows },
                    pivot: { rows: pivotRows, hiLabel: "عالية الخطورة", moneyLabel: "المبلغ المعرّض للخطر",
-                            dims: [ { key: "contract", label: "عقد التأمين" },
+                            actions: ACTION_BY_LABEL,
+                            dims: [ { key: "band", label: "نطاق الخطر" },
+                                    { key: "contract", label: "عقد التأمين" },
                                     { key: "hospital", label: "المستشفى" },
                                     { key: "clinic", label: "القسم / العيادة" },
-                                    { key: "code", label: "السبب المرجّح" },
-                                    { key: "band", label: "نطاق الخطر" } ] } };
+                                    { key: "code", label: "السبب المرجّح" } ] } };
         renderResult();
       }
     }
