@@ -194,7 +194,9 @@
         for (var j = 0; j < 3; j++)
           b += "<td>" + (tc[j] ? esc(tc[j].c) + ' <span style="color:var(--muted);font-size:10.5px">(' + fmt(tc[j].n) + ")</span>" : "—") + "</td>";
         for (j = 0; j < 3; j++)
-          b += '<td style="font-size:11px;color:var(--muted2)">' + (tc[j] ? esc(acts[tc[j].c] || "—") : "—") + "</td>";
+          b += '<td style="font-size:11px;color:var(--muted2)">' + (tc[j]
+            ? esc(acts[tc[j].c] || "—") + ' <span style="color:var(--muted);font-size:10.5px">(' + fmt(tc[j].n) + ")</span>"
+            : "—") + "</td>";
         b += "</tr>";
       });
       b += "</table></div>";
@@ -217,14 +219,21 @@
       var acts = cfg.actions || {};
       aoa.push(["حسب: " + d.label]);
       aoa.push([d.label, cfg.moneyLabel, "عدد الصفوف", cfg.hiLabel,
-                "السبب المرجّح 1", "السبب المرجّح 2", "السبب المرجّح 3",
-                "الإجراء المقترح 1", "الإجراء المقترح 2", "الإجراء المقترح 3"]);
-      pivotAgg(cfg.rows, d.key, 25).forEach(function (r) {
+                "السبب المرجّح 1", "تكراره", "السبب المرجّح 2", "تكراره", "السبب المرجّح 3", "تكراره",
+                "الإجراء المقترح 1", "تكراره", "الإجراء المقترح 2", "تكراره", "الإجراء المقترح 3", "تكراره",
+                "المخطط ▓ (" + cfg.moneyLabel + ")"]);
+      var agg2 = pivotAgg(cfg.rows, d.key, 25);
+      var maxRisk = 0;
+      agg2.forEach(function (r) { maxRisk = Math.max(maxRisk, r.risk); });
+      agg2.forEach(function (r) {
         var tc = topCodes(r), row = [r.value, Math.round(r.risk * 100) / 100, r.n, r.hi];
-        for (var j = 0; j < 3; j++) row.push(tc[j] ? tc[j].c : "");
-        for (j = 0; j < 3; j++) row.push(tc[j] ? (acts[tc[j].c] || "") : "");
+        for (var j = 0; j < 3; j++) { row.push(tc[j] ? tc[j].c : ""); row.push(tc[j] ? tc[j].n : ""); }
+        for (j = 0; j < 3; j++) { row.push(tc[j] ? (acts[tc[j].c] || "") : ""); row.push(tc[j] ? tc[j].n : ""); }
+        var bars = maxRisk > 0 ? Math.round((r.risk / maxRisk) * 20) : 0;
+        row.push(bars > 0 ? new Array(bars + 1).join("█") : "");
         aoa.push(row);
       });
+      aoa.push(["ملاحظة: عمود المخطط أشرطة نصية داخل الخلايا — طول الشريط يمثل " + cfg.moneyLabel + " نسبةً إلى أعلى مجموعة في هذا المقطع."]);
       aoa.push([""]);
     });
     return aoa;

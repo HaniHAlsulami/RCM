@@ -448,7 +448,9 @@
         XLSX.utils.book_append_sheet(wb, ws, "النتائج");
         if (RESULT.pivot) {
           var pw = XLSX.utils.aoa_to_sheet(window.RCMBatchTools.pivotAoa(RESULT.pivot));
-          pw["!cols"] = [{ wch: 34 }, { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 16 }, { wch: 20 }];
+          pw["!cols"] = [{ wch: 30 }, { wch: 16 }, { wch: 11 }, { wch: 12 },
+            { wch: 24 }, { wch: 8 }, { wch: 24 }, { wch: 8 }, { wch: 24 }, { wch: 8 },
+            { wch: 44 }, { wch: 8 }, { wch: 44 }, { wch: 8 }, { wch: 44 }, { wch: 8 }, { wch: 24 }];
           XLSX.utils.book_append_sheet(wb, pw, "الملخص المحوري");
         }
         XLSX.writeFile(wb, RESULT.base + "-scored-" + stamp() + ".xlsx");
