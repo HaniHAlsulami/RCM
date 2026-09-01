@@ -159,6 +159,144 @@
   }
 
   // ══════════════════════════════════════════════════════════════
+  // 3ب. تتبّع التنبؤ بالملفات + قياس الاستنقاذ الفعلي بإعادة الرفع
+  //
+  // جلسة لكل ملف (مرجع NB-…): رفع فيه صفوف عالية الخطورة يفتح الجلسة بحدث
+  // prediction واحد مجمَّع، وزرّا الاستجابة يعملان على مستوى الملف كله.
+  // قياس «الإيرادات المستنقَذة» للملفات يحتاج قبلاً وبعداً حقيقيين، لذا عند
+  // اختيار «سأعالج» تُحفظ بصمة الصفوف عالية الخطورة محلياً (هذا المتصفح)،
+  // وحين يُرفَع الملف المصحَّح لاحقاً في التبويب نفسه تُطابَق الصفوف
+  // (بعمود معرّف إن وُجد، وإلا ببصمة الحقول الثابتة) ويُقاس انخفاض الخطر
+  // فعلياً × قيمة كل مطالبة، ثم يُرسَل حدث applied محدَّث بالمرجع نفسه —
+  // واللوحة تعتمد أحدث حدث استجابة لكل مرجع، فلا ازدواج في العدّ.
+  // ══════════════════════════════════════════════════════════════
+  var BKEY = "namaa.audit.batch";
+  var B_MAX_ROWS = 10000;      // أقصى صفوف تُحفظ في بصمة الملف (الأكبر قيمةً أولاً)
+  var B_KEEP = 3;              // بصمات محفوظة لكل مرحلة
+  var B_TTL = 45 * 864e5;      // صلاحية البصمة: ٤٥ يوماً
+
+  function loadBaselines() {
+    try {
+      var a = JSON.parse(localStorage.getItem(BKEY) || "[]");
+      return Array.isArray(a) ? a : [];
+    } catch (e) { return []; }
+  }
+  function saveBaselines(a) {
+    try { localStorage.setItem(BKEY, JSON.stringify(a)); } catch (e) { /* */ }
+  }
+
+  function pct(p) { return Math.round(p * 1000) / 10; }
+
+  function batchPayload(ref, stage, initP, finP, amount, response) {
+    return { ref: ref, stage: stage + "-batch",
+      initialRisk: pct(initP), finalRisk: pct(finP),
+      amount: Math.round((amount || 0) * 100) / 100,
+      response: response, device: deviceId() };
+  }
+
+  /** متوسط الخطر موزوناً بقيمة كل صف (فيصير المتوسط × المجموع = Σ خطر×قيمة تماماً) */
+  function weighted(rows) {
+    var sa = 0, spa = 0, sp = 0;
+    rows.forEach(function (r) { var a = isFinite(r.a) ? r.a : 0; sa += a; spa += r.p * a; sp += r.p; });
+    return { amount: sa, avg: sa > 0 ? spa / sa : (rows.length ? sp / rows.length : 0) };
+  }
+
+  /**
+   * onBatch({stage, noun, threshold, n, rows})
+   *   تستدعيها تبويبات «التنبؤ بالملفات» بعد اكتمال التسجيل.
+   *   rows: كل الصفوف المسجَّلة [{k: مفتاح المطابقة, p: الخطر 0..1, a: القيمة}]
+   */
+  function onBatch(opts) {
+    if (!URL_) return;
+    var host = $("batchStatus");
+    if (!host || !opts || !opts.rows || !opts.rows.length) return;
+    var box = document.createElement("div");
+    host.appendChild(box);
+    var thr = opts.threshold || 0.5;
+    var noun = opts.noun || "صف";
+
+    // ١) هل هذا رفعٌ للملف نفسه بعد معالجته؟ (مطابقة على بصمة محفوظة)
+    var newMap = {};
+    opts.rows.forEach(function (r) { newMap[r.k] = r; });
+    var best = null;
+    loadBaselines().forEach(function (b) {
+      if (b.stage !== opts.stage) return;
+      var keys = Object.keys(b.rows), matched = [];
+      keys.forEach(function (k) { if (newMap[k]) matched.push(k); });
+      if (keys.length && matched.length / keys.length >= 0.5 &&
+          (!best || matched.length > best.matched.length)) best = { b: b, matched: matched };
+    });
+
+    if (best) {
+      var sa = 0, spa0 = 0, spa1 = 0, salvage = 0;
+      best.matched.forEach(function (k) {
+        var o = best.b.rows[k], a = o[1] || 0, p0 = o[0], p1 = newMap[k].p;
+        sa += a; spa0 += p0 * a; spa1 += p1 * a;
+        salvage += Math.max(0, p0 - p1) * a;
+      });
+      var p0avg = sa > 0 ? spa0 / sa : 0, p1avg = sa > 0 ? spa1 / sa : 0;
+      post(batchPayload(best.b.ref, opts.stage, p0avg, p1avg, sa, "applied"));
+      best.b.ts = Date.now();
+      saveBaselines(loadBaselines().map(function (b) { return b.ref === best.b.ref ? best.b : b; }));
+      box.innerHTML =
+        '<div class="note" style="margin-top:10px;border-color:var(--green)">' +
+        "<b>📈 قياس الاستنقاذ بعد المعالجة</b> — تعرّفتُ على هذا الملف: " +
+        fmt(best.matched.length) + " من " + fmt(Object.keys(best.b.rows).length) +
+        " " + esc(noun) + " عالي الخطورة من الرفعة السابقة (" + esc(best.b.ref) + ").<br>" +
+        "متوسط الخطر: <b>" + fmt(pct(p0avg), 1) + "%</b> قبل ← <b>" + fmt(pct(p1avg), 1) + "%</b> بعد · " +
+        'الإيراد المستنقَذ المقيس: <b style="color:var(--green)">' + fmt(salvage) + " ﷼</b>" +
+        " — سُجِّل في لوحة القيادة (أحدث قياس للجلسة يحلّ محل السابق).</div>";
+      return;
+    }
+
+    // ٢) ملف جديد — الجلسة تُفتح فقط حين توجد صفوف عالية الخطورة
+    var hi = opts.rows.filter(function (r) { return r.p >= thr; });
+    if (!hi.length) return;
+    var w = weighted(hi);
+    var ref = "NB-" + Date.now().toString(36).toUpperCase() +
+              Math.random().toString(36).slice(2, 5).toUpperCase();
+    post(batchPayload(ref, opts.stage, w.avg, w.avg, w.amount, "prediction"));
+
+    box.innerHTML =
+      '<div style="margin-top:12px;padding-top:12px;border-top:1px dashed var(--border)">' +
+      '<div style="font-size:12px;color:var(--muted2);margin-bottom:8px">📋 <b>تتبّع الاستجابة:</b> ' +
+      "في هذا الملف <b>" + fmt(hi.length) + "</b> " + esc(noun) + " عالي الخطورة بقيمة <b>" +
+      fmt(w.amount) + " ﷼</b> — ما قرارك حيال القائمة؟ (يُسجَّل مجهولاً لقياس أثر المنصّة)</div>" +
+      '<div class="btn-row" style="margin-top:0">' +
+      '<button class="btn ghost" id="bAuditApply" style="border-color:var(--green);color:var(--green)">✅ سأعالج الصفوف عالية الخطورة قبل التقديم</button>' +
+      '<button class="btn ghost" id="bAuditIgnore">✖ تجاهُل والمتابعة كما هو</button>' +
+      "</div></div>";
+
+    $("bAuditApply").onclick = function () {
+      post(batchPayload(ref, opts.stage, w.avg, w.avg, w.amount, "applied"));
+      // بصمة الصفوف عالية الخطورة لقياس التحسّن عند إعادة الرفع (محلياً فقط)
+      var keep = hi.slice().sort(function (x, y) { return (y.a || 0) - (x.a || 0); }).slice(0, B_MAX_ROWS);
+      var rowsMap = {};
+      keep.forEach(function (r) { rowsMap[r.k] = [r.p, isFinite(r.a) ? r.a : 0]; });
+      var bases = loadBaselines().filter(function (b) {
+        return Date.now() - (b.ts || 0) < B_TTL;
+      });
+      bases.push({ ref: ref, stage: opts.stage, ts: Date.now(), rows: rowsMap });
+      var mine = bases.filter(function (b) { return b.stage === opts.stage; });
+      while (mine.length > B_KEEP) {
+        var oldest = mine.reduce(function (x, y) { return x.ts < y.ts ? x : y; });
+        bases = bases.filter(function (b) { return b !== oldest; });
+        mine = mine.filter(function (b) { return b !== oldest; });
+      }
+      saveBaselines(bases);
+      box.innerHTML = '<div class="note" style="margin-top:10px;border-color:var(--green)">' +
+        "<b>✅ سُجِّل تطبيق الإجراء على الملف.</b> لقياس الاستنقاذ الفعلي: بعد معالجة " +
+        "الصفوف عالية الخطورة <b>ارفع الملف المصحَّح هنا مجدداً</b> (من المتصفح نفسه) — " +
+        "سأطابق الصفوف وأقيس انخفاض الخطر × قيمة كل " + esc(noun) + " تلقائياً.</div>";
+    };
+    $("bAuditIgnore").onclick = function () {
+      post(batchPayload(ref, opts.stage, w.avg, w.avg, w.amount, "ignored"));
+      box.innerHTML = '<div class="note" style="margin-top:10px"><b>✖ سُجِّل التجاهل.</b> ' +
+        "شكراً — استجابتك تُحسِّن قياس أثر المنصّة.</div>";
+    };
+  }
+
+  // ══════════════════════════════════════════════════════════════
   // 4. تبويب «لوحة القيادة» المحمي برقم سري
   // ══════════════════════════════════════════════════════════════
   function sha256(text) {
@@ -253,24 +391,37 @@
   }
 
   function kpis(rows) {
-    var predictions = 0, applied = 0, ignored = 0, salvaged = 0, atRiskIgnored = 0;
-    var devices = {};
+    // استجابة الجلسة = أحدث حدث applied/ignored بمرجعها: جلسات الملفات تُرسل
+    // applied محدَّثاً بعد قياس إعادة الرفع، وأحدث قياس هو المعتمد — بلا ازدواج.
+    var predictions = 0, batchFiles = 0, salvaged = 0, atRiskIgnored = 0;
+    var devices = {}, appliedRefs = {}, ignoredRefs = {};
     rows.forEach(function (r) {
       devices[r.device] = 1;
-      if (r.response === "prediction") predictions++;
-      else if (r.response === "applied") {
-        applied++;
-        // الإيراد المستنقذ: انخفاض الخطر بين أول تنبؤ والاستجابة × قيمة الفاتورة
-        var drop = Math.max(0, (r.initialRisk - r.finalRisk) / 100);
-        salvaged += drop * (r.amount || 0);
+      if (r.response === "prediction") {
+        predictions++;
+        if (/-batch$/.test(String(r.stage))) batchFiles++;
+      } else if (r.response === "applied") {
+        appliedRefs[r.ref] = r; delete ignoredRefs[r.ref];
       } else if (r.response === "ignored") {
-        ignored++;
-        atRiskIgnored += (r.finalRisk / 100) * (r.amount || 0);
+        ignoredRefs[r.ref] = r; delete appliedRefs[r.ref];
       }
     });
+    var applied = 0, ignored = 0, ref;
+    for (ref in appliedRefs) {
+      applied++;
+      // الإيراد المستنقذ: انخفاض الخطر بين أول تنبؤ وأحدث قياس × قيمة الفاتورة
+      var r1 = appliedRefs[ref];
+      salvaged += Math.max(0, (r1.initialRisk - r1.finalRisk) / 100) * (r1.amount || 0);
+    }
+    for (ref in ignoredRefs) {
+      ignored++;
+      var r2 = ignoredRefs[ref];
+      atRiskIgnored += (r2.finalRisk / 100) * (r2.amount || 0);
+    }
     var respTotal = applied + ignored;
     return {
-      predictions: predictions, applied: applied, ignored: ignored,
+      predictions: predictions, batchFiles: batchFiles,
+      applied: applied, ignored: ignored,
       salvaged: salvaged, atRiskIgnored: atRiskIgnored,
       compliance: respTotal ? applied / respTotal : null,
       devices: Object.keys(devices).length,
@@ -284,7 +435,8 @@
   }
 
   var RESP_AR = { prediction: "تنبؤ", applied: "تطبيق الإجراء", ignored: "تجاهل" };
-  var STAGE_AR = { approvals: "موافقات", claims: "مطالبات" };
+  var STAGE_AR = { approvals: "موافقات", claims: "مطالبات",
+                   "approvals-batch": "موافقات · 📂 ملف", "claims-batch": "مطالبات · 📂 ملف" };
 
   function renderDashboard(host) {
     host.innerHTML = '<div class="card"><div class="loading" style="padding:30px">' +
@@ -294,9 +446,10 @@
       var h = '<div class="card"><div class="sec-label">🛡 لوحة القيادة — المقاييس التراكمية عبر جميع الأجهزة</div>';
       h += '<div class="kv">';
       h += kpiCard("إجمالي التنبؤات المنفَّذة", fmt(K.predictions),
-                   "جلسة تنبؤ عبر " + fmt(K.devices) + " جهازاً");
+                   "جلسة تنبؤ عبر " + fmt(K.devices) + " جهازاً" +
+                   (K.batchFiles ? " · منها " + fmt(K.batchFiles) + " ملفات 📂" : ""));
       h += kpiCard("الإيرادات المستنقَذة", fmt(K.salvaged) + " ﷼",
-                   "انخفاض الخطر × قيمة الفاتورة للإجراءات المطبَّقة", "var(--green)");
+                   "انخفاض الخطر × قيمة الفاتورة للإجراءات المطبَّقة (أحدث قياس لكل جلسة)", "var(--green)");
       h += kpiCard("معدل الاستجابة العام", K.compliance == null ? "—" : fmt(K.compliance * 100, 1) + "%",
                    "تطبيق الإجراء ÷ (تطبيق + تجاهل)", "var(--accent)");
       h += kpiCard("الطلبات المتجاهَلة", fmt(K.ignored),
@@ -353,6 +506,6 @@
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
   else boot();
 
-  window.RCMAudit = { onPredict: onPredict, respond: respond, hash: sha256,
-                      enabled: function () { return !!URL_; } };
+  window.RCMAudit = { onPredict: onPredict, respond: respond, onBatch: onBatch,
+                      hash: sha256, enabled: function () { return !!URL_; } };
 })();
