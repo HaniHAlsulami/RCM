@@ -56,6 +56,24 @@
     DD_DEFAULT[c.key] = first ? first.v : "";
   });
 
+  // مرادفات عناوين الأعمدة — للمطابقة الذكية حين تختلف التسمية أو الترتيب
+  var SYN = {
+    total:            ["total", "amount", "bill total", "invoice total", "المبلغ", "القيمه", "اجمالي الفاتوره", "قيمه الفاتوره", "المبلغ الاجمالي", "اجمالي الطلب"],
+    visit_date:       ["visit date", "service date", "admission date", "encounter date", "تاريخ الزياره", "تاريخ الخدمه", "تاريخ الدخول"],
+    visit_type:       ["visit type", "encounter type", "patient type", "نوع الزياره", "نوع الحاله"],
+    hospital:         ["hospital", "facility", "provider", "center", "المستشفي", "المنشاه", "مقدم الخدمه", "المركز"],
+    clinic:           ["clinic", "department", "specialty", "العياده", "القسم", "التخصص"],
+    contract:         ["contract", "insurance", "payer", "insurer", "policy", "عقد التامين", "العقد", "شركه التامين", "التامين", "جهه التامين", "الضامن"],
+    icd:              ["icd", "icd10", "diagnosis", "dx", "diagnosis code", "التشخيص", "رمز التشخيص"],
+    nphies:           ["nphies", "eligibility", "elig", "نفيس", "الاهليه", "فحص الاهليه"],
+    triage:           ["triage", "ctas", "درجه الطوارئ", "الفرز"],
+    gender:           ["gender", "sex", "الجنس", "النوع"],
+    nationality:      ["nationality", "الجنسيه"],
+    patient_class:    ["patient class", "class", "تصنيف المريض", "فئه المريض"],
+    prior_claims:     ["prior claims", "previous claims", "الطلبات السابقه", "عدد الطلبات السابقه"],
+    prior_reject_rate:["prior reject", "reject rate", "نسبه الرفض السابقه", "نسبه عدم الاكتمال"],
+  };
+
   function normCat(key, raw) {
     if (raw == null || raw === "") return DD_DEFAULT[key] || "";
     var s = String(raw).trim();
@@ -109,7 +127,7 @@
       ["تعليمات تعبئة القالب — منصّة مُتَنَبِّئ نماء"],
       [""],
       ["1. عبّئ ورقة «الطلبات»: كل صف طلب موافقة واحد. الصفوف الثلاثة الموجودة أمثلة — احذفها أو استبدلها."],
-      ["2. لا تغيّر صف العناوين: المطابقة تتم على المفتاح اللاتيني بين القوسين، وترتيب الأعمدة غير مهم."],
+      ["2. المطابقة ذكية: يقبل الرفع أي ترتيب أعمدة وأي تسمية قريبة (عربية أو إنجليزية)، والحقل غير الموجود يأخذ افتراضات الصفحة — وستظهر لك خريطة الأعمدة بعد الرفع."],
       ["3. حقول القوائم (نوع الزيارة، المستشفى، العقد…) تقبل القيمة الآلية أو الاسم المعروض كما في ورقة «القيم المسموحة»."],
       ["4. أي قيمة خارج القوائم تُعامل «أخرى / غير مدرج». حقل القوائم الفارغ يأخذ القيمة الأكثر شيوعاً (نفس نقطة انطلاق الصفحة)، والحقول الرقمية الفارغة تُعامل قيماً مفقودة."],
       ["5. رمز التشخيص ICD-10 يُشتقّ منه الفصل والكتلة تلقائياً (مثال: E11.9)."],
@@ -257,8 +275,8 @@
     "احتمال عدم الموافقة الكاملة (p_not_fully_approved)", "نطاق الخطر (risk_band)",
     "الإيراد المتوقّع تحصيله (expected_revenue)", "المبلغ المعرّض للخطر (amount_at_risk)",
     "السبب المرجّح 1 (reason_1)", "نسبته (reason_1_p)", "الإجراء المقترح (reason_1_action)",
-    "السبب المرجّح 2 (reason_2)", "نسبته (reason_2_p)",
-    "السبب المرجّح 3 (reason_3)", "نسبته (reason_3_p)",
+    "السبب المرجّح 2 (reason_2)", "نسبته (reason_2_p)", "إجراؤه المقترح (reason_2_action)",
+    "السبب المرجّح 3 (reason_3)", "نسبته (reason_3_p)", "إجراؤه المقترح (reason_3_action)",
   ];
 
   function outRow(s) {
@@ -269,12 +287,13 @@
       Math.round(s.proba[1] * 10000) / 10000,
       s.band, s.expv, s.risk,
       r[0] ? r[0].label : "", r[0] ? Math.round(r[0].p * 1000) / 1000 : "", r[0] ? r[0].action : "",
-      r[1] ? r[1].label : "", r[1] ? Math.round(r[1].p * 1000) / 1000 : "",
-      r[2] ? r[2].label : "", r[2] ? Math.round(r[2].p * 1000) / 1000 : "",
+      r[1] ? r[1].label : "", r[1] ? Math.round(r[1].p * 1000) / 1000 : "", r[1] ? r[1].action : "",
+      r[2] ? r[2].label : "", r[2] ? Math.round(r[2].p * 1000) / 1000 : "", r[2] ? r[2].action : "",
     ];
   }
 
   var RESULT = null;   // { aoa, name, counts }
+  var MAP_REPORT = null;
 
   // ── مفاتيح مطابقة الصفوف لتتبّع الملفات وقياس الاستنقاذ (rcm-audit.js) ──
   // عمود معرّف اختياري إن وُجد في الملف، وإلا بصمة من الحقول التي لا تتغيّر
@@ -313,10 +332,12 @@
           if (!aoa.length) throw new Error("الملف فارغ");
 
           // صف العناوين → فهرس كل مفتاح
-          var heads = aoa[0], idx = {};
-          heads.forEach(function (h, i) { var k = headerKey(h); if (k && idx[k] === undefined) idx[k] = i; });
-          if (idx.total === undefined && idx.hospital === undefined && idx.contract === undefined)
-            throw new Error("لم أتعرّف على الأعمدة — استخدم قالب المنصّة (زر «تنزيل قالب Excel») أو أبقِ المفاتيح اللاتينية بين الأقواس في العناوين");
+          var heads = aoa[0];
+          var sm = window.RCMBatchTools.smartMap(COLS, SYN, heads, headerKey);
+          var idx = sm.idx;
+          MAP_REPORT = sm.report;
+          if (Object.keys(idx).length < 2)
+            throw new Error("لم أتعرّف على أعمدة كافية — تأكد أن الصف الأول يحوي عناوين الأعمدة (مثل: المبلغ، عقد التأمين، المستشفى…) بأي تسمية قريبة");
 
           var body = aoa.slice(1).filter(function (r) {
             return r.some(function (v) { return v !== "" && v != null; });
@@ -334,7 +355,8 @@
   function scoreAll(XLSX, file, isCsv, heads, idx, body, idIdx) {
     var out = [heads.concat(OUT_HEADS)];
     var counts = { hi: 0, md: 0, lo: 0, nfa: 0, riskSum: 0 };
-    var auditRows = [], seen = {};
+    var auditRows = [], seen = {}, pivotRows = [];
+    var pv = function (v) { v = String(v == null ? "" : v).trim(); return v || "غير محدد"; };
     var i = 0, CHUNK = 400;
 
     function step() {
@@ -351,6 +373,11 @@
         var amt = parseFloat(rec.total);
         auditRows.push({ k: auditKey(rec, body[i], idIdx, seen),
                          p: s.proba[NFA], a: isFinite(amt) ? amt : 0 });
+        pivotRows.push({ dims: { contract: pv(rec.contract), hospital: pv(rec.hospital),
+                                 clinic: pv(rec.clinic), band: s.band,
+                                 code: s.reasons[0] ? s.reasons[0].label : "—" },
+                         amount: isFinite(amt) ? amt : 0, p: s.proba[NFA],
+                         risk: s.risk === "" ? 0 : s.risk, hi: s.proba[NFA] >= 0.65 });
         out.push(body[i].concat(outRow(s)));
       }
       if (i < body.length) {
@@ -359,7 +386,13 @@
         setTimeout(step, 0);
       } else {
         RESULT = { aoa: out, base: file.name.replace(/\.(xlsx|xls|csv)$/i, ""), isCsv: isCsv, counts: counts, n: body.length,
-                   audit: { stage: "approvals", noun: "طلب", threshold: THRESHOLD, rows: auditRows } };
+                   audit: { stage: "approvals", noun: "طلب", threshold: THRESHOLD, rows: auditRows },
+                   pivot: { rows: pivotRows, hiLabel: "عالية الخطورة", moneyLabel: "المبلغ المعرّض للخطر",
+                            dims: [ { key: "contract", label: "عقد التأمين" },
+                                    { key: "hospital", label: "المستشفى" },
+                                    { key: "clinic", label: "القسم / العيادة" },
+                                    { key: "code", label: "السبب المرجّح" },
+                                    { key: "band", label: "نطاق الخطر" } ] } };
         renderResult();
       }
     }
@@ -396,7 +429,10 @@
     }
     h += "</table></div>";
     if (aoa.length > 11) h += '<p style="font-size:11.5px;color:var(--muted2)">المعاينة لأول 10 صفوف — الملف الكامل في التنزيل.</p>';
+    if (MAP_REPORT) h += window.RCMBatchTools.mapReportHtml(MAP_REPORT);
+    h += '<div id="batchPivot"></div>';
     $("batchStatus").innerHTML = h;
+    if (RESULT.pivot) window.RCMBatchTools.pivotUI("batchPivot", RESULT.pivot);
 
     $("dlXlsx").onclick = function () {
       loadXLSX().then(function (XLSX) {
@@ -404,6 +440,11 @@
         wb.Workbook = { Views: [{ RTL: true }] };
         var ws = XLSX.utils.aoa_to_sheet(RESULT.aoa);
         XLSX.utils.book_append_sheet(wb, ws, "النتائج");
+        if (RESULT.pivot) {
+          var pw = XLSX.utils.aoa_to_sheet(window.RCMBatchTools.pivotAoa(RESULT.pivot));
+          pw["!cols"] = [{ wch: 34 }, { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 16 }, { wch: 20 }];
+          XLSX.utils.book_append_sheet(wb, pw, "الملخص المحوري");
+        }
         XLSX.writeFile(wb, RESULT.base + "-scored-" + stamp() + ".xlsx");
       }).catch(showErr);
     };
