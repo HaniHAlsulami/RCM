@@ -253,6 +253,35 @@ def export(model, reason_model, reason_labels, vocab, snap, df, X, y,
         ),
     )
 
+    # ── حماية البيانات الشخصية: ترميز الأطباء بأسماء مستعارة قبل النشر ──
+    # كل الملفات المنشورة (bundle/vocab) تخرج برموز doc-### بدل الأسماء،
+    # وخريطة «الاسم ← الرمز» تُكتب في model/private/ (مستبعد في .gitignore)
+    # لتوزَّع داخلياً فقط. الترميز مستقر: بترتيب حجم المطالبات ثم أبجدياً.
+    doc_tbl = snap["doc"]["table"]
+    all_doc_names = (set(doc_tbl)
+                     | {o["v"] for o in bundle["options"]["physician"] if o["v"] != "OTHER"}
+                     | {n for n in vocab.get("cats_physician", []) if n != "OTHER"}
+                     | set(vocab.get("rare_physician", [])))
+    doc_names = sorted(all_doc_names,
+                       key=lambda n: (-(doc_tbl.get(n, [0, 0, -1])[2]), n))
+    doc_map = {n: f"doc-{i + 1:03d}" for i, n in enumerate(doc_names)}
+    snap["doc"]["table"] = {doc_map[n]: v for n, v in doc_tbl.items()}
+    for o in bundle["options"]["physician"]:
+        if o["v"] != "OTHER":
+            o["l"] = "طبيب " + doc_map[o["v"]][4:]
+            o["v"] = doc_map[o["v"]]
+    for key in ("cats_physician", "rare_physician"):
+        if key in vocab:
+            vocab[key] = [n if n == "OTHER" else doc_map.get(n, n) for n in vocab[key]]
+    private_dir = os.path.join(os.path.dirname(art_dir), "private")
+    os.makedirs(private_dir, exist_ok=True)
+    with open(os.path.join(private_dir, "claims_docmap.csv"), "w", encoding="utf-8-sig") as f:
+        f.write("code,physician\n")
+        for n, c in doc_map.items():
+            f.write(f'{c},"{n}"\n')
+    print(f"[export] رُمِّز {len(doc_map)} طبيباً — الخريطة الخاصة في model/private/ (لا تُنشر)",
+          flush=True)
+
     js_path = os.path.join(art_dir, "claims_bundle.js")
     json_path = os.path.join(art_dir, "claims_bundle.json")
     payload = json.dumps(bundle, ensure_ascii=False, separators=(",", ":"))
