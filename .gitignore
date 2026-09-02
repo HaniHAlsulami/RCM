@@ -1,5 +1,6 @@
-__pycache__/
 *.pyc
 .DS_Store
-tests/reference.json
+__pycache__/
+model/private/
 tests/claims_reference.json
+tests/reference.json

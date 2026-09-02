@@ -79,6 +79,10 @@
 
   function normCat(key, raw) {
     if (raw == null || raw === "") return DD_DEFAULT[key] || "";
+    if (key === "physician" && window.RCMDocMap) {
+      var dc = RCMDocMap.codeFor(raw);
+      if (dc) return dc;
+    }
     var s = String(raw).trim();
     var m = VALUE_MAPS[key];
     return (m && m[s.toLowerCase()] !== undefined) ? m[s.toLowerCase()] : s;
@@ -141,7 +145,8 @@
       ["4. أي قيمة خارج القوائم تُعامل «أخرى / غير مدرج»، والحقل الفارغ يأخذ نفس افتراضات الصفحة."],
       ["5. رمز التشخيص ICD-10 يُشتقّ منه الفصل والكتلة تلقائياً (مثال: E11.9)."],
       ["6. التاريخان بصيغة 2026-06-10 أو خليتي تاريخ في Excel — ومنهما تُحسب مهلة التقديم تلقائياً."],
-      ["7. ارفع الملف في تبويب «التنبؤ بالملفات» — تُعالَج البيانات داخل متصفّحك ولا تُرسل لأي خادم."],
+      ["7. الطبيب المعالج: المنصّة تستخدم رموزاً مستعارة (doc-001…) حمايةً للبيانات الشخصية — اكتب الرمز، أو الاسم الحقيقي بعد تحميل ملف الرموز الخاص الموزَّع داخلياً (زر 🔒 في التبويب)."],
+      ["8. ارفع الملف في تبويب «التنبؤ بالملفات» — تُعالَج البيانات داخل متصفّحك ولا تُرسل لأي خادم."],
     ];
     var ws3 = XLSX.utils.aoa_to_sheet(inst);
     ws3["!cols"] = [{ wch: 110 }];
@@ -532,6 +537,9 @@
       '<button class="btn ghost" id="genCsv" style="width:auto;padding:11px 18px">🎲 ملف CSV تجريبي</button></div>';
     h += '<p style="font-size:11.5px;color:var(--muted2);margin:6px 0 0">المولّد غير محدود: كل ضغطة تنتج ملفاً جديداً ' +
       "بمطالبات عشوائية واقعية الشكل من قوائم النموذج نفسها — جاهزاً للرفع هنا مباشرةً لتجربة التسجيل الدفعي.</p>";
+    h += '<div id="docmapRow" style="margin-top:10px;padding:10px 12px;background:var(--surface);' +
+      'border:1px solid var(--border);border-radius:10px;font-size:12px;color:var(--muted2);' +
+      'display:flex;gap:10px;align-items:center;flex-wrap:wrap"></div>';
     h += '<div id="dropZone" style="margin-top:12px;border:2px dashed var(--border);border-radius:12px;' +
       'padding:34px 16px;text-align:center;color:var(--muted2);font-size:13.5px;cursor:pointer">' +
       '<div style="font-size:30px;margin-bottom:6px">⬆️</div>' +
@@ -544,6 +552,7 @@
     $("dlTemplate").onclick = downloadTemplate;
     $("genXlsx").onclick = function () { downloadDemo(false); };
     $("genCsv").onclick = function () { downloadDemo(true); };
+    renderDocmapRow();
     var dz = $("dropZone"), fi = $("batchFile");
     dz.onclick = function () { fi.click(); };
     fi.onchange = function () { if (fi.files[0]) { processFile(fi.files[0]); fi.value = ""; } };
@@ -553,6 +562,42 @@
       e.preventDefault(); dz.style.borderColor = "var(--border)";
       var f = e.dataTransfer.files && e.dataTransfer.files[0];
       if (f) processFile(f);
+    };
+  }
+
+  // ── الملف الخاص لرموز الأطباء: يُحمَّل محلياً ولا يغادر المتصفح ──
+  function renderDocmapRow() {
+    var row = $("docmapRow");
+    if (!row || !window.RCMDocMap) { if (row) row.style.display = "none"; return; }
+    var n = RCMDocMap.count();
+    row.innerHTML =
+      '<span>🔒 <b>ملف رموز الأطباء (خاص):</b> ' +
+      (n ? "محمَّل — " + n + " طبيباً. أسماء الأطباء في ملفاتك ستُترجم لرموزها محلياً، وتظهر بجانب الرموز في قوائم الإدخال اليدوي بعد إعادة تحميل الصفحة."
+         : "غير محمَّل — أسماء الأطباء الحقيقية في ملفاتك ستُعامل «أخرى». حمّل الملف الموزَّع داخلياً لتفعيل الترجمة.") +
+      "</span>" +
+      '<button class="btn ghost" id="docmapLoad" style="width:auto;padding:7px 14px">' +
+        (n ? "استبدال الملف" : "تحميل الملف الخاص") + "</button>" +
+      (n ? '<button class="btn ghost" id="docmapClear" style="width:auto;padding:7px 14px">إزالة</button>' : "") +
+      '<input type="file" id="docmapFile" accept=".xlsx,.xls,.csv" style="display:none">' +
+      '<span style="flex-basis:100%;font-size:11px;color:var(--muted)">يُحفظ في متصفحك وحده ولا يُرسَل لأي مكان — حمايةً لبيانات الأطباء لم تعد الأسماء تُنشر في المنصّة.</span>';
+    $("docmapLoad").onclick = function () { $("docmapFile").click(); };
+    if (n) $("docmapClear").onclick = function () { RCMDocMap.clear(); renderDocmapRow(); };
+    $("docmapFile").onchange = function () {
+      var f = this.files[0]; this.value = "";
+      if (!f) return;
+      loadXLSX().then(function (XLSX) {
+        var fr = new FileReader();
+        fr.onload = function () {
+          try {
+            var wb = XLSX.read(fr.result, { type: "array", codepage: 65001 });
+            var aoa = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: true, defval: "" });
+            var cnt = RCMDocMap.loadFromRows(aoa);
+            if (!cnt) alert("لم أجد عمودي الرمز (doc-###) والاسم في الملف — تأكد أنه ملف الربط الخاص الموزَّع داخلياً.");
+            renderDocmapRow();
+          } catch (e) { alert("تعذّرت قراءة الملف: " + e.message); }
+        };
+        fr.readAsArrayBuffer(f);
+      }).catch(showErr);
     };
   }
 

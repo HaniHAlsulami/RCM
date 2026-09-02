@@ -64,7 +64,13 @@
       });
     }
     return (B.options[col] || []).map(function (o) {
-      return { v: o.v, l: o.l, n: o.n, r: o.r };
+      var l = o.l;
+      // الربط المحلي الخاص: اسم الطبيب يظهر بجانب رمزه على هذا الجهاز فقط
+      if (col === "physician" && o.v !== "OTHER" && window.RCMDocMap) {
+        var nm = RCMDocMap.nameFor(o.v);
+        if (nm) l = o.l + " — " + nm;
+      }
+      return { v: o.v, l: l, n: o.n, r: o.r };
     });
   }
 
