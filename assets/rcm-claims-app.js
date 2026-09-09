@@ -926,7 +926,11 @@
       ask.onclick = function () {
         if (!LAST) { alert("شغّل تنبّؤاً أولاً."); return; }
         saveCase(LAST, LAST.reasons, LAST_INPUT);
-        window.open("chatbot.html?case=1", "_blank");
+        // نفس معالجة صفحة الموافقات: حجب المنبثقات في البيئات الداخلية
+        // يعيد null بصمت — فننتقل في نفس التبويب.
+        var w = null;
+        try { w = window.open("chatbot.html?case=1", "_blank"); } catch (e) { /* sandbox */ }
+        if (!w) window.location.href = "chatbot.html?case=1";
       };
     }
 

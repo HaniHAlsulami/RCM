@@ -911,7 +911,12 @@
       ask.onclick = function () {
         if (!LAST) { alert("شغّل تنبّؤاً أولاً."); return; }
         saveCase(LAST, LAST.reasons, LAST_INPUT);
-        window.open("chatbot.html?case=1", "_blank");
+        // بيئات الاستضافة الداخلية كثيراً ما تحجب النوافذ المنبثقة (سياسات
+        // المتصفح المؤسسية، أو iframe بلا allow-popups) فيعود window.open
+        // بـ null بلا أي رسالة — عندها ننتقل في نفس التبويب بدلاً من الصمت.
+        var w = null;
+        try { w = window.open("chatbot.html?case=1", "_blank"); } catch (e) { /* sandbox */ }
+        if (!w) window.location.href = "chatbot.html?case=1";
       };
     }
     $("btnReset").onclick = resetForm;
