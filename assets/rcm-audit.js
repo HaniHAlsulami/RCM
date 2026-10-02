@@ -62,8 +62,26 @@
   // ══════════════════════════════════════════════════════════════
   var QKEY = "namaa.audit.queue";
 
+  // مرآة محلية لكل حدث — احتياط يُبقي لوحة القيادة تعمل بلا خادم تتبّع
+  // (تغطي أحداث هذا الجهاز وحده، وتُعرض مع تنبيه صريح بذلك)
+  var LKEY = "namaa.audit.local";
+  function localSave(payload) {
+    try {
+      var a = JSON.parse(localStorage.getItem(LKEY) || "[]");
+      a.push({ ts: new Date().toISOString(), ref: payload.ref, stage: payload.stage,
+               initialRisk: payload.initialRisk, finalRisk: payload.finalRisk,
+               amount: Number(payload.amount) || 0, response: payload.response,
+               device: payload.device });
+      localStorage.setItem(LKEY, JSON.stringify(a.slice(-4000)));
+    } catch (e) { /* التخزين ممتلئ — المرآة اختيارية */ }
+  }
+  function localRows() {
+    try { return JSON.parse(localStorage.getItem(LKEY) || "[]"); } catch (e) { return []; }
+  }
+
   function post(payload) {
     if (!URL_) return Promise.resolve(false);
+    localSave(payload);
     payload.token = TOKEN || undefined;
     return fetch(URL_, {
       method: "POST",
@@ -387,6 +405,12 @@
       .then(function (j) {
         if (!j.ok) throw new Error(j.error || "استجابة غير متوقعة");
         return j.rows || [];
+      })
+      .catch(function (e) {
+        // خادم التتبّع غير متاح — نعرض المرآة المحلية لهذا الجهاز بدل الفشل
+        var loc = localRows();
+        if (loc.length) { loc._localOnly = true; return loc; }
+        throw e;
       });
   }
 
@@ -551,8 +575,14 @@
     host.innerHTML = '<div class="card"><div class="loading" style="padding:30px">' +
       '<div class="spin"></div>جارٍ جلب البيانات التراكمية من جميع الأجهزة…</div></div>';
     fetchRows().then(function (rows) {
+      var localOnly = !!rows._localOnly;
       var K = kpis(rows);
-      var h = '<div class="card"><div class="sec-label">🛡 لوحة القيادة — المقاييس التراكمية عبر جميع الأجهزة</div>';
+      var h = '<div class="card"><div class="sec-label">🛡 لوحة القيادة — ' +
+        (localOnly ? "بيانات هذا الجهاز" : "المقاييس التراكمية عبر جميع الأجهزة") + "</div>";
+      if (localOnly) {
+        h += '<div class="note" style="border-color:#c99b4e;background:#fdf6ee">⚠ <b>خادم التتبّع غير متاح</b> — ' +
+          "تُعرض أحداث هذا الجهاز وحده من الذاكرة المحلية. عند توفّر الخادم تظهر البيانات التراكمية لكل الأجهزة تلقائياً.</div>";
+      }
       h += '<div class="kv">';
       h += kpiCard("إجمالي التنبؤات المنفَّذة", fmt(K.predictions),
                    "جلسة تنبؤ عبر " + fmt(K.devices) + " جهازاً" +
@@ -599,8 +629,10 @@
         });
         h += "</table></div>";
       }
-      h += '<div class="note">المصدر: Google Sheets عبر Apps Script — البيانات مجهولة ' +
-        "(لا أسماء ولا هويات)، والرقم السري حاجز تنظيمي لا حماية تقنية لبيانات حساسة.</div></div>";
+      h += '<div class="note">' +
+        (localOnly ? "المصدر: الذاكرة المحلية لهذا الجهاز (خادم التتبّع غير متاح)"
+                   : "المصدر: سجل التتبّع المركزي") +
+        " — البيانات مجهولة (لا أسماء ولا هويات)، والرقم السري حاجز تنظيمي لا حماية تقنية لبيانات حساسة.</div></div>";
 
       host.innerHTML = h;
       $("adminRefresh").onclick = function () { renderDashboard(host); };
