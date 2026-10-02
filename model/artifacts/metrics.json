@@ -1,171 +1,171 @@
 {
-  "generated_at": "2026-08-19 01:15",
+  "generated_at": "2026-10-02 10:48",
   "dataset": {
-    "rows_total": 98181,
-    "rows_decided": 41042,
+    "rows_total": 132195,
+    "rows_decided": 55128,
     "date_from": "2026-01-01",
-    "date_to": "2026-07-18",
-    "split_date": "2026-06-03",
+    "date_to": "2026-09-07",
+    "split_date": "2026-08-03",
     "class_distribution": {
-      "موافقة كاملة": 17754,
-      "موافقة غير كاملة": 23288
+      "موافقة كاملة": 24343,
+      "موافقة غير كاملة": 30785
     },
     "raw_distribution": {
-      "Rejected": 18143,
-      "Approved": 17754,
-      "Partially Approved": 5145
+      "Approved": 24343,
+      "Rejected": 23762,
+      "Partially Approved": 7023
     }
   },
   "comparison": [
     {
       "model": "Baseline (نسبة أساسية)",
-      "accuracy": 0.4936,
-      "lift_over_majority": -0.0128,
-      "f1_macro": 0.3305,
-      "f1_weighted": 0.3263,
+      "accuracy": 0.531,
+      "lift_over_majority": 0.0,
+      "f1_macro": 0.3468,
+      "f1_weighted": 0.3684,
       "roc_auc": 0.5,
-      "pr_auc": 0.4936,
+      "pr_auc": 0.531,
       "recall_nfa": 1.0,
-      "precision_nfa": 0.4936,
-      "log_loss": 0.7103,
+      "precision_nfa": 0.531,
+      "log_loss": 0.6936,
       "note": "توقّع الفئة الأكثر شيوعاً"
     },
     {
       "model": "Logistic Regression",
-      "accuracy": 0.6587,
-      "lift_over_majority": 0.1523,
-      "f1_macro": 0.6477,
-      "f1_weighted": 0.6485,
-      "roc_auc": 0.734,
-      "pr_auc": 0.6982,
-      "recall_nfa": 0.4882,
-      "precision_nfa": 0.731,
-      "log_loss": 0.6509,
+      "accuracy": 0.6897,
+      "lift_over_majority": 0.1587,
+      "f1_macro": 0.6895,
+      "f1_weighted": 0.69,
+      "roc_auc": 0.7536,
+      "pr_auc": 0.7475,
+      "recall_nfa": 0.675,
+      "precision_nfa": 0.7225,
+      "log_loss": 0.5921,
       "note": "نموذج خطي مرجعي"
     },
     {
       "model": "Random Forest",
-      "accuracy": 0.7219,
-      "lift_over_majority": 0.2155,
-      "f1_macro": 0.7219,
-      "f1_weighted": 0.7219,
-      "roc_auc": 0.8019,
-      "pr_auc": 0.7829,
-      "recall_nfa": 0.7216,
-      "precision_nfa": 0.7168,
-      "log_loss": 0.5476,
+      "accuracy": 0.7539,
+      "lift_over_majority": 0.2228,
+      "f1_macro": 0.7531,
+      "f1_weighted": 0.7539,
+      "roc_auc": 0.833,
+      "pr_auc": 0.8357,
+      "recall_nfa": 0.7619,
+      "precision_nfa": 0.7717,
+      "log_loss": 0.5145,
       "note": "النموذج المستخدم سابقاً"
     },
     {
       "model": "Extra Trees",
-      "accuracy": 0.7197,
-      "lift_over_majority": 0.2133,
-      "f1_macro": 0.719,
-      "f1_weighted": 0.7192,
-      "roc_auc": 0.8,
-      "pr_auc": 0.7792,
-      "recall_nfa": 0.6787,
-      "precision_nfa": 0.7335,
-      "log_loss": 0.5462,
+      "accuracy": 0.7512,
+      "lift_over_majority": 0.2202,
+      "f1_macro": 0.7501,
+      "f1_weighted": 0.7512,
+      "roc_auc": 0.8261,
+      "pr_auc": 0.8273,
+      "recall_nfa": 0.7693,
+      "precision_nfa": 0.7639,
+      "log_loss": 0.5205,
       "note": ""
     },
     {
       "model": "HistGradientBoosting",
-      "accuracy": 0.7163,
-      "lift_over_majority": 0.2099,
-      "f1_macro": 0.7161,
-      "f1_weighted": 0.7162,
-      "roc_auc": 0.7995,
-      "pr_auc": 0.7948,
-      "recall_nfa": 0.6977,
-      "precision_nfa": 0.7192,
-      "log_loss": 0.5529,
+      "accuracy": 0.7648,
+      "lift_over_majority": 0.2338,
+      "f1_macro": 0.763,
+      "f1_weighted": 0.7643,
+      "roc_auc": 0.8407,
+      "pr_auc": 0.841,
+      "recall_nfa": 0.8022,
+      "precision_nfa": 0.766,
+      "log_loss": 0.4918,
       "note": ""
     },
     {
       "model": "XGBoost",
-      "accuracy": 0.7193,
-      "lift_over_majority": 0.2129,
-      "f1_macro": 0.7187,
-      "f1_weighted": 0.7189,
-      "roc_auc": 0.8018,
-      "pr_auc": 0.7915,
-      "recall_nfa": 0.6807,
-      "precision_nfa": 0.732,
-      "log_loss": 0.5491,
+      "accuracy": 0.7606,
+      "lift_over_majority": 0.2295,
+      "f1_macro": 0.7588,
+      "f1_weighted": 0.7601,
+      "roc_auc": 0.8389,
+      "pr_auc": 0.8427,
+      "recall_nfa": 0.7962,
+      "precision_nfa": 0.7631,
+      "log_loss": 0.4932,
       "note": ""
     },
     {
       "model": "LightGBM (المُعتمد)",
-      "accuracy": 0.7207,
-      "lift_over_majority": 0.2143,
-      "f1_macro": 0.7203,
-      "f1_weighted": 0.7204,
-      "roc_auc": 0.8081,
-      "pr_auc": 0.8002,
-      "recall_nfa": 0.6915,
-      "precision_nfa": 0.7287,
-      "log_loss": 0.5378,
+      "accuracy": 0.7668,
+      "lift_over_majority": 0.2358,
+      "f1_macro": 0.7652,
+      "f1_weighted": 0.7664,
+      "roc_auc": 0.8419,
+      "pr_auc": 0.8435,
+      "recall_nfa": 0.8005,
+      "precision_nfa": 0.7696,
+      "log_loss": 0.489,
       "note": "أشجار معزَّزة + دعم أصلي للفئات",
       "confusion_matrix": [
         [
-          3114,
-          1043
+          3768,
+          1403
         ],
         [
-          1250,
-          2802
+          1168,
+          4687
         ]
       ],
       "per_class": {
         "موافقة كاملة": {
-          "precision": 0.7135655362053163,
-          "recall": 0.7490979071445755,
-          "f1-score": 0.7309001290928295,
-          "support": 4157.0
+          "precision": 0.7633711507293355,
+          "recall": 0.7286791723070972,
+          "f1-score": 0.7456218462451766,
+          "support": 5171.0
         },
         "موافقة غير كاملة": {
-          "precision": 0.728738621586476,
-          "recall": 0.6915103652517275,
-          "f1-score": 0.7096365708496898,
-          "support": 4052.0
+          "precision": 0.7696223316912972,
+          "recall": 0.8005123825789923,
+          "f1-score": 0.7847634993721222,
+          "support": 5855.0
         },
-        "accuracy": 0.7206724326958217,
+        "accuracy": 0.7668238708507165,
         "macro avg": {
-          "precision": 0.721152078895896,
-          "recall": 0.7203041361981515,
-          "f1-score": 0.7202683499712597,
-          "support": 8209.0
+          "precision": 0.7664967412103163,
+          "recall": 0.7645957774430447,
+          "f1-score": 0.7651926728086493,
+          "support": 11026.0
         },
         "weighted avg": {
-          "precision": 0.7210550406473262,
-          "recall": 0.7206724326958217,
-          "f1-score": 0.7204043393497181,
-          "support": 8209.0
+          "precision": 0.7666906378082657,
+          "recall": 0.7668238708507165,
+          "f1-score": 0.7664067527442031,
+          "support": 11026.0
         }
       },
-      "majority_baseline": 0.5064,
+      "majority_baseline": 0.531,
       "threshold": 0.45,
       "deployment": {
-        "accuracy": 0.7244,
+        "accuracy": 0.7632,
         "threshold": 0.45,
-        "majority_baseline": 0.5064,
-        "lift_over_majority": 0.2181,
-        "f1_macro": 0.7244,
-        "roc_auc": 0.8098,
-        "pr_auc": 0.8019,
-        "log_loss": 0.533,
-        "recall_nfa": 0.7438,
-        "precision_nfa": 0.7112,
-        "recall_approved": 0.7056,
+        "majority_baseline": 0.531,
+        "lift_over_majority": 0.2322,
+        "f1_macro": 0.7594,
+        "roc_auc": 0.8374,
+        "pr_auc": 0.8401,
+        "log_loss": 0.4952,
+        "recall_nfa": 0.8372,
+        "precision_nfa": 0.7473,
+        "recall_approved": 0.6794,
         "confusion_matrix": [
           [
-            2933,
-            1224
+            3513,
+            1658
           ],
           [
-            1038,
-            3014
+            953,
+            4902
           ]
         ]
       }
@@ -173,167 +173,167 @@
   ],
   "selected": {
     "model": "LightGBM (المُعتمد)",
-    "accuracy": 0.7207,
-    "lift_over_majority": 0.2143,
-    "f1_macro": 0.7203,
-    "f1_weighted": 0.7204,
-    "roc_auc": 0.8081,
-    "pr_auc": 0.8002,
-    "recall_nfa": 0.6915,
-    "precision_nfa": 0.7287,
-    "log_loss": 0.5378,
+    "accuracy": 0.7668,
+    "lift_over_majority": 0.2358,
+    "f1_macro": 0.7652,
+    "f1_weighted": 0.7664,
+    "roc_auc": 0.8419,
+    "pr_auc": 0.8435,
+    "recall_nfa": 0.8005,
+    "precision_nfa": 0.7696,
+    "log_loss": 0.489,
     "note": "أشجار معزَّزة + دعم أصلي للفئات",
     "confusion_matrix": [
       [
-        3114,
-        1043
+        3768,
+        1403
       ],
       [
-        1250,
-        2802
+        1168,
+        4687
       ]
     ],
     "per_class": {
       "موافقة كاملة": {
-        "precision": 0.7135655362053163,
-        "recall": 0.7490979071445755,
-        "f1-score": 0.7309001290928295,
-        "support": 4157.0
+        "precision": 0.7633711507293355,
+        "recall": 0.7286791723070972,
+        "f1-score": 0.7456218462451766,
+        "support": 5171.0
       },
       "موافقة غير كاملة": {
-        "precision": 0.728738621586476,
-        "recall": 0.6915103652517275,
-        "f1-score": 0.7096365708496898,
-        "support": 4052.0
+        "precision": 0.7696223316912972,
+        "recall": 0.8005123825789923,
+        "f1-score": 0.7847634993721222,
+        "support": 5855.0
       },
-      "accuracy": 0.7206724326958217,
+      "accuracy": 0.7668238708507165,
       "macro avg": {
-        "precision": 0.721152078895896,
-        "recall": 0.7203041361981515,
-        "f1-score": 0.7202683499712597,
-        "support": 8209.0
+        "precision": 0.7664967412103163,
+        "recall": 0.7645957774430447,
+        "f1-score": 0.7651926728086493,
+        "support": 11026.0
       },
       "weighted avg": {
-        "precision": 0.7210550406473262,
-        "recall": 0.7206724326958217,
-        "f1-score": 0.7204043393497181,
-        "support": 8209.0
+        "precision": 0.7666906378082657,
+        "recall": 0.7668238708507165,
+        "f1-score": 0.7664067527442031,
+        "support": 11026.0
       }
     },
-    "majority_baseline": 0.5064,
+    "majority_baseline": 0.531,
     "threshold": 0.45,
     "deployment": {
-      "accuracy": 0.7244,
+      "accuracy": 0.7632,
       "threshold": 0.45,
-      "majority_baseline": 0.5064,
-      "lift_over_majority": 0.2181,
-      "f1_macro": 0.7244,
-      "roc_auc": 0.8098,
-      "pr_auc": 0.8019,
-      "log_loss": 0.533,
-      "recall_nfa": 0.7438,
-      "precision_nfa": 0.7112,
-      "recall_approved": 0.7056,
+      "majority_baseline": 0.531,
+      "lift_over_majority": 0.2322,
+      "f1_macro": 0.7594,
+      "roc_auc": 0.8374,
+      "pr_auc": 0.8401,
+      "log_loss": 0.4952,
+      "recall_nfa": 0.8372,
+      "precision_nfa": 0.7473,
+      "recall_approved": 0.6794,
       "confusion_matrix": [
         [
-          2933,
-          1224
+          3513,
+          1658
         ],
         [
-          1038,
-          3014
+          953,
+          4902
         ]
       ]
     }
   },
   "reason_model": {
-    "top1_accuracy": 0.3186,
-    "top3_accuracy": 0.6802,
-    "baseline": 0.1765,
-    "n_rows": 19741,
+    "top1_accuracy": 0.3493,
+    "top3_accuracy": 0.6654,
+    "baseline": 0.2397,
+    "n_rows": 25719,
     "n_classes": 14,
     "class_distribution": {
-      "DOCUMENTATION": 3821,
-      "URGENCY": 3649,
-      "OPD_NOT_COVERED": 2927,
-      "LIMIT_EXCEEDED": 1696,
-      "POLICY_EXCLUSION": 1586,
-      "ELIGIBILITY": 1261,
-      "PRICING_CODING": 1010,
-      "OTHER": 983,
-      "MEDICAL_NECESSITY": 827,
-      "DUPLICATE": 535,
-      "NETWORK": 487,
-      "LATE_SUBMISSION": 414,
-      "DIAGNOSIS_NOT_COVERED": 301,
-      "APPROVED_WITH_TERMS": 244
+      "DOCUMENTATION": 5211,
+      "URGENCY": 4304,
+      "OPD_NOT_COVERED": 3591,
+      "LIMIT_EXCEEDED": 2438,
+      "POLICY_EXCLUSION": 2231,
+      "ELIGIBILITY": 1547,
+      "OTHER": 1525,
+      "PRICING_CODING": 1168,
+      "MEDICAL_NECESSITY": 1163,
+      "NETWORK": 681,
+      "DUPLICATE": 602,
+      "LATE_SUBMISSION": 499,
+      "DIAGNOSIS_NOT_COVERED": 453,
+      "APPROVED_WITH_TERMS": 306
     }
   },
   "global_shap": {
     "contract": {
       "label": "عقد التأمين (شركة التأمين — Payer)",
-      "value": 0.65049,
-      "pct": 19.68
-    },
-    "hospital": {
-      "label": "المستشفى",
-      "value": 0.57496,
-      "pct": 17.4
+      "value": 0.6815,
+      "pct": 21.04
     },
     "total": {
       "label": "إجمالي الفاتورة",
-      "value": 0.45284,
-      "pct": 13.7
+      "value": 0.47477,
+      "pct": 14.66
+    },
+    "hospital": {
+      "label": "المستشفى",
+      "value": 0.43293,
+      "pct": 13.36
     },
     "clinic": {
       "label": "القسم / العيادة",
-      "value": 0.36973,
-      "pct": 11.19
+      "value": 0.38999,
+      "pct": 12.04
     },
     "icd": {
       "label": "التشخيص ICD-10",
-      "value": 0.30088,
-      "pct": 9.1
+      "value": 0.31433,
+      "pct": 9.7
     },
     "nationality": {
       "label": "الجنسية",
-      "value": 0.20726,
-      "pct": 6.27
+      "value": 0.21042,
+      "pct": 6.5
     },
     "visit_time": {
       "label": "توقيت الزيارة",
-      "value": 0.20651,
-      "pct": 6.25
+      "value": 0.16315,
+      "pct": 5.04
     },
     "visit_type": {
       "label": "نوع الزيارة",
-      "value": 0.14595,
-      "pct": 4.42
-    },
-    "triage": {
-      "label": "درجة الطوارئ CTAS",
-      "value": 0.12258,
-      "pct": 3.71
+      "value": 0.15712,
+      "pct": 4.85
     },
     "nphies_elig": {
       "label": "فحص الأهلية — نفيس",
-      "value": 0.11691,
-      "pct": 3.54
+      "value": 0.12843,
+      "pct": 3.96
     },
-    "history": {
-      "label": "سجل المريض السابق",
-      "value": 0.07588,
-      "pct": 2.3
+    "triage": {
+      "label": "درجة الطوارئ CTAS",
+      "value": 0.10496,
+      "pct": 3.24
     },
     "patient_class": {
       "label": "تصنيف المريض",
-      "value": 0.07527,
-      "pct": 2.28
+      "value": 0.09415,
+      "pct": 2.91
+    },
+    "history": {
+      "label": "سجل المريض السابق",
+      "value": 0.08031,
+      "pct": 2.48
     },
     "gender": {
       "label": "الجنس",
-      "value": 0.00604,
-      "pct": 0.18
+      "value": 0.00734,
+      "pct": 0.23
     }
   },
   "features": [
